@@ -1,0 +1,42 @@
+import 'package:flutter/material.dart';
+import 'models.dart';
+import 'page_scaffold.dart';
+
+class BookPage extends StatelessWidget {
+  final String id;
+
+  const BookPage({
+    Key? key,
+    required this.id,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final book = BooksDatabase().books.firstWhere((book) => book.id == id);
+
+    return PageScaffold(
+      title: 'Book info',
+      body: ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  book.title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(book.description),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
