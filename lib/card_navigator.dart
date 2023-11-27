@@ -5,9 +5,9 @@ import 'card_model.dart';
 
 class CardNavigator extends StatefulWidget {
   final CardController cardController;
-  final String fileGuid;
-  final bool   onlyThatFile;
-  const CardNavigator({required this.cardController, this.fileGuid = '', this.onlyThatFile = false, Key? key}) : super(key: key);
+  final int? jsonFileID;
+  final bool onlyThatFile;
+  const CardNavigator({required this.cardController, this.jsonFileID, this.onlyThatFile = false, Key? key}) : super(key: key);
 
   @override
   State<CardNavigator> createState() => _CardNavigatorState();
@@ -47,7 +47,7 @@ class _CardNavigatorState extends State<CardNavigator> {
     _fileList = fileRows.map((row) => PacInfo.fromMap(row)).toList();
 
     if (widget.onlyThatFile) {
-      _fileList.removeWhere((file) => file.guid != widget.fileGuid);
+      _fileList.removeWhere((file) => file.jsonFileID != widget.jsonFileID);
     }
 
     _fileList.sort((a, b) => a.jsonFileID.compareTo(b.jsonFileID));
@@ -58,8 +58,8 @@ class _CardNavigatorState extends State<CardNavigator> {
     _cardList = cardRows.map((row) => CardHead.fromMap(row)).toList();
     _cardList.sort((a, b) => a.cardID.compareTo(b.cardID));
 
-    if (widget.fileGuid.isNotEmpty) {
-      final file = _fileList.firstWhere((file) => file.guid == widget.fileGuid);
+    if (widget.jsonFileID != null) {
+      final file = _fileList.firstWhere((file) => file.jsonFileID == widget.jsonFileID);
       setSelFile(file);
     } else {
       setSelFile(_fileList.first);

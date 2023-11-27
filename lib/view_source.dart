@@ -1,20 +1,17 @@
+import 'package:decard_web/media_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-
-import 'audio_widget.dart';
 import 'card_model.dart';
-import 'html_widget.dart';
-//import 'dart:io'; TODO см. места ошибок, переделать на использование сетевых ресурсов
 
 class ViewContent extends StatefulWidget {
-  static Future<Object?> navigatorPush(BuildContext context, String path, String content, String title) async {
-    return Navigator.push(context, MaterialPageRoute( builder: (_) => ViewContent(path: path, content: content, title: title)));
+  static Future<Object?> navigatorPush(BuildContext context, CardData card, String content, String title) async {
+    return Navigator.push(context, MaterialPageRoute( builder: (_) => ViewContent(card: card, content: content, title: title)));
   }
 
-  final String path;
+  final CardData card;
   final String content;
   final String title;
-  const ViewContent({required this.path, required this.content, required this.title, Key? key}) : super(key: key);
+  const ViewContent({required this.card, required this.content, required this.title, Key? key}) : super(key: key);
 
   @override
   State<ViewContent> createState() => _ViewContentState();
@@ -43,12 +40,12 @@ class _ViewContentState extends State<ViewContent> {
     }
 
     if (contentExt == FileExt.contentMarkdown) {
-      content = FileExt.prepareMarkdown(widget.path, str);
+      content = FileExt.prepareMarkdown(widget.card, str);
       return;
     }
 
     if (contentExt == FileExt.contentHtml) {
-      content = FileExt.prepareHtml(widget.path, str);
+      content = FileExt.prepareHtml(widget.card, str);
       return;
     }
 
@@ -64,26 +61,17 @@ class _ViewContentState extends State<ViewContent> {
     }
 
     if (contentExt == FileExt.contentHtml) {
-      body = HtmlViewWidget(html: content, filesDir: widget.path);
+      body = Container(); // HtmlViewWidget(html: content, filesDir: widget.path); TODO нужно переделать
     }
 
     if (FileExt.imageExtList.contains(contentExt)) {
-      final path = FileExt.prepareFilePath(widget.path, content);
-      final imgFile = File(path);
-      if (imgFile.existsSync()) {
-        body = Image.file( imgFile );
-      }
+      final fileUrl = getFileUrl(content);
+      body = imageFromUrl(fileUrl);
     }
 
     if (FileExt.audioExtList.contains(contentExt)) {
-      final path = FileExt.prepareFilePath(widget.path, content);
-      final audioFile = File(path);
-      if (audioFile.existsSync()) {
-        body = AudioPanelWidget(
-          key:  ValueKey(path),
-          localFilePath : path
-        );
-      }
+      final fileUrl = getFileUrl(content);
+      body = audioPanelFromUrl(fileUrl, ValueKey(fileUrl));
     }
 
     if (body == null && content.isNotEmpty) {
@@ -98,5 +86,9 @@ class _ViewContentState extends State<ViewContent> {
       ),
       body: body
     );
+  }
+
+  String getFileUrl(String fileName) {
+    return widget.card.dbSource.getFileUrl(widget.card.pacInfo.jsonFileID, fileName);
   }
 }

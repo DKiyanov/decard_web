@@ -26,20 +26,25 @@ class DataLoader {
 
   DataLoader(this.dbSource);
 
-  Future<bool> loadJson(String sourceFileID, String jsonStr, CheckCanLoadFile? checkCanLoadFile) async {
+  Future<int?> loadJson(String sourceFileID, String jsonStr, CheckCanLoadFile? checkCanLoadFile) async {
+    final jsonFileRow = await dbSource.tabJsonFile.getRowBySourceID(sourceFileID: sourceFileID);
+    if (jsonFileRow != null) {
+      return jsonFileRow[TabJsonFile.kJsonFileID];
+    }
+
     final json = jsonDecode(jsonStr);
 
     final String guid = json[TabJsonFile.kGuid]??'';
     if (guid.isEmpty) {
       errorList.add('filed ${TabJsonFile.kGuid} not found');
-      return false;
+      return null;
     }
 
     final int fileVersion = json[TabJsonFile.kVersion]??0;
 
     if (checkCanLoadFile != null) {
       if (! await checkCanLoadFile.call(guid, fileVersion)) {
-        return false;
+        return null;
       }
     }
 
@@ -77,7 +82,7 @@ class DataLoader {
       await _processCardList(jsonFileID: jsonFileID, cardList : cardList, cardKeyList : cardKeyList);
     }
 
-    return true;
+    return jsonFileID;
   }
 
   Future<void> _processTemplateList({required int jsonFileID, required List templateList, required List sourceList, required List<String> cardKeyList}) async {
@@ -89,6 +94,8 @@ class DataLoader {
       for (Map<String, dynamic> sourceRow in sourceList) {
         if (sourceRow[DjfTemplateSource.templateName] == templateName) {
 
+          final sourceRowId = await dbSource.tabTemplateSource.insertRow(jsonFileID: jsonFileID, source: sourceRow);
+
           String curTemplate = cardsTemplatesJsonStr;
 
           sourceRow.forEach((key, value) {
@@ -96,14 +103,13 @@ class DataLoader {
           });
 
           final cardList = jsonDecode(curTemplate) as List;
-          await _processCardList(jsonFileID: jsonFileID, cardList : cardList, cardKeyList : cardKeyList);
-
+          await _processCardList(jsonFileID: jsonFileID, cardList : cardList, cardKeyList : cardKeyList, sourceRowId: sourceRowId);
         }
       }
     }
   }
 
-  Future<void> _processCardList({required int jsonFileID, required List cardList, required List<String> cardKeyList}) async {
+  Future<void> _processCardList({required int jsonFileID, required List cardList, required List<String> cardKeyList, int? sourceRowId}) async {
     for (Map<String, dynamic> card in cardList) {
       final String cardKey = card[DjfCard.id];
 
@@ -124,6 +130,7 @@ class DataLoader {
         difficulty   : card[DjfCard.difficulty]??0,
         cardGroupKey : groupKey,
         bodyCount    : bodyList.length,
+        sourceRowId  : sourceRowId,
       );
 
       await _processCardBodyList(

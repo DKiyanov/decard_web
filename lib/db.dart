@@ -1,5 +1,6 @@
 import 'dart:core';
 import 'decardj.dart';
+import 'loader.dart';
 
 class FileKey {
   final String guid;
@@ -21,8 +22,6 @@ abstract class TabJsonFile {
   static const String kSite         = DjfFile.site;
   static const String kEmail        = DjfFile.email;
   static const String kLicense      = DjfFile.license;
-
-  TabJsonFile();
 
   Future<List<Map<String, Object?>>> getRowByGuid(String guid, int version);
 
@@ -46,8 +45,6 @@ abstract class TabCardStyle {
   static const String kCardStyleKey  = 'cardStyleKey';  // map from DjfCardStyle.id
   static const String kJson          = 'json';          // style data are stored as json, when needed they are unpacked
 
-  TabCardStyle();
-
   Future<void> deleteJsonFile(int jsonFileID);
 
   Future<void> insertRow({ required int jsonFileID, required String cardStyleKey, required String jsonStr });
@@ -63,8 +60,6 @@ abstract class TabQualityLevel {
   static const String kQualityName   = 'qualityName'; // map from DjfQualityLevel.qualityName
   static const String kMinQuality    = DjfQualityLevel.minQuality;
   static const String kAvgQuality    = DjfQualityLevel.avgQuality;
-
-  TabQualityLevel();
 
   Future<void> insertRow({ required int jsonFileID, required String qualityName, required int minQuality, required int avgQuality });
 
@@ -82,10 +77,9 @@ abstract class TabCardHead {
   static const String kDifficulty    = DjfCard.difficulty;
   static const String kGroup         = 'groupKey'; // map from DjfCard.group;
   static const String kBodyCount     = 'bodyCount'; // number of records in the DjfCard.bodyList
+  static const String kSourceRowId   = 'sourceRowId'; // template source row from which was generated card
 
   static const String kRegulatorSetIndex   = 'regulatorSetIndex'; // index of set in Regulator.setList
-
-  TabCardHead();
 
   Future<void> deleteJsonFile(int jsonFileID);
 
@@ -97,6 +91,7 @@ abstract class TabCardHead {
     required int    difficulty,
     required String cardGroupKey,
     required int    bodyCount,
+    int? sourceRowId,
   });
 
   Future<Map<String, dynamic>?> getRow({required int jsonFileID, required int cardID});
@@ -111,8 +106,6 @@ abstract class TabCardTag {
   static const String kJsonFileID     = TabJsonFile.kJsonFileID;
   static const String kCardID         = TabCardHead.kCardID;
   static const String kTag            = 'tag';
-
-  TabCardTag();
 
   Future<void> deleteJsonFile(int jsonFileID);
 
@@ -129,11 +122,22 @@ abstract class TabCardLink {
   static const String kCardID         = TabCardHead.kCardID;
   static const String kQualityName    = 'qualityName';
 
-  TabCardLink();
+  Future<void> deleteJsonFile(int jsonFileID);
+
+  Future<int> insertRow({required int jsonFileID, required int cardID, required String qualityName});
+}
+
+abstract class TabTemplateSource {
+  static const String tabName         = 'TemplateSource';
+
+  static const String kSourceID       = 'sourceID';
+  static const String kJsonFileID     = TabJsonFile.kJsonFileID;
 
   Future<void> deleteJsonFile(int jsonFileID);
 
-  Future<int> insertRow({ required int jsonFileID, required int cardID, required String qualityName});
+  Future<int> insertRow({required int jsonFileID, required Map<String, dynamic> source});
+
+  Future<Map<String, dynamic>?> getRow({required int jsonFileID, required int sourceId});
 }
 
 abstract class TabCardLinkTag {
@@ -143,8 +147,6 @@ abstract class TabCardLinkTag {
   static const String kJsonFileID = TabJsonFile.kJsonFileID;
   static const String kLinkID     = TabCardLink.kLinkID;
   static const String kTag        = 'tag';
-
-  TabCardLinkTag();
 
   Future<void> deleteJsonFile(int jsonFileID);
 
@@ -167,15 +169,55 @@ abstract class TabCardBody {
   Future<Map<String, dynamic>?> getRow({ required int jsonFileID, required int cardID, required int bodyNum });
 }
 
+abstract class TabFileUrlMap {
+  static const String tabName     = 'FileUrlMap';
+
+  static const String kJsonFileID = TabJsonFile.kJsonFileID;
+  static const String kPath       = 'path';
+  static const String kUrl        = 'url';
+
+  Future<void> deleteJsonFile(int jsonFileID);
+
+  Future<void> insertRows({required int jsonFileID, required Map<String, String> fileUrlMap});
+
+  /// important, this function mast by synchronous
+  String? getFileUrl({required int jsonFileID, required String fileName});
+}
+
 abstract class DbSource {
-  late TabJsonFile     tabJsonFile;
-  late TabCardHead     tabCardHead;
-  late TabCardTag      tabCardTag;
-  late TabCardLink     tabCardLink;
-  late TabCardLinkTag  tabCardLinkTag;
-  late TabCardBody     tabCardBody;
-  late TabCardStyle    tabCardStyle;
-  late TabQualityLevel tabQualityLevel;
+  late TabJsonFile       tabJsonFile;
+  late TabCardHead       tabCardHead;
+  late TabCardTag        tabCardTag;
+  late TabCardLink       tabCardLink;
+  late TabCardLinkTag    tabCardLinkTag;
+  late TabCardBody       tabCardBody;
+  late TabCardStyle      tabCardStyle;
+  late TabQualityLevel   tabQualityLevel;
+  late TabTemplateSource tabTemplateSource;
+  late TabFileUrlMap     tabFileUrlMap;
+
+  late DataLoader _loader;
+
+  DbSource() {
+    _loader = DataLoader(this);
+  }
+
+  Future<int?> loadJson({required String sourceFileID, required String jsonStr, required Map<String, String> fileUrlMap}) async {
+    final jsonFileID = await _loader.loadJson(sourceFileID, jsonStr, (guid, version) async {
+      return true;
+    });
+
+    if (jsonFileID == null) return null;
+
+    tabFileUrlMap.insertRows(jsonFileID: jsonFileID, fileUrlMap: fileUrlMap);
+    return jsonFileID;
+  }
+
+  String getFileUrl(int jsonFileID, String fileName) {
+    final result = tabFileUrlMap.getFileUrl(jsonFileID: jsonFileID, fileName: fileName);
+    if (result != null) return result;
+    return fileName;
+  }
 
   Future<void> deleteJsonFile(int jsonFileID) async {
     await tabJsonFile.deleteJsonFile(jsonFileID);
@@ -186,5 +228,6 @@ abstract class DbSource {
     await tabCardBody.deleteJsonFile(jsonFileID);
     await tabCardStyle.deleteJsonFile(jsonFileID);
     await tabQualityLevel.deleteJsonFile(jsonFileID);
+    await tabTemplateSource.deleteJsonFile(jsonFileID);
   }
 }

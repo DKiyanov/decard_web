@@ -249,17 +249,6 @@ String dateToStr(DateTime date){
     '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
 }
 
-enum UrlType {
-  httpUrl,
-  localPath
-}
-
-UrlType getUrlType(String url) {
-  final prefix = url.split('://').first.toLowerCase();
-  if (["http", "https"].contains(prefix)) return UrlType.httpUrl;
-  return UrlType.localPath;
-}
-
 String getEarnedText(double earnedSeconds){
   final minutes = (earnedSeconds / 60).truncate();
   final seconds = (earnedSeconds - minutes * 60).truncate();

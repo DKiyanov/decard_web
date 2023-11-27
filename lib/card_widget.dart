@@ -1,14 +1,13 @@
 import 'dart:convert';
-//import 'dart:io'; TODO см. места ошибок, переделать на использование сетевых ресурсов
 import 'package:auto_size_text/auto_size_text.dart';
 import 'context_extension.dart';
+import 'media_widgets.dart';
 import 'text_constructor/text_constructor.dart';
 import 'text_constructor/word_panel_model.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
-import 'audio_widget.dart';
 import 'card_model.dart';
 import 'common.dart';
 import 'decardj.dart';
@@ -31,50 +30,19 @@ class CardWidgetState extends State<CardWidget> {
     final widgetList = <Widget>[];
 
     if (widget.card.body.questionData.image != null) {
-      final urlType = getUrlType(widget.card.body.questionData.image!);
+      final fileUrl = getFileUrl(widget.card.body.questionData.image!);
       final maxHeight = context.screenSize.height * widget.card.style.imageMaxHeight / 100;
 
-      if ( urlType == UrlType.httpUrl ) {
-        widgetList.add(
-          LimitedBox(maxHeight: maxHeight, child: Image.network(widget.card.body.questionData.image!))
-        );
-      }
-
-      if ( urlType == UrlType.localPath ) {
-        final absPath = prepareFilePath(widget.card.body.questionData.image!);
-        final imgFile = File(absPath);
-        if (imgFile.existsSync()) {
-          widgetList.add(
-              LimitedBox(maxHeight: maxHeight, child: Image.file( imgFile ))
-          );
-        }
-      }
+      widgetList.add(
+          LimitedBox(maxHeight: maxHeight, child: imageFromUrl(fileUrl))
+      );
     }
 
     if (widget.card.body.questionData.audio != null) {
-      final urlType = getUrlType(widget.card.body.questionData.audio!);
-
-      if ( urlType == UrlType.httpUrl ) {
-        widgetList.add(
-            AudioPanelWidget(
-              key:  ValueKey(widget.card.head.cardKey),
-              httpUrl : widget.card.body.questionData.audio!
-            )
-        );
-      }
-
-      if ( urlType == UrlType.localPath ) {
-        final absPath = prepareFilePath( widget.card.body.questionData.audio!);
-        final audioFile = File(absPath);
-        if (audioFile.existsSync()) {
-          widgetList.add(
-              AudioPanelWidget(
-                key:  ValueKey(widget.card.head.cardKey),
-                localFilePath : absPath
-              )
-          );
-        }
-      }
+      final fileUrl = getFileUrl(widget.card.body.questionData.audio!);
+      widgetList.add(
+          audioPanelFromUrl(fileUrl, ValueKey(widget.card.head.cardKey)),
+      );
     }
 
     if (widget.card.body.questionData.text != null) {
@@ -153,26 +121,24 @@ class CardWidgetState extends State<CardWidget> {
     if (str.isEmpty) return Container();
     if (str.indexOf(DjfCardStyle.buttonImagePrefix) == 0) {
       final imagePath = str.substring(DjfCardStyle.buttonImagePrefix.length);
-      final absPath = prepareFilePath(imagePath);
-      final imgFile = File(absPath);
-      if (imgFile.existsSync()) {
-        var maxWidth = double.infinity;
-        var maxHeight = double.infinity;
+      final fileUrl = getFileUrl(imagePath);
 
-        if (widget.card.style.buttonImageWidth > 0) {
-          maxWidth = widget.card.style.buttonImageWidth.toDouble();
-        }
+      var maxWidth  = double.infinity;
+      var maxHeight = double.infinity;
 
-        if (widget.card.style.buttonImageHeight > 0) {
-          maxHeight = widget.card.style.buttonImageHeight.toDouble();
-        }
-
-        return LimitedBox(
-            maxWidth  : maxWidth,
-            maxHeight : maxHeight,
-            child     : Image.file( imgFile )
-        );
+      if (widget.card.style.buttonImageWidth > 0) {
+        maxWidth = widget.card.style.buttonImageWidth.toDouble();
       }
+
+      if (widget.card.style.buttonImageHeight > 0) {
+        maxHeight = widget.card.style.buttonImageHeight.toDouble();
+      }
+
+      return LimitedBox(
+          maxWidth  : maxWidth,
+          maxHeight : maxHeight,
+          child     : imageFromUrl(fileUrl)
+      );
     }
 
     // Serif - in this font, the letters "I" and "l" look different, it is important
@@ -180,12 +146,12 @@ class CardWidgetState extends State<CardWidget> {
   }
 
   Widget htmlViewer(String html) {
-    final newHtml = FileExt.prepareHtml(widget.card.pacInfo.sourceFileID, html);
+    final newHtml = FileExt.prepareHtml(widget.card, html);
     return HtmlViewWidget(html: newHtml, filesDir: widget.card.pacInfo.sourceFileID);
   }
 
   Widget markdownViewer(String markdown) {
-    final newMarkdown = FileExt.prepareMarkdown(widget.card.pacInfo.sourceFileID, markdown);
+    final newMarkdown = FileExt.prepareMarkdown(widget.card, markdown);
     return MarkdownBody(data: newMarkdown);
   }
 
@@ -194,13 +160,13 @@ class CardWidgetState extends State<CardWidget> {
 
     return TextConstructorWidget(
         textConstructor   : textConstructor,
-        onPrepareFilePath : prepareFilePath,
+        onPrepareFilePath : getFileUrl,
         randomPercent     : 0,
     );
   }
 
-  String prepareFilePath(String fileName) {
-    return FileExt.prepareFilePath(widget.card.pacInfo.sourceFileID, fileName);
+  String getFileUrl(String fileName) {
+    return widget.card.dbSource.getFileUrl(widget.card.pacInfo.jsonFileID, fileName);
   }
 }
 

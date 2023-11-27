@@ -1,7 +1,8 @@
+import 'package:decard_web/db.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
-import 'package:path/path.dart' as path_util;
 
 import 'decardj.dart';
+import 'media_widgets.dart';
 
 class PackInfo extends ParseObject implements ParseCloneable {
   static const String keyClassName  = 'DecardFileHead';
@@ -41,7 +42,7 @@ class PackSource extends ParseObject implements ParseCloneable {
   PackSource clone(Map<String, dynamic> map) => PackSource.clone()..fromJson(map);
 
   String get path => get<String>(keyPath)!;
-  String get url  => get<ParseFile>(keyPath)!.url!;
+  String get url  => get<ParseFile>(keyFile)!.url!;
 }
 
 class PackListManager {
@@ -61,26 +62,28 @@ class PackListManager {
   }
 }
 
+Future<int?> loadPack(DbSource dbSource, int packId) async {
+  final query = QueryBuilder<PackSource>(PackSource());
+  query.whereEqualTo(PackInfo.keyPackId, packId);
+  final sourceList = await query.find();
 
+  final Map<String, String> fileUrlMap = {};
+  String? jsonUrl;
 
-// Обеспечивает загрузку и доступ к ресурсам пакета
-class PackSourceManager {
-  final int packId;
-  final sourceList = <PackSource>[];
-
-  PackSourceManager(this.packId);
-
-  Future<void> getData() async {
-    await loadSourceList();
-
-    final jsonSource = sourceList.firstWhere((source) => path_util.extension(source.path).toLowerCase() == '.decardj' );
-
+  for (var source in sourceList) {
+    if (source.path.toLowerCase().endsWith(DjfFileExtension.json)) {
+      jsonUrl = source.url;
+    }
+    fileUrlMap[source.path] = source.url;
   }
 
-  Future<void> loadSourceList() async {
-    sourceList.clear();
-    final query = QueryBuilder<PackSource>(PackSource());
-    query.whereEqualTo(PackInfo.keyPackId, packId);
-    sourceList.addAll(await query.find());
-  }
+  if (jsonUrl == null) return null;
+
+  final jsonStr = await getTextFromUrl(jsonUrl);
+
+  if (jsonStr == null) return null;
+
+  final jsonFileID = await dbSource.loadJson(sourceFileID: '$packId', jsonStr: jsonStr, fileUrlMap: fileUrlMap);
+
+  return jsonFileID;
 }

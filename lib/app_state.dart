@@ -2,6 +2,10 @@ import 'package:decard_web/parse_connect.dart';
 import 'package:decard_web/parse_pack_info.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'card_controller.dart';
+import 'db.dart';
+import 'db_mem.dart';
+
 final appState = AppState();
 
 class AppState {
@@ -15,11 +19,16 @@ class AppState {
 
   late SharedPreferences prefs;
   late ParseConnect serverConnect;
-  final packInfoManager = PackListManager();
+  late PackListManager packInfoManager;
+  late DbSource dbSource;
+  late CardController cardController;
 
   Future<void> initialization() async {
     prefs = await SharedPreferences.getInstance();
     serverConnect = ParseConnect(prefs);
     await serverConnect.init();
+    packInfoManager = PackListManager();
+    dbSource        = DbSourceMem.create();
+    cardController  = CardController(dbSource: dbSource);
   }
 }

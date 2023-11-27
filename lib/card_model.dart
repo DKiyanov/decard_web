@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path_util;
 
 import 'db.dart';
 import 'decardj.dart';
+import 'media_widgets.dart';
 
 class TagPrefix {
   static String cardKey    = 'id@';
@@ -52,7 +53,7 @@ class FileExt {
     return '';
   }
 
-  static String prepareMarkdown(String path, String markdown) {
+  static String prepareMarkdown(CardData card, String markdown) {
     final regexp = RegExp(r'!\[.*\]\((.*?)\s*(".*")?\s*\)', caseSensitive: false, multiLine: true);
 
     final newMarkdown = markdown.replaceAllMapped(regexp, (match) {
@@ -60,14 +61,15 @@ class FileExt {
       final fileName = match[1];
       if (fileName == null) return matchStr;
 
-      final str = matchStr.replaceFirst(']($fileName', '](${path_util.join(path, fileName)}');
+      final fileUrl = card.dbSource.getFileUrl(card.pacInfo.jsonFileID, fileName);
+      final str = matchStr.replaceFirst(']($fileName', ']($fileUrl');
       return str;
     });
 
     return newMarkdown;
   }
 
-  static String prepareHtml(String path, String html) {
+  static String prepareHtml(CardData card, String html) {
     final regexp = RegExp(r'<img[^>]*src="([^"]+)"[^>]*>', caseSensitive: false, multiLine: true);
 
     final newHtml = html.replaceAllMapped(regexp, (match) {
@@ -75,21 +77,29 @@ class FileExt {
       final fileName = match[1];
       if (fileName == null) return matchStr;
 
-      final str = matchStr.replaceFirst('src="$fileName', 'src="${path_util.join(path, fileName)}');
+      final fileUrl = card.dbSource.getFileUrl(card.pacInfo.jsonFileID, fileName);
+      final str = matchStr.replaceFirst('src="$fileName', 'src="$fileUrl');
       return str;
     });
 
     return newHtml;
   }
 
-  static Future<String?> getFileContent(String sourceFileID, String? source, {bool setSourceType = false}) async {
+  static Future<String?> getTextFileContent(DbSource dbSource, int jsonFileID, String? source, {required bool setSourceType, Map<String, dynamic>? convertMap}) async {
     if (source == null || source.isEmpty) return source;
 
     if (source.startsWith(FileExt.textFile)) {
       final fileName = source.substring(FileExt.textFile.length);
-      final filePath = prepareFilePath(sourceFileID, fileName);
-      final file = File(filePath);
-      final fileContent = await file.readAsString();
+
+      final fileUrl = dbSource.getFileUrl(jsonFileID, fileName);
+      var fileContent = await getTextFromUrl(fileUrl);
+      if (fileContent == null) return null;
+
+      if (convertMap != null) {
+        convertMap.forEach((key, value) {
+          fileContent =  fileContent!.replaceAll('${DjfTemplateSource.paramBegin}$key${DjfTemplateSource.paramEnd}', value);
+        });
+      }
 
       if (setSourceType) {
         final fileExt = FileExt.getFileExt(fileName);
@@ -102,10 +112,6 @@ class FileExt {
     return source;
   }
 
-  static String prepareFilePath(String path, String fileName) {
-    final absPath = path_util.normalize( path_util.join(path, fileName) );
-    return absPath;
-  }
 }
 
 class CardData {
@@ -168,6 +174,8 @@ class _CardGenerator {
   static CardBody?  _cardBody;
   static CardStyle? _cardStyle;
 
+  static Map<String, dynamic>? _convertMap;
+
   static final _random = Random();
 
   static Future<CardData> createCard(
@@ -179,17 +187,25 @@ class _CardGenerator {
         CardSetBody setBody = CardSetBody.random,
       }) async {
 
-    _dbSource     = dbSource;
-    _pacInfo   = null;
-    _cardHead  = null;
-    _cardBody  = null;
-    _cardStyle = null;
+    _dbSource   = dbSource;
+    _pacInfo    = null;
+    _cardHead   = null;
+    _cardBody   = null;
+    _cardStyle  = null;
+    _convertMap = null;
 
     final pacData = await dbSource.tabJsonFile.getRow(jsonFileID: jsonFileID);
     _pacInfo = PacInfo.fromMap(pacData!);
 
     final headData = (await dbSource.tabCardHead.getRow(jsonFileID: jsonFileID, cardID : cardID))!;
-    await CardHead.prepareMap(_pacInfo!.sourceFileID, headData);
+
+
+    final templateSourceRowId = headData[TabCardHead.kSourceRowId];
+    if (templateSourceRowId != null) {
+      _convertMap = await dbSource.tabTemplateSource.getRow(jsonFileID: jsonFileID, sourceId: templateSourceRowId);
+    }
+
+    await CardHead.prepareMap(dbSource, _pacInfo!.jsonFileID, headData, _convertMap);
     _cardHead = CardHead.fromMap(headData);
     
     if (bodyNum != null) {
@@ -223,7 +239,7 @@ class _CardGenerator {
 
   static Future<void> _setBodyNum(int bodyNum) async {
     final bodyData = (await _dbSource!.tabCardBody.getRow(jsonFileID: _cardHead!.jsonFileID, cardID: _cardHead!.cardID, bodyNum: bodyNum))!;
-    await CardBody.prepareMap(_pacInfo!.sourceFileID, bodyData);
+    await CardBody.prepareMap(_dbSource!, _pacInfo!.jsonFileID, bodyData, _convertMap);
     _cardBody = CardBody.fromMap(bodyData);
 
     final Map<String, dynamic> styleMap = {};
@@ -348,8 +364,8 @@ class CardHead {
     required this.regulatorSetIndex
   });
 
-  static Future<void> prepareMap(String sourceFileID, Map<String, dynamic> map) async {
-    map[DjfCard.help] = await FileExt.getFileContent(sourceFileID, map[DjfCard.help], setSourceType: true);
+  static Future<void> prepareMap(DbSource dbSource, int jsonFileID, Map<String, dynamic> map, Map<String, dynamic>? convertMap) async {
+    map[DjfCard.help] = await FileExt.getTextFileContent(dbSource, jsonFileID, map[DjfCard.help], setSourceType: true, convertMap: convertMap);
   }
 
   factory CardHead.fromMap(Map<String, dynamic> json) {
@@ -386,10 +402,10 @@ class QuestionData {
   final String? video;    // link to video source
   final String? image;    // link to image source
 
-  static Future<void> prepareMap(String path, Map<String, dynamic> map) async {
-    map[DjfQuestionData.html]            = await FileExt.getFileContent(path, map[DjfQuestionData.html]);
-    map[DjfQuestionData.markdown]        = await FileExt.getFileContent(path, map[DjfQuestionData.markdown]);
-    map[DjfQuestionData.textConstructor] = await FileExt.getFileContent(path, map[DjfQuestionData.textConstructor]);
+  static Future<void> prepareMap(DbSource dbSource, int jsonFileID, Map<String, dynamic> map, Map<String, dynamic>? convertMap) async {
+    map[DjfQuestionData.html]            = await FileExt.getTextFileContent(dbSource, jsonFileID, map[DjfQuestionData.html], setSourceType: false, convertMap: convertMap);
+    map[DjfQuestionData.markdown]        = await FileExt.getTextFileContent(dbSource, jsonFileID, map[DjfQuestionData.markdown], setSourceType: false, convertMap: convertMap);
+    map[DjfQuestionData.textConstructor] = await FileExt.getTextFileContent(dbSource, jsonFileID, map[DjfQuestionData.textConstructor], setSourceType: false, convertMap: convertMap);
   }
 
   factory QuestionData.fromMap(Map<String, dynamic> json) => QuestionData(
@@ -426,11 +442,11 @@ class CardBody {
     required this.clue
   });
 
-  static Future<void> prepareMap(String path, Map<String, dynamic> map) async {
-    map[DjfCardBody.clue] = await FileExt.getFileContent(path, map[DjfCardBody.clue], setSourceType: true);
+  static Future<void> prepareMap(DbSource dbSource, int jsonFileID, Map<String, dynamic> map, Map<String, dynamic>? convertMap) async {
+    map[DjfCardBody.clue] = await FileExt.getTextFileContent(dbSource, jsonFileID, map[DjfCardBody.clue], setSourceType: true, convertMap: convertMap);
 
     final Map<String, dynamic> questionMap = map[ DjfCardBody.questionData];
-    await QuestionData.prepareMap(path, questionMap);
+    await QuestionData.prepareMap(dbSource, jsonFileID, questionMap, convertMap);
   }
 
   factory CardBody.fromMap(Map<String, dynamic> json) {

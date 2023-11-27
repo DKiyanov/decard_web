@@ -52,6 +52,7 @@ RouteMap _buildRouteMap(BuildContext context) {
       //'/': (route) => const NoAnimationPage(child: ShopHome()),
       '/': (route) => NoAnimationPage(child: PackList(packInfoManager: appState.packInfoManager)),
       '/pack/:id': (route) => NoAnimationPage(child: PackView(
+          cardController: appState.cardController,
           packId: int.parse(route.pathParameters['id']!)
       )),
 

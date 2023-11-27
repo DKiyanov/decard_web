@@ -216,7 +216,8 @@ class TabCardHeadMem extends TabCardHead{
     required String help,
     required int difficulty,
     required String cardGroupKey,
-    required int bodyCount
+    required int bodyCount,
+    int? sourceRowId,
   }) async {
 
     _lastCardID++;
@@ -231,6 +232,7 @@ class TabCardHeadMem extends TabCardHead{
       TabCardHead.kDifficulty : difficulty,
       TabCardHead.kGroup      : cardGroupKey,
       TabCardHead.kBodyCount  : bodyCount,
+      TabCardHead.kSourceRowId: sourceRowId,
     };
 
     db.insertRow(jsonFileID, TabCardHead.tabName, cardID, row);
@@ -295,6 +297,33 @@ class TabCardLinkMem extends TabCardLink {
 
 }
 
+class TabTemplateSourceMem extends TabTemplateSource {
+  final MemDB db;
+  TabTemplateSourceMem(this.db);
+
+  int _lastSourceId = 0;
+
+  @override
+  Future<void> deleteJsonFile(int jsonFileID) async {
+    db.deleteRows(jsonFileID, TabTemplateSource.tabName);
+  }
+
+  @override
+  Future<int> insertRow({required int jsonFileID, required Map<String, dynamic> source}) async {
+    _lastSourceId++;
+    final sourceId = _lastSourceId;
+
+    db.insertRow(jsonFileID, TabTemplateSource.tabName, sourceId, source);
+
+    return sourceId;
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getRow({required int jsonFileID, required int sourceId}) async {
+    return db.getRow(jsonFileID, TabTemplateSource.tabName, sourceId);
+  }
+}
+
 class TabCardLinkTagMem extends TabCardLinkTag {
   final MemDB db;
   TabCardLinkTagMem(this.db);
@@ -343,16 +372,47 @@ class TabCardBodyMem extends TabCardBody {
   }
 }
 
+class TabFileUrlMapMem extends TabFileUrlMap {
+  final MemDB db;
+  TabFileUrlMapMem(this.db);
+
+  @override
+  Future<void> deleteJsonFile(int jsonFileID) async {
+    db.deleteRows(jsonFileID, TabFileUrlMap.tabName);
+  }
+
+  @override
+  String? getFileUrl({required int jsonFileID, required String fileName}) {
+    final fileUrlMap = db.getRow(jsonFileID, TabFileUrlMap.tabName, jsonFileID);
+    if (fileUrlMap == null) return null;
+    return fileUrlMap[fileName];
+  }
+
+  @override
+  Future<void> insertRows({required int jsonFileID, required Map<String, String> fileUrlMap}) async {
+    db.insertRow(jsonFileID, TabFileUrlMap.tabName, jsonFileID, fileUrlMap);
+  }
+}
+
 class DbSourceMem extends DbSource{
   final MemDB db;
   DbSourceMem(this.db);
 
   static DbSourceMem create() {
-    final db = MemDB();
+    final db         = MemDB();
 
     final dbSource = DbSourceMem(db);
 
-    dbSource.tabCardBody = TabCardBodyMem(db);
+    dbSource.tabJsonFile       = TabJsonFileMem(db);
+    dbSource.tabCardHead       = TabCardHeadMem(db);
+    dbSource.tabCardTag        = TabCardTagMem(db);
+    dbSource.tabCardLink       = TabCardLinkMem(db);
+    dbSource.tabCardLinkTag    = TabCardLinkTagMem(db);
+    dbSource.tabCardBody       = TabCardBodyMem(db);
+    dbSource.tabCardStyle      = TabCardStyleMem(db);
+    dbSource.tabQualityLevel   = TabQualityLevelMem(db);
+    dbSource.tabTemplateSource = TabTemplateSourceMem(db);
+    dbSource.tabFileUrlMap     = TabFileUrlMapMem(db);
 
     return dbSource;
   }
