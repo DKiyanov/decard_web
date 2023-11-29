@@ -41,8 +41,10 @@ class _CardNavigatorState extends State<CardNavigator> {
   }
 
   Future<void> getDbInfo() async {
+    print('getDbInfo 1');
     final fileRows = await widget.cardController.dbSource.tabJsonFile.getAllRows();
     if (fileRows.isEmpty) return;
+    print('getDbInfo 2');
 
     _fileList = fileRows.map((row) => PacInfo.fromMap(row)).toList();
 

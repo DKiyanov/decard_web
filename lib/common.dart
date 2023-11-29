@@ -23,6 +23,7 @@ class TextConst{
   static String txtAppTitle       = 'Карточник';
   static String txtStarting       = 'Запуск';
   static String txtLoading        = 'Загрузка';
+  static String txtPackFileList   = 'Список файлов';
   static String txtTuningFileSourceList = 'Настройка источников для загрузки карточек';
   static String txtDelete         = 'Удалить';
   static String txtEdit           = 'Редактировать';
@@ -208,6 +209,9 @@ class TextConst{
   static String txtInviteCopied         = 'Код скопирован в буффер обмена';
   static String txtInviteLoginHelp      = 'Получите код приглашения у родителя\nорганизатора группы';
   static String txtInviteKey      = 'Код приглашения';
+
+  static String txtEntry      = 'Войти';
+  static String txtUploadFile = 'Загрузить файлы';
 }
 
 int dateToInt(DateTime date){

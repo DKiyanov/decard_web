@@ -1,4 +1,5 @@
 import 'package:decard_web/db.dart';
+import 'package:flutter/foundation.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 
 import 'decardj.dart';
@@ -12,7 +13,7 @@ class PackInfo extends ParseObject implements ParseCloneable {
   PackInfo.clone() : this();
 
   @override
-  PackSource clone(Map<String, dynamic> map) => PackSource.clone()..fromJson(map);
+  PackInfo clone(Map<String, dynamic> map) => PackInfo.clone()..fromJson(map);
 
   int    get packId        => get<int>(keyPackId)!;
   String get formatVersion => get<String>(DjfFile.formatVersion)!;
@@ -42,7 +43,13 @@ class PackSource extends ParseObject implements ParseCloneable {
   PackSource clone(Map<String, dynamic> map) => PackSource.clone()..fromJson(map);
 
   String get path => get<String>(keyPath)!;
-  String get url  => get<ParseFile>(keyFile)!.url!;
+
+  String get url {
+    if (kIsWeb) {
+      return get<ParseWebFile>(keyFile)!.url!;
+    }
+    return get<ParseFile>(keyFile)!.url!;
+  }
 }
 
 class PackListManager {

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'audio_widget.dart';
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
+
 enum UrlType {
   httpUrl,
   localPath
@@ -59,14 +61,9 @@ Future<String?> getTextFromUrl(String fileUrl) async {
   final urlType = getUrlType(fileUrl);
 
   if ( urlType == UrlType.httpUrl ) {
-    var client = HttpClient();
-    try {
-      final request  = await client.getUrl(Uri.parse(fileUrl));
-      final response = await request.close();
-      return await response.transform(utf8.decoder).join();
-    } finally {
-      client.close();
-    }
+    final response = await http.get(Uri.parse(fileUrl));
+    final text = utf8.decode(response.bodyBytes);
+    return text;
   }
 
   if ( urlType == UrlType.localPath ) {

@@ -29,6 +29,7 @@ dependencies:
   audioplayers: ^2.0.0
   auto_size_text: ^3.0.0
   flutter_markdown: ^0.6.11
+  http: ^0.13.4
   simple_events:
     path: ../simple_events
   

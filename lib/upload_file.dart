@@ -177,6 +177,7 @@ class _UploadFileState extends State<UploadFile> {
     {
       final serverFile = await query.first();
       if (serverFile != null) {
+        print('delete file');
         await serverFile.delete();
       }
     }
@@ -186,7 +187,9 @@ class _UploadFileState extends State<UploadFile> {
     final techFileName = '${DateTime.now().millisecondsSinceEpoch}.data';
 
     final serverFileContent = ParseWebFile(fileContent, name : techFileName);
+    print('before save file');
     await serverFileContent.save();
+    print('after save file');
 
     final serverFile = ParseObject(_clsFile);
     serverFile.set<String>(_fldUserID  , userID);

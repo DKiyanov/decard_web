@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:core';
 import 'decardj.dart';
 import 'loader.dart';
@@ -50,6 +51,18 @@ abstract class TabCardStyle {
   Future<void> insertRow({ required int jsonFileID, required String cardStyleKey, required String jsonStr });
 
   Future<Map<String, dynamic>?> getRow({ required int jsonFileID, required String cardStyleKey });
+
+  /// mast by called from getRow for return result
+  Map<String, dynamic>? getRowPrepare(Map<String, dynamic>? row) {
+    if (row == null) return null;
+
+    final String jsonStr = (row[kJson]) as String;
+    final Map<String, dynamic> jsonMap = jsonDecode(jsonStr);
+
+    jsonMap.addEntries(row.entries.where((element) => element.key != kJson));
+
+    return jsonMap;
+  }
 }
 
 abstract class TabQualityLevel {
@@ -167,6 +180,18 @@ abstract class TabCardBody {
   Future<void> insertRow({ required int jsonFileID, required int cardID, required int bodyNum, required String json });
 
   Future<Map<String, dynamic>?> getRow({ required int jsonFileID, required int cardID, required int bodyNum });
+
+  /// mast by called from getRow for return result
+  Map<String, dynamic>? getRowPrepare(Map<String, dynamic>? row) {
+    if (row == null) return null;
+
+    final String jsonStr = (row[kJson]) as String;
+    final Map<String, dynamic> jsonMap = jsonDecode(jsonStr);
+
+    jsonMap.addEntries(row.entries.where((element) => element.key != kJson));
+
+    return jsonMap;
+  }
 }
 
 abstract class TabFileUrlMap {

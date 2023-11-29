@@ -101,7 +101,7 @@ class TabJsonFileMem extends TabJsonFile {
 
   @override
   Future<Map<String, dynamic>?> getRow({required int jsonFileID}) async {
-    return db.getRow(jsonFileID, TabJsonFile.tabName, '');
+    return db.getRow(jsonFileID, TabJsonFile.tabName, jsonFileID);
   }
 
   @override
@@ -133,7 +133,7 @@ class TabJsonFileMem extends TabJsonFile {
       TabJsonFile.kLicense      : jsonMap[TabJsonFile.kLicense ],
     };
 
-    db.insertRow(jsonFileID, TabCardStyle.tabName, jsonFileID, row);
+    db.insertRow(jsonFileID, TabJsonFile.tabName, jsonFileID, row);
 
     return jsonFileID;
   }
@@ -143,6 +143,8 @@ class TabCardStyleMem extends TabCardStyle {
   final MemDB db;
   TabCardStyleMem(this.db);
 
+  int _lastId = 0;
+
   @override
   Future<void> deleteJsonFile(int jsonFileID) async {
     db.deleteRows(jsonFileID, TabCardStyle.tabName);
@@ -150,12 +152,17 @@ class TabCardStyleMem extends TabCardStyle {
 
   @override
   Future<Map<String, dynamic>?> getRow({required int jsonFileID, required String cardStyleKey}) async {
-    return db.getRow(jsonFileID, TabCardStyle.tabName, cardStyleKey);
+    final row = db.getRow(jsonFileID, TabCardStyle.tabName, cardStyleKey);
+    return getRowPrepare(row);
   }
 
   @override
   Future<void> insertRow({required int jsonFileID, required String cardStyleKey, required String jsonStr}) async {
+    _lastId++;
+    final id = _lastId;
+
     final Map<String, Object?> row = {
+      TabCardStyle.kID           : id,
       TabCardStyle.kJsonFileID   : jsonFileID,
       TabCardStyle.kCardStyleKey : cardStyleKey,
       TabCardStyle.kJson         : jsonStr
@@ -169,6 +176,8 @@ class TabQualityLevelMem extends TabQualityLevel {
   final MemDB db;
   TabQualityLevelMem(this.db);
 
+  int _lastId = 0;
+
   @override
   Future<void> deleteJsonFile(int jsonFileID) async {
     db.deleteRows(jsonFileID, TabQualityLevel.tabName);
@@ -176,14 +185,18 @@ class TabQualityLevelMem extends TabQualityLevel {
 
   @override
   Future<void> insertRow({required int jsonFileID, required String qualityName, required int minQuality, required int avgQuality}) async {
+    _lastId++;
+    final id = _lastId;
+
     final Map<String, Object?> row = {
+      TabQualityLevel.kID           : id,
       TabQualityLevel.kJsonFileID   : jsonFileID,
       TabQualityLevel.kQualityName  : qualityName,
       TabQualityLevel.kMinQuality   : minQuality,
       TabQualityLevel.kAvgQuality   : avgQuality,
     };
 
-    db.insertRow(jsonFileID, TabCardTag.tabName, qualityName, row);
+    db.insertRow(jsonFileID, TabQualityLevel.tabName, qualityName, row);
   }
 }
 
@@ -246,6 +259,8 @@ class TabCardTagMem extends TabCardTag {
   final MemDB db;
   TabCardTagMem(this.db);
 
+  int _lastId = 0;
+
   @override
   Future<void> deleteJsonFile(int jsonFileID) async {
     db.deleteRows(jsonFileID, TabCardTag.tabName);
@@ -259,7 +274,11 @@ class TabCardTagMem extends TabCardTag {
 
   @override
   Future<void> insertRow({required int jsonFileID, required int cardID, required String tag}) async {
+    _lastId++;
+    final id = _lastId;
+
     final Map<String, Object?> row = {
+      TabCardTag.kID             : id,
       TabCardTag.kTag            : tag
     };
 
@@ -328,6 +347,8 @@ class TabCardLinkTagMem extends TabCardLinkTag {
   final MemDB db;
   TabCardLinkTagMem(this.db);
 
+  int _lastId = 0;
+
   @override
   Future<void> deleteJsonFile(int jsonFileID) async {
     db.deleteRows(jsonFileID, TabCardLinkTag.tabName);
@@ -335,7 +356,11 @@ class TabCardLinkTagMem extends TabCardLinkTag {
 
   @override
   Future<void> insertRow({required int jsonFileID, required int linkId, required String tag}) async {
+    _lastId++;
+    final id = _lastId;
+
     final Map<String, Object?> row = {
+      TabCardLinkTag.kID         : id,
       TabCardLinkTag.kJsonFileID : jsonFileID,
       TabCardLinkTag.kLinkID     : linkId,
       TabCardLinkTag.kTag        : tag
@@ -349,6 +374,8 @@ class TabCardBodyMem extends TabCardBody {
   final MemDB db;
   TabCardBodyMem(this.db);
 
+  int _lastId = 0;
+
   @override
   Future<void> deleteJsonFile(int jsonFileID) async {
     db.deleteRows(jsonFileID, TabCardBody.tabName);
@@ -356,12 +383,17 @@ class TabCardBodyMem extends TabCardBody {
 
   @override
   Future<Map<String, dynamic>?> getRow({required int jsonFileID, required int cardID, required int bodyNum}) async {
-    return db.getRow(jsonFileID, TabCardBody.tabName, '$cardID/$bodyNum');
+    final row = db.getRow(jsonFileID, TabCardBody.tabName, '$cardID/$bodyNum');
+    return getRowPrepare(row);
   }
 
   @override
   Future<void> insertRow({required int jsonFileID, required int cardID, required int bodyNum, required String json}) async {
+    _lastId++;
+    final id = _lastId;
+
     final Map<String, Object?> row = {
+      TabCardBody.kID         : id,
       TabCardBody.kJsonFileID : jsonFileID,
       TabCardBody.kCardID     : cardID,
       TabCardBody.kBodyNum    : bodyNum,

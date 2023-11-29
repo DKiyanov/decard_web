@@ -1,3 +1,5 @@
+import 'package:decard_web/app_state.dart';
+import 'package:decard_web/simple_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:decard_web/parse_pack_info.dart';
 import 'package:routemaster/routemaster.dart';
@@ -49,7 +51,29 @@ class _PackListState extends State<PackList> {
     return Scaffold(
         appBar: AppBar(
           centerTitle: true,
-          title: Text(TextConst.txtLoading),
+          title: Text(TextConst.txtPackFileList),
+          actions: [
+            popupMenu(icon: const Icon(Icons.menu), menuItemList: [
+              if (!appState.serverConnect.isLoggedIn) ...[
+                SimpleMenuItem(
+                    child: Text(TextConst.txtEntry),
+                    onPress: () {
+                      Routemaster.of(context).push('/login', queryParameters: {'redirectTo': '/'});
+                    }
+                ),
+              ],
+
+              if (appState.serverConnect.isLoggedIn) ...[
+                SimpleMenuItem(
+                    child: Text(TextConst.txtUploadFile),
+                    onPress: () {
+                      Routemaster.of(context).push('/upload_file');
+                    }
+                ),
+              ]
+
+            ]),
+          ],
         ),
         body: ListView(
           children: packInfoList.map((packInfo) => ListTile(

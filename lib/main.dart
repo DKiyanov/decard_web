@@ -18,6 +18,7 @@ import 'search_page.dart';
 final booksDatabase = BooksDatabase();
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   setPathUrlStrategy();
   await appState.initialization();
   runApp(const BookStoreApp());
