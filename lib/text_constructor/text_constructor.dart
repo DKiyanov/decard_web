@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:collection/collection.dart';
+import '../media_widgets.dart';
 import 'word_grid.dart';
 import 'word_panel.dart';
 import 'word_panel_model.dart';
@@ -20,9 +21,9 @@ typedef PrepareFilePath = String Function(String fileName);
 class TextConstructorWidget extends StatefulWidget {
   final TextConstructorData textConstructor;
   final RegisterAnswer? onRegisterAnswer;
-  final PrepareFilePath? onPrepareFilePath;
+  final PrepareFilePath? onPrepareFileUrl;
   final int? randomPercent;
-  const TextConstructorWidget({required this.textConstructor, this.onRegisterAnswer, this.onPrepareFilePath, this.randomPercent, Key? key}) : super(key: key);
+  const TextConstructorWidget({required this.textConstructor, this.onRegisterAnswer, this.onPrepareFileUrl, this.randomPercent, Key? key}) : super(key: key);
 
   @override
   State<TextConstructorWidget> createState() => _TextConstructorWidgetState();
@@ -455,7 +456,7 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
     final boxWidget = child as _BoxWidget;
     final fileName = _textConstructorData.audioMap[boxWidget.outStr];
     if (fileName != null) {
-      final filePath = widget.onPrepareFilePath!(fileName);
+      final filePath = widget.onPrepareFileUrl!(fileName);
       await playAudio(filePath);
     }
 
@@ -779,22 +780,16 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
   Widget? _extWidget(BuildContext context, String outStr, DragBoxSpec spec, Color textColor, Color backgroundColor) {
     if (outStr.indexOf(JrfSpecText.imagePrefix) == 0) {
       final imagePath = outStr.substring(JrfSpecText.imagePrefix.length);
-      final absPath = widget.onPrepareFilePath!.call(imagePath);
-      final imgFile = File(absPath);
 
-      if (!imgFile.existsSync()) return null;
-
-      return Image.file( imgFile );
+      final fileUrl = widget.onPrepareFileUrl!.call(imagePath);
+      return imageFromUrl(fileUrl);
     }
 
     if (outStr.indexOf(JrfSpecText.audioPrefix) == 0) {
       final audioPath = outStr.substring(JrfSpecText.audioPrefix.length);
-      final absPath = widget.onPrepareFilePath!.call(audioPath);
-      final audioFile = File(absPath);
+      final fileUrl = widget.onPrepareFileUrl!.call(audioPath);
 
-      if (!audioFile.existsSync()) return null;
-
-      return SimpleAudioButton(localFilePath: absPath, color: textColor);
+      return audioButtonFromUrl(fileUrl, textColor);
     }
 
     if (outStr == JrfSpecText.wordKeyboard) {

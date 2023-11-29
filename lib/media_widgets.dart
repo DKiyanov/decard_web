@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'audio_button.dart';
 import 'audio_widget.dart';
 import 'dart:io';
 
@@ -33,6 +34,29 @@ Widget audioPanelFromUrl(String fileUrl, key){
       return AudioPanelWidget(
         key:  ValueKey(key),
         localFilePath : fileUrl
+      );
+    }
+  }
+
+  return Container();
+}
+
+Widget audioButtonFromUrl(String fileUrl, Color color){
+  final urlType = getUrlType(fileUrl);
+
+  if ( urlType == UrlType.httpUrl ) {
+    return SimpleAudioButton(
+      httpUrl : fileUrl,
+      color: color,
+    );
+  }
+
+  if ( urlType == UrlType.localPath ) {
+    final audioFile = File(fileUrl);
+    if (audioFile.existsSync()) {
+      return SimpleAudioButton(
+        localFilePath : fileUrl,
+        color: color,
       );
     }
   }

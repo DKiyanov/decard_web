@@ -15,7 +15,7 @@ class TagPrefix {
 
 class FileExt {
   static const String textFile = "text:";
-  static const textExtList  = <String>['md', 'html', 'json'];
+  static const textExtList  = <String>['md', 'html', 'json', DjfFileExtension.json];
   static const imageExtList = <String>['apng', 'avif', 'gif', 'jpg', 'jpeg', 'jfif', 'pjpeg', 'pjp', 'png', 'svg', 'webp', 'bmp', 'tif', 'tiff'];
   static const audioExtList = <String>['m4a', 'flac', 'mp3', 'mp4', 'wav', 'wma', 'aac'];
 
@@ -88,8 +88,9 @@ class FileExt {
   static Future<String?> getTextFileContent(DbSource dbSource, int jsonFileID, String? source, {required bool setSourceType, Map<String, dynamic>? convertMap}) async {
     if (source == null || source.isEmpty) return source;
 
-    if (source.startsWith(FileExt.textFile)) {
-      final fileName = source.substring(FileExt.textFile.length);
+    final fileExt = FileExt.getFileExt(source);
+    if (FileExt.textExtList.contains(fileExt)) {
+      final fileName = source;
 
       final fileUrl = dbSource.getFileUrl(jsonFileID, fileName);
       var fileContent = await getTextFromUrl(fileUrl);
@@ -102,7 +103,6 @@ class FileExt {
       }
 
       if (setSourceType) {
-        final fileExt = FileExt.getFileExt(fileName);
         return '$fileExt:$fileContent';
       }
 

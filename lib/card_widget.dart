@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter/foundation.dart';
 import 'context_extension.dart';
+import 'html_widget_web.dart';
 import 'media_widgets.dart';
 import 'text_constructor/text_constructor.dart';
 import 'text_constructor/word_panel_model.dart';
@@ -147,6 +149,9 @@ class CardWidgetState extends State<CardWidget> {
 
   Widget htmlViewer(String html) {
     final newHtml = FileExt.prepareHtml(widget.card, html);
+    if (kIsWeb) {
+      return const HtmlViewWidgetWeb();
+    }
     return HtmlViewWidget(html: newHtml, filesDir: widget.card.pacInfo.sourceFileID);
   }
 
@@ -160,7 +165,7 @@ class CardWidgetState extends State<CardWidget> {
 
     return TextConstructorWidget(
         textConstructor   : textConstructor,
-        onPrepareFilePath : getFileUrl,
+        onPrepareFileUrl : getFileUrl,
         randomPercent     : 0,
     );
   }
