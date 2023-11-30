@@ -61,7 +61,7 @@ class FileExt {
       final fileName = match[1];
       if (fileName == null) return matchStr;
 
-      final fileUrl = card.dbSource.getFileUrl(card.pacInfo.jsonFileID, fileName);
+      final fileUrl = getFileUrl(card, fileName);
       final str = matchStr.replaceFirst(']($fileName', ']($fileUrl');
       return str;
     });
@@ -77,7 +77,7 @@ class FileExt {
       final fileName = match[1];
       if (fileName == null) return matchStr;
 
-      final fileUrl = card.dbSource.getFileUrl(card.pacInfo.jsonFileID, fileName);
+      final fileUrl = getFileUrl(card, fileName);
       final str = matchStr.replaceFirst('src="$fileName', 'src="$fileUrl');
       return str;
     });
@@ -112,6 +112,9 @@ class FileExt {
     return source;
   }
 
+  static String getFileUrl(CardData card, String fileName) {
+    return card.dbSource.getFileUrl(card.pacInfo.jsonFileID, fileName);
+  }
 }
 
 class CardData {
@@ -474,6 +477,7 @@ class PacInfo {
   final String site;
   final String email;
   final String license;
+  final String? sourceDir;
 
   PacInfo({
     required this.jsonFileID,
@@ -485,6 +489,7 @@ class PacInfo {
     required this.site,
     required this.email,
     required this.license,
+    this.sourceDir,
   });
 
   factory PacInfo.fromMap(Map<String, dynamic> json){
@@ -498,6 +503,7 @@ class PacInfo {
       site         : json[TabJsonFile.kSite],
       email        : json[TabJsonFile.kEmail],
       license      : json[TabJsonFile.kLicense],
+      sourceDir    : json[TabJsonFile.kSourceDir],
     );
   }
 }

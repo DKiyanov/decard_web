@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:core';
+import 'package:decard_web/card_model.dart';
+
 import 'decardj.dart';
 import 'loader.dart';
 
@@ -23,6 +25,7 @@ abstract class TabJsonFile {
   static const String kSite         = DjfFile.site;
   static const String kEmail        = DjfFile.email;
   static const String kLicense      = DjfFile.license;
+  static const String kSourceDir    = 'SourceDir';
 
   Future<List<Map<String, Object?>>> getRowByGuid(String guid, int version);
 

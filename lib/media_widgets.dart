@@ -1,11 +1,15 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'audio_button.dart';
 import 'audio_widget.dart';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+
+import 'html_widget.dart';
+import 'html_widget_web.dart';
 
 enum UrlType {
   httpUrl,
@@ -79,6 +83,13 @@ Widget imageFromUrl(String fileUrl){
   }
 
   return Container();
+}
+
+Widget htmlView(String html, [String? sourceDir]) {
+  if (kIsWeb) {
+    return HtmlViewWidgetWeb(html: html);
+  }
+  return HtmlViewWidget(html: html, filesDir: sourceDir!);
 }
 
 Future<String?> getTextFromUrl(String fileUrl) async {

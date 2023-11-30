@@ -499,6 +499,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.1.5"
+  pointer_interceptor:
+    dependency: transitive
+    description:
+      name: pointer_interceptor
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.9.3+4"
   quiver:
     dependency: transitive
     description:
@@ -679,6 +686,20 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.4.0"
+  webview_flutter:
+    dependency: transitive
+    description:
+      name: webview_flutter
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "4.2.2"
+  webview_flutter_android:
+    dependency: transitive
+    description:
+      name: webview_flutter_android
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "3.9.3"
   webview_flutter_platform_interface:
     dependency: transitive
     description:
@@ -686,13 +707,20 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.5.0"
-  webview_flutter_web:
-    dependency: "direct main"
+  webview_flutter_wkwebview:
+    dependency: transitive
     description:
-      name: webview_flutter_web
+      name: webview_flutter_wkwebview
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.2.2+1"
+    version: "3.7.3"
+  webviewx_plus:
+    dependency: "direct main"
+    description:
+      name: webviewx_plus
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.3.3"
   win32:
     dependency: transitive
     description:

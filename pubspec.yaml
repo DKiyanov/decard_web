@@ -30,7 +30,7 @@ dependencies:
   auto_size_text: ^3.0.0
   flutter_markdown: ^0.6.11
   flutter_inappwebview: ^5.7.1
-  webview_flutter_web: ^0.2.2+1
+  webviewx_plus: ^0.3.3
   http: ^0.13.4
   simple_events:
     path: ../simple_events
