@@ -1,10 +1,13 @@
 import 'package:decard_web/app_state.dart';
+import 'package:decard_web/card_model.dart';
 import 'package:decard_web/parse_pack_info.dart';
+import 'package:decard_web/regulator.dart';
 import 'package:flutter/material.dart';
 import 'package:simple_events/simple_events.dart';
 
 import 'card_controller.dart';
 import 'card_navigator.dart';
+import 'card_sub_widgets.dart';
 import 'card_widget.dart';
 import 'common.dart';
 import 'pack_info_widget.dart';
@@ -21,6 +24,8 @@ class PackView extends StatefulWidget {
 
 class _PackViewState extends State<PackView> {
   bool _isStarting = true;
+  late Regulator _regulator;
+  late int? _jsonFileID;
 
   @override
   void initState() {
@@ -32,7 +37,10 @@ class _PackViewState extends State<PackView> {
   }
 
   void _starting() async {
-    await loadPack(appState.dbSource, widget.packId);
+    _jsonFileID = await loadPack(appState.dbSource, widget.packId);
+
+    _regulator = Regulator(options: RegOptions(), cardSetList: [], difficultyList: []);
+    _regulator.fillDifficultyLevels();
 
     setState(() {
       _isStarting = false;
@@ -71,8 +79,15 @@ class _PackViewState extends State<PackView> {
 
   Widget _body() {
     return Column(children: [
-      CardNavigator(cardController: widget.cardController),
-      Expanded(child: _cardWidget()),
+      CardNavigator(
+        key: ValueKey(widget.packId),
+        cardController: widget.cardController,
+        jsonFileID: _jsonFileID,
+      ),
+
+      Expanded(
+        child: _cardWidget()
+      ),
     ]);
   }
 
@@ -81,8 +96,14 @@ class _PackViewState extends State<PackView> {
       builder: (_) {
         if (widget.cardController.card == null) return Container();
 
+        final controller = CardProcessController();
+        final cardCost   = CardCost(_regulator.difficultyList[0], 0);
+
         return CardWidget(
-          card     : widget.cardController.card!,
+          key        : ValueKey(widget.cardController.card),
+          card       : widget.cardController.card!,
+          cardCost   : cardCost,
+          controller : controller,
         );
       },
       events: [widget.cardController.onChange],

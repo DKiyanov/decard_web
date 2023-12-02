@@ -105,13 +105,21 @@ class TabJsonFileMem extends TabJsonFile {
   }
 
   @override
-  Future<List<Map<String, Object?>>> getRowByGuid(String guid, int version) async {
-    return db.getTabRows(TabJsonFile.tabName);
+  Future<List<Map<String, Object?>>> getRowByGuid(String guid, {int? version}) async {
+    Map<String, dynamic> filter = {
+      TabJsonFile.kGuid : guid
+    };
+
+    if (version != null) {
+      filter[TabJsonFile.kVersion] = version;
+    }
+
+    return db.getTabRows(TabJsonFile.tabName, filter: filter);
   }
 
   @override
   Future<Map<String, dynamic>?> getRowBySourceID({required String sourceFileID}) async {
-    final rows = db.getTabRows(TabJsonFile.tabName);
+    final rows = db.getTabRows(TabJsonFile.tabName, filter: { TabJsonFile.kSourceFileID : sourceFileID });
     if (rows.isEmpty) return null;
     return rows[0];
   }

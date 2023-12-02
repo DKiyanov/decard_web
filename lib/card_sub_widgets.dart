@@ -13,6 +13,22 @@ import 'context_extension.dart';
 import 'decardj.dart';
 import 'media_widgets.dart';
 
+class CardProcessController {
+  double costValue = 0; // заработанное
+  int    costMinusPercent = 0; // уменьшение заработаного
+  int    startTime = 0;
+  bool?  result;
+
+  _AnswerInputState? _answerInputState;
+
+  void onMultiSelectAnswerOk(){
+    if (_answerInputState == null) return;
+    if (!_answerInputState!.mounted) return;
+
+    _answerInputState!._onMultiSelectAnswer();
+  }
+}
+
 class ValueWidget extends StatelessWidget {
   final CardData card;
   final String str;
@@ -129,16 +145,34 @@ class CardQuestion extends StatelessWidget {
   }
 }
 
-typedef OnAnswerResult = Function(bool result);
+typedef OnAnswerResult = Function(bool result, List<String> values, List<String> answerVariantList);
 
 class AnswerInput extends StatefulWidget {
   final CardData card;
+  final CardProcessController controller;
   final OnAnswerResult onAnswerResult;
 
-  const AnswerInput({required this.card, required this.onAnswerResult, Key? key}) : super(key: key);
+  const AnswerInput({required this.card, required this.controller, required this.onAnswerResult, Key? key}) : super(key: key);
 
   @override
   State<AnswerInput> createState() => _AnswerInputState();
+
+  static Alignment getAnswerAlignment(CardData card) {
+    var alignment = Alignment.center;
+
+    switch(card.style.answerVariantAlign) {
+      case TextAlign.left:
+        alignment = Alignment.centerLeft;
+        break;
+      case TextAlign.right:
+        alignment = Alignment.centerRight;
+        break;
+      default:
+        alignment = Alignment.center;
+    }
+
+    return alignment;
+  }
 }
 
 class _AnswerInputState extends State<AnswerInput> {
@@ -173,11 +207,17 @@ class _AnswerInputState extends State<AnswerInput> {
   @override
   void initState() {
     super.initState();
+
+    if (widget.card.style.answerVariantMultiSel){
+      widget.controller._answerInputState = this;
+    }
+
     _prepareAnswerVariantList();
   }
 
   @override
   void dispose() {
+    widget.controller._answerInputState = null;
     _inputController.dispose();
     super.dispose();
   }
@@ -188,11 +228,34 @@ class _AnswerInputState extends State<AnswerInput> {
       return Container();
     }
 
-    final widgetList = <Widget>[];
+    if (widget.card.style.answerVariantMultiSel) {
+      return _getInputWidget();
+      // return Stack(
+      //   children: [
+      //
+      //     _getInputWidget(),
+      //
+      //     Align(
+      //       alignment: Alignment.bottomRight,
+      //       child: ElevatedButton(
+      //         onPressed: _onMultiSelectAnswer,
+      //         style: ElevatedButton.styleFrom(
+      //             shape: const CircleBorder(),
+      //             padding: const EdgeInsets.all(17),
+      //             backgroundColor: Colors.green
+      //         ),
+      //         child: const Icon(Icons.check, color: Colors.white),
+      //       )
+      //     )
+      //   ],
+      // );
+    }
 
-    Widget? answerInput;
+    return _getInputWidget();
+  }
 
-    final alignment = _getAnswerAlignment();
+  Widget _getInputWidget() {
+    final alignment = AnswerInput.getAnswerAlignment(widget.card);
 
     final answerInputMode = widget.card.style.answerInputMode;
 //    const answerInputMode = AnswerInputMode.widgetKeyboard; // for debug
@@ -201,18 +264,12 @@ class _AnswerInputState extends State<AnswerInput> {
     if ( answerInputMode == AnswerInputMode.input    ||
         answerInputMode == AnswerInputMode.inputDigit
     ) {
-      var keyboardMode = TextInputType.text;
-
-      if (answerInputMode == AnswerInputMode.inputDigit) {
-        keyboardMode = TextInputType.number;
-      }
-
-      answerInput = Padding(
+      return Padding(
         padding: const EdgeInsets.only(top: 4),
         child: TextField(
           controller: _inputController,
           textAlign: widget.card.style.answerVariantAlign,
-          keyboardType: keyboardMode,
+          keyboardType: answerInputMode == AnswerInputMode.inputDigit? TextInputType.number : TextInputType.text,
           decoration: InputDecoration(
             filled: true,
             enabledBorder: OutlineInputBorder(
@@ -234,7 +291,7 @@ class _AnswerInputState extends State<AnswerInput> {
 
     // Выпадающий список
     if (answerInputMode == AnswerInputMode.ddList) {
-      answerInput = Padding(
+      return Padding(
         padding: const EdgeInsets.only(top: 4),
         child: TextField(
           controller: _inputController,
@@ -275,7 +332,7 @@ class _AnswerInputState extends State<AnswerInput> {
 
     // Кнопки в строку
     if (answerInputMode == AnswerInputMode.hList) {
-      answerInput = Align( child: Wrap(
+      return Align( child: Wrap(
         alignment: WrapAlignment.center,
         spacing: 4,
         children: _answerVariantList.map<Widget>((itemStr) {
@@ -286,7 +343,7 @@ class _AnswerInputState extends State<AnswerInput> {
 
     // Кнопки в столбец
     if (answerInputMode == AnswerInputMode.vList) {
-      answerInput = ListView(
+      return ListView(
         shrinkWrap: true,
         children: _answerVariantList.map<Widget>((itemStr) {
           return _getButton(itemStr, alignment);
@@ -298,29 +355,10 @@ class _AnswerInputState extends State<AnswerInput> {
     if (answerInputMode == AnswerInputMode.widgetKeyboard) {
       final keyStr = widget.card.style.widgetKeyboard!;
 //      const keyStr = '1\t2\t3\n4\t5\t6\n7\t8\t9\n0';
-      answerInput = _WidgetKeyboard(widget.card, keyStr, onAnswer: (value)=> _onSelectAnswer(value));
+      return _WidgetKeyboard(widget.card, keyStr, onAnswer: (value)=> _onSelectAnswer(value));
     }
 
-    if (answerInput != null) widgetList.add( answerInput );
-
-    return Column(children: widgetList);
-  }
-
-  Alignment _getAnswerAlignment() {
-    var alignment = Alignment.center;
-
-    switch(widget.card.style.answerVariantAlign) {
-      case TextAlign.left:
-        alignment = Alignment.centerLeft;
-        break;
-      case TextAlign.right:
-        alignment = Alignment.centerRight;
-        break;
-      default:
-        alignment = Alignment.center;
-    }
-
-    return alignment;
+    return Container();
   }
 
   Widget _getButton(String value, AlignmentGeometry alignment){
@@ -381,7 +419,37 @@ class _AnswerInputState extends State<AnswerInput> {
       }
     }
 
-    widget.onAnswerResult.call(tryResult);
+    widget.onAnswerResult.call(tryResult, _selValues, _answerVariantList);
+  }
+
+  void _onMultiSelectAnswer() {
+    List<String> answerList;
+
+    if (widget.card.style.answerCaseSensitive) {
+      answerList = widget.card.body.answerList;
+    } else {
+      answerList = widget.card.body.answerList.map((str) => str.toLowerCase()).toList();
+    }
+
+    int answerCount = 0;
+    for (var value in _selValues) {
+      if (!widget.card.style.answerCaseSensitive) {
+        value = value.toLowerCase();
+      }
+
+      if (!answerList.contains(value)) {
+        widget.onAnswerResult.call(false, _selValues, _answerVariantList);
+        return;
+      }
+      answerCount ++;
+    }
+
+    if (widget.card.body.answerList.length != answerCount) {
+      widget.onAnswerResult.call(false, _selValues, _answerVariantList);
+      return;
+    }
+
+    widget.onAnswerResult.call(true, _selValues, _answerVariantList);
   }
 }
 
@@ -485,4 +553,25 @@ class _WidgetKeyboardState extends State<_WidgetKeyboard> {
   }
 }
 
+class RightAnswerLine extends StatelessWidget {
+  final CardData card;
+  final String label;
+  const RightAnswerLine({required this.card, required this.label, Key? key}) : super(key: key);
 
+  @override
+  Widget build(BuildContext context) {
+    final answerList = <Widget>[];
+    answerList.add(Text('$label '));
+
+    for (int i = 0; i < card.body.answerList.length; i++){
+      final answerValue = card.body.answerList[i];
+      answerList.add(ValueWidget(card, answerValue));
+
+      if ((card.body.answerList.length > 1) && ((i + 1) < card.body.answerList.length)){
+        answerList.add(const Text("; "));
+      }
+    }
+
+    return Row(children: answerList);
+  }
+}

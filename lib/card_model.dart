@@ -1,11 +1,34 @@
 import 'dart:math';
 import 'dart:ui';
-//import 'dart:io';
+import 'package:decard_web/regulator.dart';
 import 'package:path/path.dart' as path_util;
 
 import 'db.dart';
 import 'decardj.dart';
 import 'media_widgets.dart';
+
+class CardCost {
+  late int cost;
+  late int penalty;
+  late int tryCount;
+  late int duration;
+  late int lowCost;
+
+  CardCost(RegDifficulty difficulty, int quality) {
+    cost     = _getValueForQuality(difficulty.maxCost,     difficulty.minCost,     quality);
+    penalty  = _getValueForQuality(difficulty.minPenalty,  difficulty.maxPenalty,  quality); // penalty moves in the opposite direction to all others
+    tryCount = _getValueForQuality(difficulty.maxTryCount, difficulty.minTryCount, quality);
+    duration = _getValueForQuality(difficulty.maxDuration, difficulty.minDuration, quality);
+
+    lowCost = (cost * _getValueForQuality(difficulty.maxDurationLowCostPercent, difficulty.minDurationLowCostPercent, quality) / 100).round();
+  }
+
+  int _getValueForQuality(int maxValue, int minValue, int quality){
+    final int result = (maxValue - (( (maxValue - minValue) * quality ) / 100 ) ).round();
+    return result;
+  }
+}
+
 
 class TagPrefix {
   static String cardKey    = 'id@';
