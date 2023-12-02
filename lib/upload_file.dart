@@ -2,7 +2,7 @@ import 'package:decard_web/app_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dropzone/flutter_dropzone.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
-import 'page_scaffold.dart';
+import 'common.dart';
 import 'package:path/path.dart' as path_util;
 
 class UploadFile extends StatefulWidget {
@@ -54,14 +54,21 @@ class _UploadFileState extends State<UploadFile> {
   @override
   Widget build(BuildContext context) {
     if (!appState.serverConnect.isLoggedIn) {
-      return const PageScaffold(
-        title: 'UploadFile',
-        body: Center(child: Text('Для загрузки файлов сначало нужной войти')),
+      return Scaffold(
+        appBar: AppBar(
+          centerTitle: true,
+          title: Text(TextConst.txtUploadFiles),
+        ),
+        body: Center(child: Text(TextConst.txtUploadFilesMsg)),
       );
     }
 
-    return PageScaffold(
-      title: 'UploadFile',
+    return Scaffold(
+      appBar: AppBar(
+        centerTitle: true,
+        title: Text(TextConst.txtUploadFiles),
+      ),
+
       body: Column(children: [
         Container(
           color: _dzHover ? Colors.red : Colors.green,

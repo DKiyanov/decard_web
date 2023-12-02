@@ -13,11 +13,15 @@ import 'context_extension.dart';
 import 'decardj.dart';
 import 'media_widgets.dart';
 
-class CardProcessController {
+class CardViewController {
   double costValue = 0; // заработанное
   int    costMinusPercent = 0; // уменьшение заработаного
   int    startTime = 0;
   bool?  result;
+
+  CardViewController() {
+    startTime = DateTime.now().millisecondsSinceEpoch;
+  }
 
   _AnswerInputState? _answerInputState;
 
@@ -149,7 +153,7 @@ typedef OnAnswerResult = Function(bool result, List<String> values, List<String>
 
 class AnswerInput extends StatefulWidget {
   final CardData card;
-  final CardProcessController controller;
+  final CardViewController controller;
   final OnAnswerResult onAnswerResult;
 
   const AnswerInput({required this.card, required this.controller, required this.onAnswerResult, Key? key}) : super(key: key);
@@ -230,25 +234,6 @@ class _AnswerInputState extends State<AnswerInput> {
 
     if (widget.card.style.answerVariantMultiSel) {
       return _getInputWidget();
-      // return Stack(
-      //   children: [
-      //
-      //     _getInputWidget(),
-      //
-      //     Align(
-      //       alignment: Alignment.bottomRight,
-      //       child: ElevatedButton(
-      //         onPressed: _onMultiSelectAnswer,
-      //         style: ElevatedButton.styleFrom(
-      //             shape: const CircleBorder(),
-      //             padding: const EdgeInsets.all(17),
-      //             backgroundColor: Colors.green
-      //         ),
-      //         child: const Icon(Icons.check, color: Colors.white),
-      //       )
-      //     )
-      //   ],
-      // );
     }
 
     return _getInputWidget();
@@ -451,6 +436,7 @@ class _AnswerInputState extends State<AnswerInput> {
 
     widget.onAnswerResult.call(true, _selValues, _answerVariantList);
   }
+
 }
 
 typedef OnKeyboardAnswer = Function(String value);
@@ -573,5 +559,57 @@ class RightAnswerLine extends StatelessWidget {
     }
 
     return Row(children: answerList);
+  }
+}
+
+class HelpButton extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  final int delayDuration;
+  final VoidCallback onTap;
+
+  const HelpButton({
+    required this.icon,
+    required this.color,
+    required this.delayDuration,
+    required this.onTap,
+    Key? key}) : super(key: key);
+
+  @override
+  State<HelpButton> createState() => _HelpButtonState();
+}
+
+class _HelpButtonState extends State<HelpButton> {
+  bool _active = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.delayDuration == 0) {
+      _active = true;
+    } else {
+      Future.delayed(Duration(seconds: widget.delayDuration), (){
+        if (!mounted) return;
+
+        setState(() {
+          _active = true;
+        });
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_active) {
+      return InkWell(
+        onTap: widget.onTap,
+        child: Icon(widget.icon, color: widget.color)
+      );
+    }
+
+    return InkWell(
+      child: Icon(widget.icon, color: Colors.grey)
+    );
   }
 }

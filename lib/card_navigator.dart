@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 
 import 'card_controller.dart';
@@ -35,6 +36,20 @@ class _CardNavigatorState extends State<CardNavigator> {
   void _starting() async {
     await getDbInfo();
 
+    widget.cardController.onChange.subscribe((listener, data) {
+      if (!mounted) return;
+      if (_isStarting || _selFile == null) return;
+
+      final file =  _fileList.firstWhereOrNull((file) => file.jsonFileID == widget.cardController.card!.pacInfo.jsonFileID);
+      if (file ==null) return;
+
+      setSelFile(file);
+
+      _selCard = _selFileCardList.firstWhere((card) => card.cardID == widget.cardController.card!.head.cardID);
+      _selBodyNum = widget.cardController.card!.body.bodyNum;
+      setState(() {});
+    });
+
     setState(() {
       _isStarting = false;
     });
@@ -70,6 +85,8 @@ class _CardNavigatorState extends State<CardNavigator> {
   }
 
   void setSelFile(PacInfo file){
+    if (_selFile == file) return;
+
     _selFile = file;
     _selFileCardList.clear();
     _selFileCardList.addAll(_cardList.where((card) => card.jsonFileID == _selFile!.jsonFileID));

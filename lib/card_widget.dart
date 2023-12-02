@@ -10,7 +10,7 @@ import 'common.dart';
 class CardWidget extends StatefulWidget {
   final CardData card;
   final CardCost cardCost;
-  final CardProcessController controller;
+  final CardViewController controller;
   final Widget? whenResultChild;
 
   const CardWidget({required this.card, required this.cardCost, required this.controller, this.whenResultChild, Key? key}) : super(key: key);

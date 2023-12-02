@@ -61,7 +61,7 @@ class _ViewContentState extends State<ViewContent> {
     }
 
     if (contentExt == FileExt.contentHtml) {
-      body = Container(); // HtmlViewWidget(html: content, filesDir: widget.path); TODO нужно переделать
+      body = htmlView(content, widget.card.pacInfo.sourceDir);
     }
 
     if (FileExt.imageExtList.contains(contentExt)) {

@@ -78,7 +78,7 @@ class _CostPanelWarp extends StatelessWidget {
 
 class CostPanel extends StatelessWidget {
   final CardCost cardCost;
-  final CardProcessController controller;
+  final CardViewController controller;
 
   const CostPanel({required this.cardCost, required this.controller, Key? key}) : super(key: key);
 
@@ -118,7 +118,7 @@ class _CostPanelSimple extends StatelessWidget {
 /// анимация изменения стоимости от задержки при решении
 class _CostPanelWithTimer extends StatefulWidget {
   final CardCost cardCost;
-  final CardProcessController controller;
+  final CardViewController controller;
 
   const _CostPanelWithTimer({required this.cardCost, required this.controller, Key? key}) : super(key: key);
 
@@ -227,7 +227,7 @@ class _CostPanelWithTimerState extends State<_CostPanelWithTimer> {
 
 class _CostPanelResult extends StatelessWidget {
   final CardCost cardCost;
-  final CardProcessController controller;
+  final CardViewController controller;
 
   const _CostPanelResult({required this.cardCost, required this.controller, Key? key}) : super(key: key);
 

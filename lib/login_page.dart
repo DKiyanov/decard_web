@@ -1,6 +1,5 @@
 import 'app_state.dart';
-import 'page_scaffold.dart';
-import 'package:flutter/cupertino.dart';
+import 'common.dart';
 import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
 
@@ -19,8 +18,12 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
-    return PageScaffold(
-      title: 'Log in',
+    return Scaffold(
+      appBar: AppBar(
+        centerTitle: true,
+        title: Text(TextConst.txtEntry),
+      ),
+
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 300),

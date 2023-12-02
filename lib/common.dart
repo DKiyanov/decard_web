@@ -113,7 +113,12 @@ class TextConst{
   static String txtTryCount = "Кол-во попыток";
   static String txtSolveTime = "Длтельность решения";
   static String txtDialogInputText = "Введите текст";
+  static String txtClue = "Подсказка";
   static String txtHelp = "Помощь";
+  static String txtUploadFiles = "Загрузка файлов";
+  static String txtUploadFilesMsg = "Для загрузки файлов сначало нужной войти";
+  static String txtPageNotFound = "Страница не найдена";
+
   static String txtDifficultyColumn1 = "Изменение параметра в процессе изучения";
   static String txtDifficultyColumn2 = "значение\nв начале\nизучения";
   static String txtDifficultyColumn3 = "значение\nв конце\nизучения";
