@@ -7,14 +7,14 @@ import 'db.dart';
 import 'decardj.dart';
 import 'media_widgets.dart';
 
-class CardCost {
+class CardParam {
   late int cost;
   late int penalty;
   late int tryCount;
   late int duration;
   late int lowCost;
 
-  CardCost(RegDifficulty difficulty, int quality) {
+  CardParam(RegDifficulty difficulty, int quality) {
     cost     = _getValueForQuality(difficulty.maxCost,     difficulty.minCost,     quality);
     penalty  = _getValueForQuality(difficulty.minPenalty,  difficulty.maxPenalty,  quality); // penalty moves in the opposite direction to all others
     tryCount = _getValueForQuality(difficulty.maxTryCount, difficulty.minTryCount, quality);

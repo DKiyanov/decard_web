@@ -7,6 +7,7 @@ import 'card_model.dart';
 import 'card_sub_widgets.dart';
 import 'common.dart';
 import 'context_extension.dart';
+import 'package:simple_events/simple_events.dart' as event;
 
 String _costToStr(int cost){
   return '$cost';
@@ -77,36 +78,35 @@ class _CostPanelWarp extends StatelessWidget {
 }
 
 class CostPanel extends StatelessWidget {
-  final CardCost cardCost;
   final CardViewController controller;
 
-  const CostPanel({required this.cardCost, required this.controller, Key? key}) : super(key: key);
+  const CostPanel({required this.controller, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     if (controller.result == null) {
-      if (cardCost.duration == 0 || cardCost.cost == cardCost.lowCost) {
-        return _CostPanelSimple(cardCost: cardCost);
+      if (controller.cardParam.duration == 0 || controller.cardParam.cost == controller.cardParam.lowCost) {
+        return _CostPanelSimple(cardParam: controller.cardParam);
       } else {
-        return _CostPanelWithTimer(cardCost: cardCost, controller: controller);
+        return _CostPanelWithTimer(controller: controller);
       }
     } else {
-      return _CostPanelResult(cardCost: cardCost, controller: controller);
+      return _CostPanelResult(controller: controller);
     }
   }
 }
 
 class _CostPanelSimple extends StatelessWidget {
-  final CardCost cardCost;
-  const _CostPanelSimple({required this.cardCost, Key? key}) : super(key: key);
+  final CardParam cardParam;
+  const _CostPanelSimple({required this.cardParam, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final panelChild = Row(children: [
-      _CostBox(cardCost.cost, Colors.lightGreen),
-      if (cardCost.penalty != 0) ...[
+      _CostBox(cardParam.cost, Colors.lightGreen),
+      if (cardParam.penalty != 0) ...[
         Expanded(child: Container()),
-        _CostBox( - cardCost.penalty, Colors.deepOrangeAccent),
+        _CostBox( - cardParam.penalty, Colors.deepOrangeAccent),
       ]
     ]);
 
@@ -117,10 +117,9 @@ class _CostPanelSimple extends StatelessWidget {
 /// панель отображающая стоимость решения карточки, штраф за не верной решение
 /// анимация изменения стоимости от задержки при решении
 class _CostPanelWithTimer extends StatefulWidget {
-  final CardCost cardCost;
   final CardViewController controller;
 
-  const _CostPanelWithTimer({required this.cardCost, required this.controller, Key? key}) : super(key: key);
+  const _CostPanelWithTimer({required this.controller, Key? key}) : super(key: key);
 
   @override
   State<_CostPanelWithTimer> createState() => _CostPanelWithTimerState();
@@ -132,6 +131,10 @@ class _CostPanelWithTimerState extends State<_CostPanelWithTimer> {
   int       _costDuration = 0; // длительность в мимлисекундах
   DateTime? _startTime;
 
+  event.Listener? onAnswerListener;
+
+  CardParam get cardParam => widget.controller.cardParam;
+
   @override
   void initState() {
     super.initState();
@@ -142,9 +145,19 @@ class _CostPanelWithTimerState extends State<_CostPanelWithTimer> {
       _startTime = DateTime.fromMillisecondsSinceEpoch(widget.controller.startTime);
     }
 
-    widget.controller.costValue = widget.cardCost.cost.toDouble();
-    _costDuration = widget.cardCost.duration * 1000;
+    onAnswerListener = widget.controller.onAnswer.subscribe((listener, data) {
+      _stopCostTimer();
+    });
+
+    widget.controller.costValue = cardParam.cost.toDouble();
+    _costDuration = cardParam.duration * 1000;
     _initCostTimer();
+  }
+
+  @override
+  void dispose() {
+    onAnswerListener?.dispose();
+    super.dispose();
   }
 
   void _stopCostTimer(){
@@ -163,8 +176,8 @@ class _CostPanelWithTimerState extends State<_CostPanelWithTimer> {
       setState(() {
         _calcCostValue();
 
-        if (widget.controller.costValue <= widget.cardCost.lowCost) {
-          widget.controller.costValue = widget.cardCost.lowCost.toDouble();
+        if (widget.controller.costValue <= cardParam.lowCost) {
+          widget.controller.costValue = cardParam.lowCost.toDouble();
           _timeProgress = 1;
           timer.cancel();
         }
@@ -181,24 +194,24 @@ class _CostPanelWithTimerState extends State<_CostPanelWithTimer> {
         _timeProgress = 1;
       }
 
-      widget.controller.costValue = widget.cardCost.cost - (widget.cardCost.cost - widget.cardCost.lowCost) * _timeProgress;
+      widget.controller.costValue = cardParam.cost - (cardParam.cost - cardParam.lowCost) * _timeProgress;
 
       if (time >= _costDuration) {
-        widget.controller.costValue = widget.cardCost.lowCost.toDouble();
+        widget.controller.costValue = cardParam.lowCost.toDouble();
       }
     } else {
-      widget.controller.costValue = widget.cardCost.cost - (widget.cardCost.cost - widget.cardCost.lowCost) * (widget.controller.costMinusPercent / 100);
+      widget.controller.costValue = cardParam.cost - (cardParam.cost - cardParam.lowCost) * (widget.controller.costMinusPercent / 100);
     }
 
-    if (widget.controller.costValue < widget.cardCost.lowCost) {
-      widget.controller.costValue = widget.cardCost.lowCost.toDouble();
+    if (widget.controller.costValue < cardParam.lowCost) {
+      widget.controller.costValue = cardParam.lowCost.toDouble();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final panelChild = Row(children: [
-      _CostBox(widget.cardCost.cost, Colors.green),
+      _CostBox(cardParam.cost, Colors.green),
       Container(width: 4),
       Expanded(child: Stack(
           alignment: Alignment.center,
@@ -216,9 +229,9 @@ class _CostPanelWithTimerState extends State<_CostPanelWithTimer> {
           ]
       )),
       Container(width: 4),
-      _CostBox(widget.cardCost.lowCost, Colors.lightGreen),
+      _CostBox(cardParam.lowCost, Colors.lightGreen),
       Container(width: 4),
-      _CostBox(widget.cardCost.penalty, Colors.deepOrangeAccent),
+      _CostBox(cardParam.penalty, Colors.deepOrangeAccent),
     ]);
 
     return _CostPanelWarp(TextConst.txtCost, panelChild);
@@ -226,10 +239,9 @@ class _CostPanelWithTimerState extends State<_CostPanelWithTimer> {
 }
 
 class _CostPanelResult extends StatelessWidget {
-  final CardCost cardCost;
   final CardViewController controller;
 
-  const _CostPanelResult({required this.cardCost, required this.controller, Key? key}) : super(key: key);
+  const _CostPanelResult({required this.controller, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -245,8 +257,8 @@ class _CostPanelResult extends StatelessWidget {
     } else {
       panelText = TextConst.txtPenalty;
 
-      if (cardCost.penalty != 0) {
-        panelChild = Row(children: [ _CostBox( - cardCost.penalty, Colors.deepOrangeAccent) ]);
+      if (controller.cardParam.penalty != 0) {
+        panelChild = Row(children: [ _CostBox( - controller.cardParam.penalty, Colors.deepOrangeAccent) ]);
       } else {
         panelChild = Row(children: const [ _CostBox(0, Colors.yellow) ]);
       }

@@ -9,6 +9,7 @@ import 'card_navigator.dart';
 import 'card_widget.dart';
 import 'common.dart';
 import 'pack_info_widget.dart';
+import 'package:simple_events/simple_events.dart' as event;
 
 class PackView extends StatefulWidget {
   final CardController cardController;
@@ -24,6 +25,10 @@ class _PackViewState extends State<PackView> {
   bool _isStarting = true;
 
   late int? _jsonFileID;
+
+  event.Listener? onAddEarnListener;
+
+  double _earned = 0;
 
   @override
   void initState() {
@@ -43,6 +48,12 @@ class _PackViewState extends State<PackView> {
   }
 
   @override
+  void dispose() {
+    onAddEarnListener?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (_isStarting) {
       return Scaffold(
@@ -56,9 +67,9 @@ class _PackViewState extends State<PackView> {
 
     return Scaffold(
         appBar: AppBar(
-            title: Text(TextConst.txtAppTitle),
+            title: title(),
             actions: [
-              widget.cardController.cardListenWidgetBuilder((card, cardCost, cardViewController) {
+              widget.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
                 if (card.body.clue.isEmpty) return Container();
 
                 return HelpButton(
@@ -74,7 +85,7 @@ class _PackViewState extends State<PackView> {
                 );
               }),
 
-              widget.cardController.cardListenWidgetBuilder((card, cardCost, cardViewController) {
+              widget.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
                 if (card.head.help.isEmpty) return Container();
 
                 return HelpButton(
@@ -119,11 +130,11 @@ class _PackViewState extends State<PackView> {
   }
 
   Widget _cardWidget() {
-    return widget.cardController.cardListenWidgetBuilder((card, cardCost, cardViewController) {
+    return widget.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
       return CardWidget(
         key        : ValueKey(card),
         card       : card,
-        cardCost   : cardCost,
+        cardParam   : cardParam,
         controller : cardViewController,
         whenResultChild: Row(
           children: [
@@ -138,5 +149,27 @@ class _PackViewState extends State<PackView> {
         ),
       );
     });
+  }
+
+  Widget title() {
+    return event.EventReceiverWidget(
+      builder: (_) {
+        String earnedStr = '';
+        if (_earned != 0) {
+          earnedStr = 'заработано: ${getEarnedText(_earned)}';
+          print('earnedStr $earnedStr');
+        }
+        return Text('${TextConst.txtAppTitle} $earnedStr');
+      },
+
+      events: [widget.cardController.onAddEarn],
+
+      onEventCallback: (listener, value) {
+        final addEarned = value as double;
+        _earned += addEarned;
+        print('after add Earned $_earned');
+        return true;
+      },
+    );
   }
 }

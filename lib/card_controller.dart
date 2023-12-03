@@ -1,11 +1,12 @@
 import 'package:decard_web/regulator.dart';
-import 'package:simple_events/simple_events.dart';
+import 'package:simple_events/simple_events.dart' as event;
 import 'card_sub_widgets.dart';
 import 'db.dart';
 import 'card_model.dart';
 import 'package:flutter/material.dart';
 
-typedef CardWidgetBuilder = Widget Function(CardData card, CardCost cardCost, CardViewController cardViewController);
+typedef CardWidgetBuilder = Widget Function(CardData card, CardParam cardParam, CardViewController cardViewController);
+typedef OnCardResult = Function(CardData card, CardParam cardParam, bool result, int tryCount, int solveTime, double earned);
 
 class CardController {
   final DbSource dbSource;
@@ -22,17 +23,19 @@ class CardController {
   CardViewController? _cardViewController;
   CardViewController? get cardViewController => _cardViewController;
 
-  CardCost? _cardCost;
-  CardCost? get carCost => _cardCost;
+  CardParam? _cardParam;
+  CardParam? get carCost => _cardParam;
 
-  final onChange = SimpleEvent();
+  final onChange = event.SimpleEvent();
+  final onAddEarn = event.SimpleEvent<double>();
 
   /// Sets the current card data
   Future<void> setCard(int jsonFileID, int cardID, {int? bodyNum, CardSetBody setBody = CardSetBody.random, int startTime = 0, bool forView = false}) async {
     _card = await CardData.create(dbSource, jsonFileID, cardID, bodyNum: bodyNum, setBody: setBody);
 
-    _cardViewController = CardViewController();
-    _cardCost   = CardCost(regulator.difficultyList[0], 0);
+    _cardParam   = CardParam(regulator.difficultyList[0], 0);
+
+    _cardViewController = CardViewController(_card!, _cardParam!, _onCardResult);
 
     onChange.send();
   }
@@ -61,13 +64,17 @@ class CardController {
   }
 
   Widget cardListenWidgetBuilder(CardWidgetBuilder builder) {
-    return EventReceiverWidget(
+    return event.EventReceiverWidget(
       builder: (_) {
         if (_card == null) return Container();
-        return builder.call(_card!, _cardCost!, _cardViewController!);
+        return builder.call(_card!, _cardParam!, _cardViewController!);
       },
 
       events: [onChange],
     );
+  }
+
+  Future<void> _onCardResult(CardData card, CardParam cardParam, bool result, int tryCount, int solveTime, double earned) async {
+    onAddEarn.send(earned);
   }
 }

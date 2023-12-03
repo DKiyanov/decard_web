@@ -6,22 +6,31 @@ import 'package:flutter/material.dart';
 
 import 'card_model.dart';
 import 'common.dart';
+import 'package:simple_events/simple_events.dart' as event;
 
 class CardWidget extends StatefulWidget {
   final CardData card;
-  final CardCost cardCost;
+  final CardParam cardParam;
   final CardViewController controller;
   final Widget? whenResultChild;
 
-  const CardWidget({required this.card, required this.cardCost, required this.controller, this.whenResultChild, Key? key}) : super(key: key);
+  const CardWidget({required this.card, required this.cardParam, required this.controller, this.whenResultChild, Key? key}) : super(key: key);
 
   @override
   State<CardWidget> createState() => CardWidgetState();
 }
 
 class CardWidgetState extends State<CardWidget> {
-  late List<String> _resultValues;
-  final _answerVariantList = [];
+  event.Listener? answerListener;
+
+  @override
+  void initState() {
+    super.initState();
+
+    answerListener = widget.controller.onAnswer.subscribe((listener, data) {
+      setState(() {});
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,24 +42,21 @@ class CardWidgetState extends State<CardWidget> {
 
     if (widget.controller.result == null) {
       widgetList.add(
-        AnswerInput(card: widget.card, controller: widget.controller, onAnswerResult: (bool result, List<String> values, List<String> answerVariantList) {
-          setState(() {
-            widget.controller.result = result;
-            _resultValues = values;
-            _answerVariantList.addAll(answerVariantList) ;
-          });
-        })
+        AnswerInput(controller: widget.controller)
       );
     }
 
     if (widget.controller.result != null) {
       // ответ введён - показываем введённый/выбранный ответ
-      if (_answerVariantList.isEmpty) {
-        _answerVariantList.addAll(_resultValues);
+      final answerVariantList = <String>[];
+      if (widget.controller.answerVariantList.isEmpty) {
+        answerVariantList.addAll(widget.controller.answerValues);
+      } else {
+        answerVariantList.addAll(widget.controller.answerVariantList);
       }
 
-      for (var value in _answerVariantList) {
-        if (_resultValues.contains(value)){
+      for (var value in answerVariantList) {
+        if (widget.controller.answerValues.contains(value)){
           widgetList.add(
               ElevatedButton(
                 style: ElevatedButton.styleFrom(alignment: AnswerInput.getAnswerAlignment(widget.card)),
@@ -107,7 +113,7 @@ class CardWidgetState extends State<CardWidget> {
     }
 
     return Column(children: [
-      CostPanel(cardCost: widget.cardCost, controller: widget.controller),
+      CostPanel(controller: widget.controller),
 
       Expanded( child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
@@ -121,7 +127,9 @@ class CardWidgetState extends State<CardWidget> {
               Align(
                   alignment: Alignment.bottomRight,
                   child: ElevatedButton(
-                    onPressed: widget.controller.onMultiSelectAnswerOk,
+                    onPressed: () {
+                      widget.controller.multiSelectAnswerOk.send();
+                    },
                     style: ElevatedButton.styleFrom(
                         shape: const CircleBorder(),
                         padding: const EdgeInsets.all(17),

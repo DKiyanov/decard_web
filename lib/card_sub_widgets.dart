@@ -7,29 +7,48 @@ import 'package:decard_web/text_constructor/text_constructor.dart';
 import 'package:decard_web/text_constructor/word_panel_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
+import 'card_controller.dart';
 import 'card_model.dart';
+import 'common.dart';
 import 'context_extension.dart';
 import 'decardj.dart';
 import 'media_widgets.dart';
+import 'package:simple_events/simple_events.dart' as event;
 
 class CardViewController {
-  double costValue = 0; // заработанное
-  int    costMinusPercent = 0; // уменьшение заработаного
-  int    startTime = 0;
-  bool?  result;
+  final CardData card;
+  final CardParam cardParam;
+  final OnCardResult onResult;
 
-  CardViewController() {
+  CardViewController(this.card, this.cardParam, this.onResult) {
     startTime = DateTime.now().millisecondsSinceEpoch;
   }
 
-  _AnswerInputState? _answerInputState;
+  double costValue = 0; // заработанное
+  int    costMinusPercent = 0; // уменьшение заработаного
+  late int startTime = 0;
 
-  void onMultiSelectAnswerOk(){
-    if (_answerInputState == null) return;
-    if (!_answerInputState!.mounted) return;
+  bool? _result;
+  bool? get result => _result;
 
-    _answerInputState!._onMultiSelectAnswer();
+  final answerValues = <String>[];
+  final answerVariantList = <String>[];
+
+  final multiSelectAnswerOk = event.SimpleEvent();
+
+  final _onAnswer = event.PrivateEvent<bool>();
+  event.EventBase<bool> get onAnswer => _onAnswer.event;
+
+  void setResult(bool result, int tryCount){
+    _result = result;
+    _onAnswer.send(result);
+    final solveTime = DateTime.now().millisecondsSinceEpoch - startTime;
+
+    double earned = result? costValue : - cardParam.penalty.toDouble();
+
+    onResult.call(card, cardParam, result, tryCount, solveTime, earned);
   }
 }
 
@@ -149,14 +168,10 @@ class CardQuestion extends StatelessWidget {
   }
 }
 
-typedef OnAnswerResult = Function(bool result, List<String> values, List<String> answerVariantList);
-
 class AnswerInput extends StatefulWidget {
-  final CardData card;
   final CardViewController controller;
-  final OnAnswerResult onAnswerResult;
 
-  const AnswerInput({required this.card, required this.controller, required this.onAnswerResult, Key? key}) : super(key: key);
+  const AnswerInput({required this.controller, Key? key}) : super(key: key);
 
   @override
   State<AnswerInput> createState() => _AnswerInputState();
@@ -183,26 +198,33 @@ class _AnswerInputState extends State<AnswerInput> {
   final _random = Random();
   final _inputController = TextEditingController(); // Для полей ввода
 
-  final _answerVariantList = <String>[]; // список вариантов ответов
-  final _selValues = <String>[]; // Выбранные значения
+  CardData get card => widget.controller.card;
+  CardParam get cardParam => widget.controller.cardParam;
+  
+  List<String> get _answerVariantList => widget.controller.answerVariantList; // список вариантов ответов
+  List<String> get _answerValues => widget.controller.answerValues; // Выбранные значения
+
+  int _tryCount = 0;
+
+  event.Listener?  _onMultiSelectAnswerOkListener;
 
   void _prepareAnswerVariantList() {
     // списку из body отдаётся предпочтение
     _answerVariantList.clear();
-    _answerVariantList.addAll(widget.card.style.answerVariantList);
+    _answerVariantList.addAll(card.style.answerVariantList);
 
     // выдёргиваем из списка лишние варианты так чтоб полчился список нужного размера
-    if (widget.card.style.answerVariantCount > widget.card.body.answerList.length && _answerVariantList.length > widget.card.style.answerVariantCount){
-      while (_answerVariantList.length > widget.card.style.answerVariantCount) {
+    if (card.style.answerVariantCount > card.body.answerList.length && _answerVariantList.length > card.style.answerVariantCount){
+      while (_answerVariantList.length > card.style.answerVariantCount) {
         final rndIndex = _random.nextInt(_answerVariantList.length);
         final variant = _answerVariantList[rndIndex];
-        if (!widget.card.body.answerList.contains(variant)) {
+        if (!card.body.answerList.contains(variant)) {
           _answerVariantList.removeAt(rndIndex);
         }
       }
     }
 
-    if (widget.card.style.answerVariantListRandomize) {
+    if (card.style.answerVariantListRandomize) {
       // перемешиваем список в случайном порядке
       _answerVariantList.shuffle(_random);
     }
@@ -212,27 +234,28 @@ class _AnswerInputState extends State<AnswerInput> {
   void initState() {
     super.initState();
 
-    if (widget.card.style.answerVariantMultiSel){
-      widget.controller._answerInputState = this;
-    }
+    _onMultiSelectAnswerOkListener = widget.controller.multiSelectAnswerOk.subscribe((listener, data) {
+      _onMultiSelectAnswer();
+    });
 
     _prepareAnswerVariantList();
   }
 
   @override
   void dispose() {
-    widget.controller._answerInputState = null;
+    _onMultiSelectAnswerOkListener?.dispose();
+
     _inputController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.card.body.questionData.textConstructor != null) {
+    if (card.body.questionData.textConstructor != null) {
       return Container();
     }
 
-    if (widget.card.style.answerVariantMultiSel) {
+    if (card.style.answerVariantMultiSel) {
       return _getInputWidget();
     }
 
@@ -240,9 +263,9 @@ class _AnswerInputState extends State<AnswerInput> {
   }
 
   Widget _getInputWidget() {
-    final alignment = AnswerInput.getAnswerAlignment(widget.card);
+    final alignment = AnswerInput.getAnswerAlignment(card);
 
-    final answerInputMode = widget.card.style.answerInputMode;
+    final answerInputMode = card.style.answerInputMode;
 //    const answerInputMode = AnswerInputMode.widgetKeyboard; // for debug
 
     // Поле ввода
@@ -253,7 +276,7 @@ class _AnswerInputState extends State<AnswerInput> {
         padding: const EdgeInsets.only(top: 4),
         child: TextField(
           controller: _inputController,
-          textAlign: widget.card.style.answerVariantAlign,
+          textAlign: card.style.answerVariantAlign,
           keyboardType: answerInputMode == AnswerInputMode.inputDigit? TextInputType.number : TextInputType.text,
           decoration: InputDecoration(
             filled: true,
@@ -281,7 +304,7 @@ class _AnswerInputState extends State<AnswerInput> {
         child: TextField(
           controller: _inputController,
           readOnly: true,
-          textAlign: widget.card.style.answerVariantAlign,
+          textAlign: card.style.answerVariantAlign,
           decoration: InputDecoration(
             filled: true,
             enabledBorder: OutlineInputBorder(
@@ -296,7 +319,7 @@ class _AnswerInputState extends State<AnswerInput> {
               popupMenu(
                   icon: const Icon(Icons.arrow_drop_down_outlined),
                   menuItemList: _answerVariantList.map<SimpleMenuItem>((value) => SimpleMenuItem(
-                      child: ValueWidget(widget.card, value),
+                      child: ValueWidget(card, value),
                       onPress: () {
                         setState(() {
                           _inputController.text = value;
@@ -338,24 +361,24 @@ class _AnswerInputState extends State<AnswerInput> {
 
     // Виртуальная клавиатура
     if (answerInputMode == AnswerInputMode.widgetKeyboard) {
-      final keyStr = widget.card.style.widgetKeyboard!;
+      final keyStr = card.style.widgetKeyboard!;
 //      const keyStr = '1\t2\t3\n4\t5\t6\n7\t8\t9\n0';
-      return _WidgetKeyboard(widget.card, keyStr, onAnswer: (value)=> _onSelectAnswer(value));
+      return _WidgetKeyboard(card, keyStr, onAnswer: (value)=> _onSelectAnswer(value));
     }
 
     return Container();
   }
 
   Widget _getButton(String value, AlignmentGeometry alignment){
-    if (widget.card.style.answerVariantMultiSel) {
-      if ( _selValues.contains(value) ) {
+    if (card.style.answerVariantMultiSel) {
+      if ( _answerValues.contains(value) ) {
 
         return ElevatedButton(
           style: ElevatedButton.styleFrom(alignment: alignment, backgroundColor: Colors.amberAccent),
-          child: ValueWidget(widget.card, value),
+          child: ValueWidget(card, value),
           onPressed: () {
             setState(() {
-              _selValues.remove(value);
+              _answerValues.remove(value);
             });
           },
         );
@@ -364,10 +387,10 @@ class _AnswerInputState extends State<AnswerInput> {
 
         return ElevatedButton(
           style: ButtonStyle(alignment: alignment),
-          child: ValueWidget(widget.card, value),
+          child: ValueWidget(card, value),
           onPressed: () {
             setState(() {
-              _selValues.add(value);
+              _answerValues.add(value);
             });
           },
         );
@@ -377,26 +400,26 @@ class _AnswerInputState extends State<AnswerInput> {
 
     return ElevatedButton(
       style: ButtonStyle(alignment: alignment),
-      child: ValueWidget(widget.card, value),
+      child: ValueWidget(card, value),
       onPressed: () => _onSelectAnswer(value),
     );
   }
 
   void _onSelectAnswer(String answerValue,[List<String>? answerList]) {
-    _selValues.clear();
-    _selValues.add(answerValue);
+    _answerValues.clear();
+    _answerValues.add(answerValue);
 
     bool tryResult = false;
 
-    if (widget.card.style.answerCaseSensitive) {
-      tryResult = widget.card.body.answerList.any((str) => str == answerValue);
+    if (card.style.answerCaseSensitive) {
+      tryResult = card.body.answerList.any((str) => str == answerValue);
     } else {
       answerValue = answerValue.toLowerCase();
-      tryResult = widget.card.body.answerList.any((str) => str.toLowerCase() == answerValue);
+      tryResult = card.body.answerList.any((str) => str.toLowerCase() == answerValue);
     }
 
     if (!tryResult && answerList != null) {
-      if (widget.card.style.answerCaseSensitive) {
+      if (card.style.answerCaseSensitive) {
         tryResult = answerList.any((str) => str == answerValue);
       } else {
         answerValue = answerValue.toLowerCase();
@@ -404,39 +427,54 @@ class _AnswerInputState extends State<AnswerInput> {
       }
     }
 
-    widget.onAnswerResult.call(tryResult, _selValues, _answerVariantList);
+    onAnswer(tryResult);
   }
 
   void _onMultiSelectAnswer() {
     List<String> answerList;
 
-    if (widget.card.style.answerCaseSensitive) {
-      answerList = widget.card.body.answerList;
+    if (card.style.answerCaseSensitive) {
+      answerList = card.body.answerList;
     } else {
-      answerList = widget.card.body.answerList.map((str) => str.toLowerCase()).toList();
+      answerList = card.body.answerList.map((str) => str.toLowerCase()).toList();
     }
 
     int answerCount = 0;
-    for (var value in _selValues) {
-      if (!widget.card.style.answerCaseSensitive) {
+    for (var value in _answerValues) {
+      if (!card.style.answerCaseSensitive) {
         value = value.toLowerCase();
       }
 
       if (!answerList.contains(value)) {
-        widget.onAnswerResult.call(false, _selValues, _answerVariantList);
+        onAnswer(false);
         return;
       }
       answerCount ++;
     }
 
-    if (widget.card.body.answerList.length != answerCount) {
-      widget.onAnswerResult.call(false, _selValues, _answerVariantList);
+    if (card.body.answerList.length != answerCount) {
+      onAnswer(false);
       return;
     }
 
-    widget.onAnswerResult.call(true, _selValues, _answerVariantList);
+    onAnswer(true);
   }
 
+  void onAnswer(bool tryResult) {
+    if (tryResult) {
+      widget.controller.setResult(tryResult, _tryCount);
+      return;
+    }
+
+    _tryCount ++;
+
+    if (_tryCount < cardParam.tryCount) {
+      Fluttertoast.showToast(msg: TextConst.txtWrongAnswer);
+      return;
+    }
+
+    widget.controller.setResult(false, _tryCount);
+  }
 }
 
 typedef OnKeyboardAnswer = Function(String value);
