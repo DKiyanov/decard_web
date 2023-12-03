@@ -32,6 +32,8 @@ dependencies:
   flutter_inappwebview: ^5.7.1
   webviewx_plus: ^0.3.3
   http: ^0.13.4
+  path_provider: ^2.0.14
+  flutter_archive: ^5.0.0
   simple_events:
     path: ../simple_events
   

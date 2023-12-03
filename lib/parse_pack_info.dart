@@ -1,6 +1,12 @@
+import 'dart:io';
+
 import 'package:decard_web/db.dart';
 import 'package:flutter/foundation.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
+
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path_util;
+import 'package:flutter_archive/flutter_archive.dart';
 
 import 'decardj.dart';
 import 'media_widgets.dart';
@@ -8,6 +14,8 @@ import 'media_widgets.dart';
 class PackInfo extends ParseObject implements ParseCloneable {
   static const String keyClassName  = 'DecardFileHead';
   static const String keyPackId     = 'packID';
+  static const String keyContent    = 'Content';
+  static const String keyFileName   = 'FileName';
 
   PackInfo() : super(keyClassName);
   PackInfo.clone() : this();
@@ -70,18 +78,28 @@ class PackListManager {
 }
 
 Future<int?> loadPack(DbSource dbSource, int packId) async {
-  final query = QueryBuilder<PackSource>(PackSource());
-  query.whereEqualTo(PackInfo.keyPackId, packId);
-  final sourceList = await query.find();
+  Map<String, String>? fileUrlMap;
 
-  final Map<String, String> fileUrlMap = {};
+  if (kIsWeb) {
+    fileUrlMap = await getPackSourceWeb(dbSource, packId);
+  } else {
+    fileUrlMap = await getPackSourceApp(dbSource, packId);
+  }
+
+  if (fileUrlMap == null) return null;
+
+  final jsonFileID = await loadPackEx(dbSource, packId, fileUrlMap);
+  return jsonFileID;
+}
+
+Future<int?> loadPackEx(DbSource dbSource, int packId, Map<String, String> fileUrlMap) async {
   String? jsonUrl;
 
-  for (var source in sourceList) {
-    if (source.path.toLowerCase().endsWith(DjfFileExtension.json)) {
-      jsonUrl = source.url;
+  for (var fileUrlMapEntry in fileUrlMap.entries) {
+
+    if (fileUrlMapEntry.key.toLowerCase().endsWith(DjfFileExtension.json)) {
+      jsonUrl = fileUrlMapEntry.value;
     }
-    fileUrlMap[source.path] = source.url;
   }
 
   if (jsonUrl == null) return null;
@@ -93,4 +111,71 @@ Future<int?> loadPack(DbSource dbSource, int packId) async {
   final jsonFileID = await dbSource.loadJson(sourceFileID: '$packId', jsonStr: jsonStr, fileUrlMap: fileUrlMap);
 
   return jsonFileID;
+}
+
+Future<Map<String, String>?> getPackSourceWeb(DbSource dbSource, int packId) async {
+  final query = QueryBuilder<PackSource>(PackSource());
+  query.whereEqualTo(PackInfo.keyPackId, packId);
+  final sourceList = await query.find();
+
+  final Map<String, String> fileUrlMap = {};
+
+  for (var source in sourceList) {
+    fileUrlMap[source.path] = source.url;
+  }
+
+  return fileUrlMap;
+}
+
+Future<Map<String, String>?> getPackSourceApp(DbSource dbSource, int packId) async {
+  final query = QueryBuilder<PackInfo>(PackInfo());
+  query.whereEqualTo(PackInfo.keyPackId, packId);
+  query.keysToReturn([PackInfo.keyFileName, PackInfo.keyContent]);
+  final packInfo = await query.first();
+
+  if (packInfo == null) return null;
+
+  final packFileName = packInfo.get<String>(PackInfo.keyFileName)!;
+  final fileExt = path_util.extension(packFileName).toLowerCase();
+  if (fileExt != DjfFileExtension.zip && fileExt != DjfFileExtension.json) {
+    return null;
+  }
+
+  Directory appDocDir = await getApplicationDocumentsDirectory();
+  final dir = Directory(path_util.join(appDocDir.path, 'pack_$packId' ));
+  if (!dir.existsSync()) {
+    final content = packInfo.get<ParseFile>(PackInfo.keyContent)!;
+    await content.loadStorage();
+    if ( content.file == null){
+      await content.download();
+    }
+
+    await dir.create();
+
+    if (fileExt == DjfFileExtension.zip) {
+      await ZipFile.extractToDirectory(zipFile: content.file!, destinationDir: dir);
+    }
+    if (fileExt == DjfFileExtension.json) {
+      await content.file!.copy(path_util.join(dir.path, packFileName));
+    }
+
+    content.file!.delete();
+  }
+
+  final Map<String, String> fileUrlMap = {};
+
+  final fileList = dir.listSync( recursive: true);
+
+  final dirPathLen = dir.path.length + packFileName.length + 3;
+
+  for (var object in fileList) {
+    if (object is File){
+      final File file = object;
+
+      final subFileName = file.path.substring(dirPathLen);
+      fileUrlMap[subFileName] = file.path;
+    }
+  }
+
+  return fileUrlMap;
 }

@@ -157,7 +157,6 @@ class _PackViewState extends State<PackView> {
         String earnedStr = '';
         if (_earned != 0) {
           earnedStr = 'заработано: ${getEarnedText(_earned)}';
-          print('earnedStr $earnedStr');
         }
         return Text('${TextConst.txtAppTitle} $earnedStr');
       },
@@ -167,7 +166,6 @@ class _PackViewState extends State<PackView> {
       onEventCallback: (listener, value) {
         final addEarned = value as double;
         _earned += addEarned;
-        print('after add Earned $_earned');
         return true;
       },
     );
