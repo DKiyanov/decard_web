@@ -18,25 +18,38 @@ class PackInfo extends ParseObject implements ParseCloneable {
   static const String keyFileName   = 'FileName';
 
   PackInfo() : super(keyClassName);
+
   PackInfo.clone() : this();
 
   @override
-  PackInfo clone(Map<String, dynamic> map) => PackInfo.clone()..fromJson(map);
+  PackInfo clone(Map<String, dynamic> map) {
+    final newObject = PackInfo.clone();
+    newObject.fromJson(map);
+
+    final prevTagList = newObject.tags.split(',');
+
+    for (var tag in prevTagList) {
+      newObject.tagList.add(tag.trim().toLowerCase());
+    }
+
+    return newObject;
+  }
+
+  final tagList = <String>[];
 
   int    get packId        => get<int>(keyPackId)!;
   String get formatVersion => get<String>(DjfFile.formatVersion)!;
   String get title         => get<String>(DjfFile.title        )!;
   String get guid          => get<String>(DjfFile.guid         )!;
   int    get version       => get<int>(DjfFile.version         )!;
-  String get author        => get<String>(DjfFile.author       )!;
+  String get author        => get<String>(DjfFile.author       )!.toLowerCase();
   String get site          => get<String>(DjfFile.site         )!;
   String get email         => get<String>(DjfFile.email        )!;
-  String get tags          => get<String>(DjfFile.tags         )!;
+  String get tags          => get<String>(DjfFile.tags         )??'';
   String get license       => get<String>(DjfFile.license      )!;
-  String get targetAgeLow  => get<String>(DjfFile.targetAgeLow )!;
-  String get targetAgeHigh => get<String>(DjfFile.targetAgeHigh)!;
+  int    get targetAgeLow  => get<int>(DjfFile.targetAgeLow )!;
+  int    get targetAgeHigh => get<int>(DjfFile.targetAgeHigh)!;
 }
-
 
 class PackSource extends ParseObject implements ParseCloneable {
   static const String keyClassName  = 'DecardFileSub';
@@ -60,20 +73,101 @@ class PackSource extends ParseObject implements ParseCloneable {
   }
 }
 
+class PackListResult{
+  List<PackInfo> packInfoList;
+  List<MapEntry<String, int>> tagList;
+  List<MapEntry<String, int>> authorList;
+  int targetAgeLow;
+  int targetAgeHigh;
+
+  PackListResult({
+    required this.packInfoList,
+    required this.authorList,
+    required this.tagList,
+    required this.targetAgeLow,
+    required this.targetAgeHigh,
+  });
+}
+
 class PackListManager {
-  List<PackInfo>? _packInfoList;
+  late List<PackInfo> _packInfoList;
 
   PackListManager();
 
   Future<void> init() async {
-    if (_packInfoList != null) return;
-
     final query = QueryBuilder<PackInfo>(PackInfo());
     _packInfoList = await query.find();
   }
 
-  Future<List<PackInfo>> getPackList() async {
-    return _packInfoList??[];
+  Future<PackListResult> getPackList({String? title, List<String>? authorList, List<String>? tagList, int? targetAge}) async {
+    final packInfoList = <PackInfo>[];
+    final tagMap       = <String, int>{};
+    final authorMap    = <String, int>{};
+    int targetAgeLow   = 0;
+    int targetAgeHigh  = 0;
+
+    RegExp? titleRegexp;
+
+    if (title != null && title.isNotEmpty) {
+      final titleMask = '.*${title.replaceAll(r"/\s\s+/g", ' ').trim().replaceAll(' ', '.*')}.*';
+      titleRegexp = RegExp(titleMask, caseSensitive: false);
+    }
+
+    for (var packInfo in _packInfoList) {
+      if (titleRegexp != null) {
+        if (!titleRegexp.hasMatch(packInfo.title)) continue;
+      }
+
+      if (authorList != null && authorList.isNotEmpty) {
+        if (!authorList.contains(packInfo.author)) continue;
+      }
+
+      if (tagList != null && tagList.isNotEmpty) {
+        bool skip = false;
+        for (var tag in tagList) {
+          if (!packInfo.tagList.contains(tag)) {
+            skip = true;
+            break;
+          }
+        }
+        if (skip) continue;
+      }
+
+      if (targetAgeLow > packInfo.targetAgeLow) {
+        targetAgeLow = packInfo.targetAgeLow;
+      }
+      if (targetAgeHigh < packInfo.targetAgeHigh) {
+        targetAgeHigh = packInfo.targetAgeHigh;
+      }
+
+      if (targetAge != null && targetAge >= 0) {
+        if (packInfo.targetAgeLow > targetAge || packInfo.targetAgeHigh < targetAge) {
+          continue;
+        }
+      }
+
+      packInfoList.add(packInfo);
+
+      final count = authorMap[packInfo.author]??0;
+      authorMap[packInfo.author] = count  + 1;
+
+      for (var tag in packInfo.tagList) {
+        final count = tagMap[tag]??0;
+        tagMap[tag] = count + 1;
+      }
+
+    }
+
+    final authorCountList = authorMap.entries.toList()..sort((e2, e1) => e1.value.compareTo(e2.value));
+    final tagCountList    = tagMap.entries.toList()..sort((e2, e1) => e1.value.compareTo(e2.value));
+
+    return PackListResult(
+        packInfoList  : packInfoList,
+        authorList    : authorCountList,
+        tagList       : tagCountList,
+        targetAgeLow  : targetAgeLow,
+        targetAgeHigh : targetAgeHigh
+    );
   }
 }
 

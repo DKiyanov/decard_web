@@ -26,9 +26,15 @@ class _PackViewState extends State<PackView> {
 
   late int? _jsonFileID;
 
+  late CardNavigatorData _cardNavigatorData;
+
   event.Listener? onAddEarnListener;
 
   double _earned = 0;
+
+  static const Color _treePanelColor = Colors.lightBlueAccent;
+
+  final GlobalKey<ScaffoldState> _keyScaffoldState = GlobalKey();
 
   @override
   void initState() {
@@ -41,6 +47,13 @@ class _PackViewState extends State<PackView> {
 
   void _starting() async {
     _jsonFileID = await loadPack(appState.dbSource, widget.packId);
+
+    _cardNavigatorData = CardNavigatorData(appState.dbSource);
+    await _cardNavigatorData.init();
+
+    final card = _cardNavigatorData.cardList.firstWhere((card) => card.jsonFileID == _jsonFileID);
+
+    widget.cardController.setCard(_jsonFileID!, card.cardID, bodyNum: 0);
 
     setState(() {
       _isStarting = false;
@@ -65,62 +78,127 @@ class _PackViewState extends State<PackView> {
       );
     }
 
-    return Scaffold(
-        appBar: AppBar(
-            title: title(),
-            actions: [
-              widget.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
-                if (card.body.clue.isEmpty) return Container();
+    return LayoutBuilder(builder: (context, constraints) {
+      final isMobile = constraints.maxWidth < 1600;
+      var treeWidth = constraints.maxWidth / 4;
+      if (treeWidth > 500) {
+        treeWidth = 500;
+      }
 
-                return HelpButton(
-                  key           : ValueKey(card),
-                  delayDuration : 10,
-                  icon          : Icons.live_help,
-                  color         : Colors.lime,
-                  onTap         : () {
-                    ViewContent.navigatorPush(
-                      context, card, card.body.clue, TextConst.txtClue
-                    );
-                  },
-                );
-              }),
+      Drawer? drawer;
 
-              widget.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
-                if (card.head.help.isEmpty) return Container();
+      if (isMobile) {
+        drawer = Drawer(
+          child: Container(
+            child: _tree(),
+          ),
+        );
+      }
 
-                return HelpButton(
-                  key           : ValueKey(card),
-                  delayDuration : 10,
-                  icon          : Icons.help,
-                  color         : Colors.white,
-                  onTap         : () {
-                    ViewContent.navigatorPush(
-                      context, card, card.head.help, TextConst.txtHelp
-                    );
-                  },
-                );
-              }),
+      return Scaffold(
+          key: _keyScaffoldState,
+          drawer: drawer,
+          appBar: AppBar(
+              leading: isMobile? Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => Navigator.pop(context),
+                  ),
 
-              InkWell(
-                  onTap: (){
-                    final card = widget.cardController.card;
-                    if (card == null) return;
-                    packInfoDisplay(context, card.pacInfo);
-                  },
-                  child: const Icon(Icons.info_outline)
-              ),
-            ]
-        ),
-        body: _body()
+                  IconButton(
+                    icon: const Icon(Icons.account_tree_outlined),
+                    onPressed: () => _keyScaffoldState.currentState!.openDrawer(),
+                  ),
+                ],
+              ) : null,
+              leadingWidth: 96,
+              title: title(),
+              actions: [
+                widget.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
+                  if (card.body.clue.isEmpty) return Container();
+
+                  return HelpButton(
+                    key           : ValueKey(card),
+                    delayDuration : 10,
+                    icon          : Icons.live_help,
+                    color         : Colors.lime,
+                    onTap         : () {
+                      ViewContent.navigatorPush(
+                          context, card, card.body.clue, TextConst.txtClue
+                      );
+                    },
+                  );
+                }),
+
+                widget.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
+                  if (card.head.help.isEmpty) return Container();
+
+                  return HelpButton(
+                    key           : ValueKey(card),
+                    delayDuration : 10,
+                    icon          : Icons.help,
+                    color         : Colors.white,
+                    onTap         : () {
+                      ViewContent.navigatorPush(
+                          context, card, card.head.help, TextConst.txtHelp
+                      );
+                    },
+                  );
+                }),
+
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: InkWell(
+                      onTap: (){
+                        final card = widget.cardController.card;
+                        if (card == null) return;
+                        packInfoDisplay(context, card.pacInfo);
+                      },
+                      child: const Icon(Icons.info_outline)
+                  ),
+                ),
+              ]
+          ),
+          body: _body(isMobile, treeWidth)
+      );
+    });
+
+  }
+
+  Widget _body(bool isMobile, double? treeWidth) {
+    if (isMobile) {
+      return _main();
+    }
+
+    return Row(
+      children: [
+        _tree(treeWidth),
+        Expanded(child: _main())
+      ]
     );
   }
 
-  Widget _body() {
+  Widget _tree([double? width]) {
+    return Container(
+      width: width,
+      color: _treePanelColor,
+      child: CardNavigatorTree(
+        cardController: widget.cardController,
+        cardNavigatorData: _cardNavigatorData,
+        itemTextColor: Colors.black,
+        selItemTextColor: Colors.yellowAccent,
+        bodyButtonColor: Colors.orangeAccent,
+      ),
+    );
+  }
+
+  Widget _main() {
     return Column(children: [
       CardNavigator(
         key: ValueKey(widget.packId),
         cardController: widget.cardController,
-        jsonFileID: _jsonFileID,
+        cardNavigatorData: _cardNavigatorData,
       ),
 
       Expanded(

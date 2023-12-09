@@ -30,7 +30,7 @@ class CardController {
   final onAddEarn = event.SimpleEvent<double>();
 
   /// Sets the current card data
-  Future<void> setCard(int jsonFileID, int cardID, {int? bodyNum, CardSetBody setBody = CardSetBody.random, int startTime = 0, bool forView = false}) async {
+  Future<void> setCard(int jsonFileID, int cardID, {int? bodyNum, CardSetBody setBody = CardSetBody.random}) async {
     _card = await CardData.create(dbSource, jsonFileID, cardID, bodyNum: bodyNum, setBody: setBody);
 
     _cardParam   = CardParam(regulator.difficultyList[0], 0);
