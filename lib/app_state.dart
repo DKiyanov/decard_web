@@ -19,7 +19,7 @@ class AppState {
 
   late SharedPreferences prefs;
   late ParseConnect serverConnect;
-  late PackListManager packInfoManager;
+  late WebPackListManager packInfoManager;
   late DbSource dbSource;
   late CardController cardController;
 
@@ -27,7 +27,7 @@ class AppState {
     prefs = await SharedPreferences.getInstance();
     serverConnect = ParseConnect(prefs);
     await serverConnect.init();
-    packInfoManager = PackListManager();
+    packInfoManager = WebPackListManager();
     dbSource        = DbSourceMem.create();
     cardController  = CardController(dbSource: dbSource);
   }

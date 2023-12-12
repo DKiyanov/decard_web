@@ -6,6 +6,8 @@ import 'card_controller.dart';
 import 'card_model.dart';
 import 'package:simple_events/simple_events.dart' as event;
 
+import 'dk_expansion_tile.dart';
+
 class CardNavigatorData {
   DbSource dbSource;
 
@@ -353,11 +355,10 @@ class _TreeFileWidget extends StatefulWidget {
 
 class _TreeFileWidgetState extends State<_TreeFileWidget> {
   bool _isSelected = false;
-  bool _expanded = false;
 
   late event.Listener cardControllerOnChangeListener;
 
-  var _exKey = UniqueKey();
+  final _controller = DkExpansionTileController();
 
   @override
   void initState() {
@@ -381,13 +382,14 @@ class _TreeFileWidgetState extends State<_TreeFileWidget> {
     if (_isSelected != isSelected) {
       setState(() {
         _isSelected = isSelected;
-        if (isSelected) {
-          if (!_expanded) {
-            _exKey = UniqueKey();
-          }
-          _expanded = true;
-        }
+
       });
+
+      if (isSelected) {
+        if (_controller.isAssigned) {
+          _controller.expand();
+        }
+      }
     }
   }
 
@@ -427,6 +429,7 @@ class _TreeFileWidgetState extends State<_TreeFileWidget> {
       final cardList = groupMap[card.group];
       if (cardList == null) continue;
 
+      // comment this for debug
       if (cardList.length == 1) {
         children.add( _TreeCardWidget(cardController: widget.cardController, card: card, treeParam: widget.treeParam) );
         continue;
@@ -442,14 +445,11 @@ class _TreeFileWidgetState extends State<_TreeFileWidget> {
       groupMap[card.group] = null;
     }
 
-    return ExpansionTile(
-      key: _exKey,
+    return DkExpansionTile(
+      controller: _controller,
       title: Text(widget.title, style: TextStyle(color: color)),
-      initiallyExpanded: _expanded,
+      initiallyExpanded: false,
       children: children,
-      onExpansionChanged: (bool value){
-        _expanded = value;
-      },
     );
   }
 }
@@ -469,11 +469,9 @@ class _TreeCardWidgetState extends State<_TreeCardWidget> {
   bool _isSelected = false;
   int _selBodyNum = 0;
 
-  bool _expanded = false;
-
   late event.Listener cardControllerOnChangeListener;
 
-  var _exKey = UniqueKey();
+  final _controller = DkExpansionTileController();
 
   @override
   void initState() {
@@ -497,11 +495,11 @@ class _TreeCardWidgetState extends State<_TreeCardWidget> {
         setState(() {
           _isSelected = true;
           _selBodyNum = widget.cardController.card!.body.bodyNum;
-          if (!_expanded) {
-            _exKey = UniqueKey();
-          }
-          _expanded = true;
         });
+
+        if (_controller.isAssigned) {
+          _controller.expand();
+        }
 
         return;
       }
@@ -525,6 +523,7 @@ class _TreeCardWidgetState extends State<_TreeCardWidget> {
   Widget build(BuildContext context) {
     final color = _isSelected? widget.treeParam.selItemTextColor : widget.treeParam.itemTextColor;
 
+    // comment this for debug
     if (widget.card.bodyCount == 1) {
       return Padding(
         padding: const EdgeInsets.only(left: 8),
@@ -539,10 +538,10 @@ class _TreeCardWidgetState extends State<_TreeCardWidget> {
 
     return Padding(
       padding: const EdgeInsets.only(left: 8),
-      child: ExpansionTile(
-        key: _exKey,
+      child: DkExpansionTile(
+        controller: _controller,
         title: Text(widget.card.title, style: TextStyle(color: color)),
-        initiallyExpanded: _expanded,
+        initiallyExpanded: false,
         children: [Align(
           alignment: Alignment.topLeft,
           child: Wrap(
@@ -565,10 +564,6 @@ class _TreeCardWidgetState extends State<_TreeCardWidget> {
               })
           ),
         )],
-
-        onExpansionChanged: (bool value) {
-          _expanded = value;
-        },
       ),
     );
   }
@@ -587,11 +582,10 @@ class _TreeGroupWidget extends StatefulWidget {
 
 class _TreeGroupWidgetState extends State<_TreeGroupWidget> {
   bool _isSelected = false;
-  bool _expanded = false;
 
   late event.Listener cardControllerOnChangeListener;
 
-  var _exKey = UniqueKey();
+  final _controller = DkExpansionTileController();
 
   @override
   void initState() {
@@ -615,13 +609,13 @@ class _TreeGroupWidgetState extends State<_TreeGroupWidget> {
     if (_isSelected != isSelected) {
       setState(() {
         _isSelected = isSelected;
-        if (isSelected) {
-          if (!_expanded) {
-            _exKey = UniqueKey();
-          }
-          _expanded = true;
-        }
       });
+
+      if (isSelected) {
+        if (_controller.isAssigned) {
+          _controller.expand();
+        }
+      }
     }
   }
 
@@ -637,14 +631,11 @@ class _TreeGroupWidgetState extends State<_TreeGroupWidget> {
 
     return Padding(
       padding: const EdgeInsets.only(left: 8),
-      child: ExpansionTile(
-        key: _exKey,
+      child: DkExpansionTile(
+        controller: _controller,
         title: Text(widget.group, style: TextStyle(color: color)),
-        initiallyExpanded: _expanded,
+        initiallyExpanded: false,
         children: widget.cardList.map((card) => _TreeCardWidget(cardController: widget.cardController, card: card, treeParam: widget.treeParam)).toList(),
-        onExpansionChanged: (bool value){
-          _expanded = value;
-        },
       ),
     );
   }

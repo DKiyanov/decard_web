@@ -25,7 +25,7 @@ RouteMap _buildRouteMap(BuildContext context) {
     },
 
     routes: {
-      '/': (route) => NoAnimationPage(child: PackList(packInfoManager: appState.packInfoManager)),
+      '/': (route) => NoAnimationPage(child: WebPackList(packInfoManager: appState.packInfoManager)),
       '/pack/:id': (route) => NoAnimationPage(child: PackView(
           cardController: appState.cardController,
           packId: int.parse(route.pathParameters['id']!)
@@ -47,7 +47,7 @@ RouteMap _buildRouteMap(BuildContext context) {
       ),
 
       '/view_pack_list': (route) => NoAnimationPage(
-        child: PackList(packInfoManager: appState.packInfoManager),
+        child: WebPackList(packInfoManager: appState.packInfoManager),
       ),
 
       '/upload_file': (route) => const NoAnimationPage(

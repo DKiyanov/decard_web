@@ -11,76 +11,50 @@ import 'package:flutter_archive/flutter_archive.dart';
 import 'decardj.dart';
 import 'media_widgets.dart';
 
-class PackInfo extends ParseObject implements ParseCloneable {
-  static const String keyClassName  = 'DecardFileHead';
-  static const String keyPackId     = 'packID';
-  static const String keyContent    = 'Content';
-  static const String keyFileName   = 'FileName';
-
-  PackInfo() : super(keyClassName);
-
-  PackInfo.clone() : this();
-
-  @override
-  PackInfo clone(Map<String, dynamic> map) {
-    final newObject = PackInfo.clone();
-    newObject.fromJson(map);
-
-    final prevTagList = newObject.tags.split(',');
-
-    for (var tag in prevTagList) {
-      newObject.tagList.add(tag.trim().toLowerCase());
-    }
-
-    return newObject;
-  }
+class WebPackInfo {
+  final int    packId        ;
+  final String title         ;
+  final String guid          ;
+  final int    version       ;
+  final String author        ;
+  final String site          ;
+  final String email         ;
+  final String tags          ;
+  final String license       ;
+  final int    targetAgeLow  ;
+  final int    targetAgeHigh ;
 
   final tagList = <String>[];
 
-  int    get packId        => get<int>(keyPackId)!;
-  String get formatVersion => get<String>(DjfFile.formatVersion)!;
-  String get title         => get<String>(DjfFile.title        )!;
-  String get guid          => get<String>(DjfFile.guid         )!;
-  int    get version       => get<int>(DjfFile.version         )!;
-  String get author        => get<String>(DjfFile.author       )!.toLowerCase();
-  String get site          => get<String>(DjfFile.site         )!;
-  String get email         => get<String>(DjfFile.email        )!;
-  String get tags          => get<String>(DjfFile.tags         )??'';
-  String get license       => get<String>(DjfFile.license      )!;
-  int    get targetAgeLow  => get<int>(DjfFile.targetAgeLow )!;
-  int    get targetAgeHigh => get<int>(DjfFile.targetAgeHigh)!;
-}
+  WebPackInfo({
+    required this.packId       ,
+    required this.title        ,
+    required this.guid         ,
+    required this.version      ,
+    required this.author       ,
+    required this.site         ,
+    required this.email        ,
+    required this.tags         ,
+    required this.license      ,
+    required this.targetAgeLow ,
+    required this.targetAgeHigh,
+  }) {
+    final prevTagList = tags.split(',');
 
-class PackSource extends ParseObject implements ParseCloneable {
-  static const String keyClassName  = 'DecardFileSub';
-  static const String keyPackId     = 'packID';
-  static const String keyPath       = 'path';
-  static const String keyFile       = 'file';
-
-  PackSource() : super(keyClassName);
-  PackSource.clone() : this();
-
-  @override
-  PackSource clone(Map<String, dynamic> map) => PackSource.clone()..fromJson(map);
-
-  String get path => get<String>(keyPath)!;
-
-  String get url {
-    if (kIsWeb) {
-      return get<ParseWebFile>(keyFile)!.url!;
+    for (var tag in prevTagList) {
+      tagList.add(tag.trim().toLowerCase());
     }
-    return get<ParseFile>(keyFile)!.url!;
   }
 }
 
-class PackListResult{
-  List<PackInfo> packInfoList;
+class WebPackListResult{
+  List<WebPackInfo> packInfoList;
   List<MapEntry<String, int>> tagList;
   List<MapEntry<String, int>> authorList;
   int targetAgeLow;
   int targetAgeHigh;
 
-  PackListResult({
+  WebPackListResult({
     required this.packInfoList,
     required this.authorList,
     required this.tagList,
@@ -89,18 +63,41 @@ class PackListResult{
   });
 }
 
-class PackListManager {
-  late List<PackInfo> _packInfoList;
+class WebPackFields {
+  static const String className  = 'DecardFileHead';
+  static const String packId     = 'packID';
+  static const String content    = 'Content';
+  static const String fileName   = 'FileName';
+}
 
-  PackListManager();
+class WebPackListManager {
+  final _webPackInfoList = <WebPackInfo>[];
+
+  WebPackListManager();
 
   Future<void> init() async {
-    final query = QueryBuilder<PackInfo>(PackInfo());
-    _packInfoList = await query.find();
+    final query = QueryBuilder<ParseObject>(ParseObject(WebPackFields.className));
+    final parsePackList = await query.find();
+
+    for (var parsePack in parsePackList) {
+      _webPackInfoList.add(WebPackInfo(
+        packId        : parsePack.get<int>(WebPackFields.packId  )!,
+        title         : parsePack.get<String>(DjfFile.title      )!,
+        guid          : parsePack.get<String>(DjfFile.guid       )!,
+        version       : parsePack.get<int>(DjfFile.version       )!,
+        author        : parsePack.get<String>(DjfFile.author     )!.toLowerCase(),
+        site          : parsePack.get<String>(DjfFile.site       )!,
+        email         : parsePack.get<String>(DjfFile.email      )!,
+        tags          : parsePack.get<String>(DjfFile.tags       )??'',
+        license       : parsePack.get<String>(DjfFile.license    )??'',
+        targetAgeLow  : parsePack.get<int>(DjfFile.targetAgeLow  )??0,
+        targetAgeHigh : parsePack.get<int>(DjfFile.targetAgeHigh )??100,
+      ));
+    }
   }
 
-  Future<PackListResult> getPackList({String? title, List<String>? authorList, List<String>? tagList, int? targetAge}) async {
-    final packInfoList = <PackInfo>[];
+  Future<WebPackListResult> getPackList({String? title, List<String>? authorList, List<String>? tagList, int? targetAge}) async {
+    final packInfoList = <WebPackInfo>[];
     final tagMap       = <String, int>{};
     final authorMap    = <String, int>{};
     int targetAgeLow   = 0;
@@ -113,7 +110,7 @@ class PackListManager {
       titleRegexp = RegExp(titleMask, caseSensitive: false);
     }
 
-    for (var packInfo in _packInfoList) {
+    for (var packInfo in _webPackInfoList) {
       if (titleRegexp != null) {
         if (!titleRegexp.hasMatch(packInfo.title)) continue;
       }
@@ -161,7 +158,7 @@ class PackListManager {
     final authorCountList = authorMap.entries.toList()..sort((e2, e1) => e1.value.compareTo(e2.value));
     final tagCountList    = tagMap.entries.toList()..sort((e2, e1) => e1.value.compareTo(e2.value));
 
-    return PackListResult(
+    return WebPackListResult(
         packInfoList  : packInfoList,
         authorList    : authorCountList,
         tagList       : tagCountList,
@@ -208,28 +205,30 @@ Future<int?> loadPackEx(DbSource dbSource, int packId, Map<String, String> fileU
 }
 
 Future<Map<String, String>?> getPackSourceWeb(DbSource dbSource, int packId) async {
-  final query = QueryBuilder<PackSource>(PackSource());
-  query.whereEqualTo(PackInfo.keyPackId, packId);
+  final query = QueryBuilder<ParseObject>(ParseObject('DecardFileSub'));
+  query.whereEqualTo(WebPackFields.packId, packId);
   final sourceList = await query.find();
 
   final Map<String, String> fileUrlMap = {};
 
   for (var source in sourceList) {
-    fileUrlMap[source.path] = source.url;
+    final path = source.get<String>('path')!;
+    final url  = source.get<ParseWebFile>('file')!.url!;
+    fileUrlMap[path] = url;
   }
 
   return fileUrlMap;
 }
 
 Future<Map<String, String>?> getPackSourceApp(DbSource dbSource, int packId) async {
-  final query = QueryBuilder<PackInfo>(PackInfo());
-  query.whereEqualTo(PackInfo.keyPackId, packId);
-  query.keysToReturn([PackInfo.keyFileName, PackInfo.keyContent]);
+  final query = QueryBuilder<ParseObject>(ParseObject(WebPackFields.className));
+  query.whereEqualTo(WebPackFields.packId, packId);
+  query.keysToReturn([WebPackFields.fileName, WebPackFields.content]);
   final packInfo = await query.first();
 
   if (packInfo == null) return null;
 
-  final packFileName = packInfo.get<String>(PackInfo.keyFileName)!;
+  final packFileName = packInfo.get<String>(WebPackFields.fileName)!;
   final fileExt = path_util.extension(packFileName).toLowerCase();
   if (fileExt != DjfFileExtension.zip && fileExt != DjfFileExtension.json) {
     return null;
@@ -238,7 +237,7 @@ Future<Map<String, String>?> getPackSourceApp(DbSource dbSource, int packId) asy
   Directory appDocDir = await getApplicationDocumentsDirectory();
   final dir = Directory(path_util.join(appDocDir.path, 'pack_$packId' ));
   if (!dir.existsSync()) {
-    final content = packInfo.get<ParseFile>(PackInfo.keyContent)!;
+    final content = packInfo.get<ParseFile>(WebPackFields.content)!;
     await content.loadStorage();
     if ( content.file == null){
       await content.download();

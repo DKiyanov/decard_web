@@ -32,7 +32,7 @@ class _PackViewState extends State<PackView> {
 
   double _earned = 0;
 
-  static const Color _treePanelColor = Colors.lightBlueAccent;
+  static const Color _drawerPanelColor = Colors.lightBlueAccent;
 
   final GlobalKey<ScaffoldState> _keyScaffoldState = GlobalKey();
 
@@ -79,10 +79,10 @@ class _PackViewState extends State<PackView> {
     }
 
     return LayoutBuilder(builder: (context, constraints) {
-      final isMobile = constraints.maxWidth < 1600;
-      var treeWidth = constraints.maxWidth / 4;
-      if (treeWidth > 500) {
-        treeWidth = 500;
+      final isMobile = constraints.maxWidth < 600;
+      var drawerPanelWidth = constraints.maxWidth / 4;
+      if (drawerPanelWidth > 500) {
+        drawerPanelWidth = 500;
       }
 
       Drawer? drawer;
@@ -160,7 +160,7 @@ class _PackViewState extends State<PackView> {
                 ),
               ]
           ),
-          body: _body(isMobile, treeWidth)
+          body: _body(isMobile, drawerPanelWidth)
       );
     });
 
@@ -182,7 +182,7 @@ class _PackViewState extends State<PackView> {
   Widget _tree([double? width]) {
     return Container(
       width: width,
-      color: _treePanelColor,
+      color: _drawerPanelColor,
       child: CardNavigatorTree(
         cardController: widget.cardController,
         cardNavigatorData: _cardNavigatorData,
