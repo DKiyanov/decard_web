@@ -1,11 +1,14 @@
-import 'package:decard_web/app_state.dart';
-import 'package:decard_web/simple_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:decard_web/parse_pack_info.dart';
 import 'package:routemaster/routemaster.dart';
 
 import 'common.dart';
 import 'dk_expansion_tile.dart';
+
+enum _SortMode {
+  starsCount,
+  dateLoad
+}
 
 class WebPackList extends StatefulWidget {
   final WebPackListManager packInfoManager;
@@ -22,7 +25,7 @@ class _WebPackListState extends State<WebPackList> {
 
   final _selAuthorList = <String>[];
   final _selTagList    = <String>[];
-  int _selTargetAge = 0;
+  int? _selTargetAge;
   final _selTargetValueController = TextEditingController() ;
   final _selTitleController = TextEditingController() ;
 
@@ -33,6 +36,8 @@ class _WebPackListState extends State<WebPackList> {
   final _scrollController = ScrollController();
 
   final _packGuidList = <MapEntry<String, List<WebPackInfo> >>[];
+
+  var _sortMode = _SortMode.starsCount;
 
   @override
   void initState() {
@@ -65,8 +70,10 @@ class _WebPackListState extends State<WebPackList> {
     int? sendTargetAge;
 
     if (_packListResult != null) {
-      if (_selTargetAge >= _packListResult!.targetAgeLow && _selTargetAge <= _packListResult!.targetAgeHigh) {
-        sendTargetAge = _selTargetAge;
+      if (_selTargetAge != null) {
+        if (_selTargetAge! >= _packListResult!.targetAgeLow && _selTargetAge! <= _packListResult!.targetAgeHigh) {
+          sendTargetAge = _selTargetAge;
+        }
       }
     }
 
@@ -97,12 +104,18 @@ class _WebPackListState extends State<WebPackList> {
 
     _sortPackList();
 
-    if (_selTargetAge < _packListResult!.targetAgeLow) {
+    if (_selTargetAge != null && _selTargetAge! < _packListResult!.targetAgeLow) {
       _selTargetAge = _packListResult!.targetAgeLow;
     }
 
-    if (_selTargetAge > _packListResult!.targetAgeHigh) {
+    if (_selTargetAge != null && _selTargetAge! > _packListResult!.targetAgeHigh) {
       _selTargetAge = _packListResult!.targetAgeHigh;
+    }
+
+    if (_selTargetAge == null) {
+      _selTargetValueController.text = "";
+    } else {
+      _selTargetValueController.text = _selTargetAge.toString();
     }
 
     if (_isStarting) return;
@@ -148,26 +161,12 @@ class _WebPackListState extends State<WebPackList> {
           centerTitle: true,
           title: Text(TextConst.txtPackFileList),
           actions: [
-            popupMenu(icon: const Icon(Icons.menu), menuItemList: [
-              if (!appState.serverConnect.isLoggedIn) ...[
-                SimpleMenuItem(
-                    child: Text(TextConst.txtEntry),
-                    onPress: () {
-                      Routemaster.of(context).push('/login', queryParameters: {'redirectTo': '/'});
-                    }
-                ),
-              ],
-
-              if (appState.serverConnect.isLoggedIn) ...[
-                SimpleMenuItem(
-                    child: Text(TextConst.txtUploadFile),
-                    onPress: () {
-                      Routemaster.of(context).push('/upload_file');
-                    }
-                ),
-              ]
-
-            ]),
+            ElevatedButton(
+                onPressed: () {
+                  Routemaster.of(context).push('/login', queryParameters: {'redirectTo': '/'});
+                },
+                child: Text(TextConst.txtEntry)
+            ),
           ],
         ),
         body: _getBody(isMobile, drawerPanelWidth),
@@ -194,7 +193,7 @@ class _WebPackListState extends State<WebPackList> {
           if (guidPack.value.length == 1) {
             return ListTile(
               title: Text(packInfo.title),
-              subtitle: Text(packInfo.tags),
+              subtitle: _getSubtitle(packInfo),
               onTap: (){
                 Routemaster.of(context).push('/pack/${packInfo.packId}');
               },
@@ -206,7 +205,7 @@ class _WebPackListState extends State<WebPackList> {
             final packInfo = guidPack.value[i];
             children.add(ListTile(
               title: Text(packInfo.title),
-              subtitle: Text(packInfo.tags),
+              subtitle: _getSubtitle(packInfo),
               onTap: (){
                 Routemaster.of(context).push('/pack/${packInfo.packId}');
               },
@@ -225,99 +224,154 @@ class _WebPackListState extends State<WebPackList> {
     );
   }
 
+  Widget _getSubtitle(WebPackInfo packInfo) {
+    final subtitle = 'возраст: ${packInfo.targetAgeLow}-${packInfo.targetAgeHigh}; теги: ${packInfo.tags}';
+    return Text(subtitle);
+  }
+
   Widget _getFilerPanel([double? width]) {
     return Container(
       width: width,
       color: _filterPanelColor,
-//      padding: const EdgeInsets.only(left: 8, right: 16),
 
       child: Scrollbar(
         controller: _scrollController,
         child: Padding(
-          padding: const EdgeInsets.only(left: 8, right: 16),
+          padding: const EdgeInsets.all(8),
           child: ListView(
             controller: _scrollController,
             children: [
-              ExpansionTile(
-                title: const Text('Название'),
-                initiallyExpanded: true,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8, bottom: 8),
-                    child: TextField(
-                      controller: _selTitleController,
-                      decoration: InputDecoration(
-                        fillColor: Colors.white30,
-                        filled: true,
-                        labelText: 'Фильтр по наименованию',
-                        suffixIcon: InkWell(
-                          child: const Icon(Icons.clear),
-                          onTap: () {
-                            _selTitleController.text = '';
+              filterWrapperContainer(
+                DkExpansionTile(
+                  title: const Text('Сортировка'),
+                  borderColor: Colors.transparent,
+                  initiallyExpanded: true,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: DropdownButton<_SortMode>(
+                          value: _sortMode,
+                          isExpanded: true,
+                          items: _SortMode.values.map((sortMode) => DropdownMenuItem<_SortMode>(
+                            value: sortMode,
+                            child: Text(sortMode.name)
+                          )).toList(),
+                          onChanged: (_SortMode? value){
+                            if (value == null) return;
+                            _sortMode = value;
                           }
-                        )
                       ),
-                      onSubmitted: (value) {
-                        if (value != _selTitle) {
-                          _selTitle = value;
-                          _refresh();
-                        }
-                      },
-                    ),
-                  )
-                ],
+                    )
+                  ],
+                ),
               ),
 
-              ExpansionTile(
-                title: const Text('Возраст'),
-                initiallyExpanded: true,
-                children: [
-                  SizedBox( width: 60,
-                    child: TextField(
-                      textAlign: TextAlign.center,
-                      decoration: const InputDecoration(
-                        fillColor: Colors.white30,
-                        filled: true,
-                      ),
-                      onSubmitted: (value) {
-                        final newValue = int.tryParse(value);
-                        if (newValue != null &&  newValue != _selTargetAge) {
-                          _selTargetAge = newValue;
-                          _refresh();
-                        }
-                      },
-                      keyboardType: TextInputType.number,
-                      controller: _selTargetValueController,
-                    ),
+              Container(height: 8),
+
+              filterWrapperContainer(
+                DkExpansionTile(
+                  title: const Text('Название'),
+                  borderColor: Colors.transparent,
+                  initiallyExpanded: true,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  trailing: InkWell(
+                      child: const Icon(Icons.clear),
+                      onTap: () {
+                        _selTitleController.clear();
+                        _refresh();
+                      }
                   ),
-
-                  Row(
-                    children: [
-                      Container(width: 16),
-
-                      Text(_packListResult!.targetAgeLow.toString()),
-
-                      Expanded(
-                        child: Slider(
-                          value: _selTargetAge.toDouble(),
-                          min: _packListResult!.targetAgeLow.toDouble(),
-                          max: _packListResult!.targetAgeHigh.toDouble(),
-                          onChanged: (value) {
-                            _selTargetAge = value.round();
-                            _selTargetValueController.text = _selTargetAge.toString();
-                            _refresh();
-                          },
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8, bottom: 8),
+                      child: TextField(
+                        controller: _selTitleController,
+                        decoration: const InputDecoration(
+                          labelText: 'Фильтр по наименованию',
                         ),
+                        onSubmitted: (value) {
+                          if (value != _selTitle) {
+                            _selTitle = value;
+                            _refresh();
+                          }
+                        },
                       ),
-
-                      Text(_packListResult!.targetAgeHigh.toString()),
-                    ],
-                  )
-                ],
+                    )
+                  ],
+                ),
               ),
 
-              _getCheckBoxListFilter(title: 'Автор', valueList: _packListResult!.authorList, selValueList: _selAuthorList),
-              _getCheckBoxListFilter(title: 'Теги', valueList: _packListResult!.tagList, selValueList: _selTagList),
+              Container(height: 8),
+
+              filterWrapperContainer(
+                DkExpansionTile(
+                  title: const Text('Возраст'),
+                  borderColor: Colors.transparent,
+                  initiallyExpanded: true,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  trailing: InkWell(
+                      child: const Icon(Icons.clear),
+                      onTap: () {
+                        _selTargetValueController.clear();
+                        _selTargetAge = null;
+                        _refresh();
+                      }
+                  ),
+                  children: [
+                    SizedBox( width: 60,
+                      child: TextField(
+                        textAlign: TextAlign.center,
+                        onSubmitted: (value) {
+                          final newValue = int.tryParse(value);
+                          if (newValue != _selTargetAge) {
+                            _selTargetAge = newValue;
+                            _refresh();
+                          }
+                        },
+                        keyboardType: TextInputType.number,
+                        controller: _selTargetValueController,
+
+                      ),
+                    ),
+
+                    Row(
+                      children: [
+                        Container(width: 16),
+
+                        Text(_packListResult!.targetAgeLow.toString()),
+
+                        Expanded(
+                          child: Slider(
+                            value: _selTargetAge?.toDouble()??0,
+                            min: _packListResult!.targetAgeLow.toDouble(),
+                            max: _packListResult!.targetAgeHigh.toDouble(),
+                            onChanged: (value) {
+                              _selTargetAge = value.round();
+                              _selTargetValueController.text = _selTargetAge.toString();
+                              _refresh();
+                            },
+                          ),
+                        ),
+
+                        Text(_packListResult!.targetAgeHigh.toString()),
+                      ],
+                    )
+                  ],
+                ),
+              ),
+
+              Container(height: 8),
+
+              filterWrapperContainer(
+                _getCheckBoxListFilter(title: 'Автор', valueList: _packListResult!.authorList, selValueList: _selAuthorList)
+              ),
+
+              Container(height: 8),
+
+              filterWrapperContainer(
+                _getCheckBoxListFilter(title: 'Теги', valueList: _packListResult!.tagList, selValueList: _selTagList)
+              ),
 
             ],
           ),
@@ -326,40 +380,76 @@ class _WebPackListState extends State<WebPackList> {
     );
   }
 
+  Widget filterWrapperContainer(Widget child) {
+    return Container(
+      padding: const EdgeInsets.only(right: 10),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(
+            color: Colors.white,
+          ),
+          borderRadius: const BorderRadius.all(Radius.circular(5))
+      ),
+
+      child: child,
+    );
+  }
+
   Widget _getCheckBoxListFilter ({
     required String title,
     required List<MapEntry<String, int>> valueList,
     required List<String> selValueList,
   }) {
-    return ExpansionTile(
+
+    final scrollController = ScrollController();
+
+    return DkExpansionTile(
       title: Text(title),
+      borderColor: Colors.transparent,
       initiallyExpanded: true,
+      controlAffinity: ListTileControlAffinity.leading,
+      trailing: InkWell(
+          child: const Icon(Icons.clear),
+          onTap: () {
+            selValueList.clear();
+            _refresh();
+          }
+      ),
       children: [
         LimitedBox(
           maxHeight: 200,
-          child: SingleChildScrollView(
-            child: Column(
-                children: valueList.map((value) {
-                  return Row(children: [
+          child: Scrollbar(
+            controller: scrollController,
+            thumbVisibility: true,
 
-                    Checkbox(
-                      value: selValueList.contains(value.key),
-                      onChanged: (bool? newMarkValue) {
-                        if (newMarkValue == null) return;
-                        if (!newMarkValue) {
-                          selValueList.remove(value.key);
-                        } else {
-                          selValueList.add(value.key);
-                        }
-                        _refresh();
-                      }
-                    ),
+            child: Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: SingleChildScrollView(
+                controller: scrollController,
+                child: Column(
+                    children: valueList.map((value) {
+                      return Row(children: [
 
-                    Text(value.key),
+                        Checkbox(
+                          value: selValueList.contains(value.key),
+                          onChanged: (bool? newMarkValue) {
+                            if (newMarkValue == null) return;
+                            if (!newMarkValue) {
+                              selValueList.remove(value.key);
+                            } else {
+                              selValueList.add(value.key);
+                            }
+                            _refresh();
+                          }
+                        ),
 
-                    Expanded(child: Text('${value.value}', textAlign: TextAlign.right))
-                  ]);
-                }).toList()
+                        Text(value.key),
+
+                        Expanded(child: Text('${value.value}', textAlign: TextAlign.right))
+                      ]);
+                    }).toList()
+                ),
+              ),
             ),
           ),
         )

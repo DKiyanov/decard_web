@@ -223,6 +223,7 @@ class DkExpansionTile extends StatefulWidget {
     this.expandedAlignment,
     this.childrenPadding,
     this.backgroundColor,
+    this.borderColor,
     this.collapsedBackgroundColor,
     this.textColor,
     this.collapsedTextColor,
@@ -279,6 +280,8 @@ class DkExpansionTile extends StatefulWidget {
   /// * [ExpansionTileTheme.of], which returns the nearest [ExpansionTileTheme]'s
   ///   [ExpansionTileThemeData].
   final Color? backgroundColor;
+
+  final Color? borderColor;
 
   /// When not null, defines the background color of tile when the sublist is collapsed.
   ///
@@ -580,7 +583,7 @@ class _DkExpansionTileState extends State<DkExpansionTile> with SingleTickerProv
     final ThemeData theme = Theme.of(context);
     final ExpansionTileThemeData expansionTileTheme = ExpansionTileTheme.of(context);
     final ColorScheme colorScheme = theme.colorScheme;
-    _borderColorTween.end = theme.dividerColor;
+    _borderColorTween.end = widget.borderColor ?? theme.dividerColor;
     _headerColorTween
       ..begin = widget.collapsedTextColor
           ?? expansionTileTheme.collapsedTextColor
