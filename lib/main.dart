@@ -1,10 +1,12 @@
 import 'package:decard_web/app_state.dart';
+import 'package:decard_web/own_pack_list.dart';
 import 'package:decard_web/pack_view.dart';
 import 'package:decard_web/page_not_found.dart';
 import 'package:decard_web/upload_file.dart';
 import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
 import 'package:url_strategy/url_strategy.dart';
+import 'child_list.dart';
 import 'login_email.dart';
 import 'login_page.dart';
 import 'pack_list.dart';
@@ -25,7 +27,14 @@ RouteMap _buildRouteMap(BuildContext context) {
     },
 
     routes: {
-      '/': (route) => NoAnimationPage(child: WebPackList(packInfoManager: appState.packInfoManager)),
+      '/': (route) {
+        if (appState.serverConnect.isLoggedIn) {
+          return const NoAnimationPage(child: ChildList());
+        }
+
+        return NoAnimationPage(child: WebPackList(packInfoManager: appState.packInfoManager));
+      },
+
       '/pack/:id': (route) => NoAnimationPage(child: PackView(
           cardController: appState.cardController,
           packId: int.parse(route.pathParameters['id']!)
@@ -48,6 +57,14 @@ RouteMap _buildRouteMap(BuildContext context) {
 
       '/view_pack_list': (route) => NoAnimationPage(
         child: WebPackList(packInfoManager: appState.packInfoManager),
+      ),
+
+      '/child_list': (route) => const NoAnimationPage(
+        child: ChildList(),
+      ),
+
+      '/own_pack_list': (route) => const NoAnimationPage(
+        child: OwnPackList(),
       ),
 
       '/upload_file': (route) => const NoAnimationPage(

@@ -23,6 +23,8 @@ class WebPackInfo {
   final String license       ;
   final int    targetAgeLow  ;
   final int    targetAgeHigh ;
+  final DateTime publicationMoment;
+  final int    starsCount    ;
 
   final tagList = <String>[];
 
@@ -38,6 +40,8 @@ class WebPackInfo {
     required this.license      ,
     required this.targetAgeLow ,
     required this.targetAgeHigh,
+    required this.publicationMoment ,
+    required this.starsCount   ,
   }) {
     final prevTagList = tags.split(',');
 
@@ -64,10 +68,13 @@ class WebPackListResult{
 }
 
 class WebPackFields {
-  static const String className  = 'DecardFileHead';
-  static const String packId     = 'packID';
-  static const String content    = 'Content';
-  static const String fileName   = 'FileName';
+  static const String className    = 'DecardFileHead';
+  static const String packId       = 'packID';
+  static const String content      = 'Content';
+  static const String fileName     = 'FileName';
+  static const String createdAt    = 'createdAt';
+  static const String publicationMoment = 'PublicationMoment';
+  static const String starsCount   = 'StarsCount';
 }
 
 class WebPackListManager {
@@ -92,6 +99,8 @@ class WebPackListManager {
         license       : parsePack.get<String>(DjfFile.license    )??'',
         targetAgeLow  : parsePack.get<int>(DjfFile.targetAgeLow  )??0,
         targetAgeHigh : parsePack.get<int>(DjfFile.targetAgeHigh )??100,
+        publicationMoment: parsePack.get<DateTime>(WebPackFields.publicationMoment)??parsePack.get<DateTime>(WebPackFields.createdAt)!,
+        starsCount    : parsePack.get<int>(WebPackFields.starsCount)??0,
       ));
     }
   }

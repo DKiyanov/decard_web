@@ -1,3 +1,4 @@
+import 'package:decard_web/app_state.dart';
 import 'package:flutter/material.dart';
 import 'package:decard_web/parse_pack_info.dart';
 import 'package:routemaster/routemaster.dart';
@@ -6,8 +7,9 @@ import 'common.dart';
 import 'dk_expansion_tile.dart';
 
 enum _SortMode {
+  title,
   starsCount,
-  dateLoad
+  publicationMoment
 }
 
 class WebPackList extends StatefulWidget {
@@ -113,7 +115,7 @@ class _WebPackListState extends State<WebPackList> {
     }
 
     if (_selTargetAge == null) {
-      _selTargetValueController.text = "";
+      _selTargetValueController.clear();
     } else {
       _selTargetValueController.text = _selTargetAge.toString();
     }
@@ -123,7 +125,17 @@ class _WebPackListState extends State<WebPackList> {
   }
 
   void _sortPackList() {
-    _packGuidList.sort((a, b) => a.value.first.title.compareTo(b.value.first.title));
+    if (_sortMode == _SortMode.title) {
+      _packGuidList.sort((a, b) => a.value.first.title.compareTo(b.value.first.title));
+    }
+
+    if (_sortMode == _SortMode.starsCount) {
+      _packGuidList.sort((a, b) => b.value.first.starsCount.compareTo(a.value.first.starsCount));
+    }
+
+    if (_sortMode == _SortMode.publicationMoment) {
+      _packGuidList.sort((a, b) => b.value.first.publicationMoment.compareTo(a.value.first.publicationMoment));
+    }
   }
 
   @override
@@ -161,12 +173,30 @@ class _WebPackListState extends State<WebPackList> {
           centerTitle: true,
           title: Text(TextConst.txtPackFileList),
           actions: [
-            ElevatedButton(
-                onPressed: () {
-                  Routemaster.of(context).push('/login', queryParameters: {'redirectTo': '/'});
-                },
-                child: Text(TextConst.txtEntry)
-            ),
+            if (!appState.serverConnect.isLoggedIn) ...[
+              ElevatedButton(
+                  onPressed: () {
+                    Routemaster.of(context).push('/login', queryParameters: {'redirectTo': '/'});
+                  },
+                  child: Text(TextConst.txtEntry)
+              ),
+            ],
+
+            if (appState.serverConnect.isLoggedIn) ...[
+              ElevatedButton(
+                  onPressed: () {
+                    Routemaster.of(context).replace('/child_list');
+                  },
+                  child: Text(TextConst.txtShowcase)
+              ),
+              ElevatedButton(
+                  onPressed: () {
+                    Routemaster.of(context).replace('/own_pack_list');
+                  },
+                  child: Text(TextConst.txtOwnPackList)
+              ),
+            ]
+
           ],
         ),
         body: _getBody(isMobile, drawerPanelWidth),
@@ -260,6 +290,8 @@ class _WebPackListState extends State<WebPackList> {
                           onChanged: (_SortMode? value){
                             if (value == null) return;
                             _sortMode = value;
+                            _sortPackList();
+                            setState(() {});
                           }
                       ),
                     )

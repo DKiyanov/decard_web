@@ -77,7 +77,7 @@ class TextConst{
   static String txtDownloadNewFiles = 'Загрузить новые файлы';
   static String txtNoCards = 'Нет карточек для показа';
   static String txtLastDownloadError = 'Ошибки последней завершонной загрузки';
-  static String txtManagement = 'Управление';
+  static String txtChildList = 'Дети';
   static String txtSelectFile = 'Выбор файлов';
   static String txtAvailableFiles = 'Доступные файлы';
   static String txtFileSources = 'Источники файлов';
@@ -215,8 +215,10 @@ class TextConst{
   static String txtInviteLoginHelp      = 'Получите код приглашения у родителя\nорганизатора группы';
   static String txtInviteKey      = 'Код приглашения';
 
-  static String txtEntry      = 'Войти';
-  static String txtUploadFile = 'Загрузить файлы';
+  static String txtEntry       = 'Войти';
+  static String txtShowcase    = 'Витрина';
+  static String txtOwnPackList = 'Пожитки';
+  static String txtUploadFile  = 'Загрузить файлы';
 }
 
 int dateToInt(DateTime date){
