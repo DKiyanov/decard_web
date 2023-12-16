@@ -1,4 +1,3 @@
-import 'package:decard_web/app_state.dart';
 import 'package:flutter/material.dart';
 import 'package:decard_web/parse_pack_info.dart';
 import 'package:routemaster/routemaster.dart';
@@ -13,8 +12,10 @@ enum _SortMode {
 }
 
 class WebPackList extends StatefulWidget {
+  final List<Widget>? actions;
+
   final WebPackListManager packInfoManager;
-  const WebPackList({required this.packInfoManager, Key? key}) : super(key: key);
+  const WebPackList({required this.packInfoManager, this.actions, Key? key}) : super(key: key);
 
   @override
   State<WebPackList> createState() => _WebPackListState();
@@ -172,32 +173,7 @@ class _WebPackListState extends State<WebPackList> {
         appBar: AppBar(
           centerTitle: true,
           title: Text(TextConst.txtPackFileList),
-          actions: [
-            if (!appState.serverConnect.isLoggedIn) ...[
-              ElevatedButton(
-                  onPressed: () {
-                    Routemaster.of(context).push('/login', queryParameters: {'redirectTo': '/'});
-                  },
-                  child: Text(TextConst.txtEntry)
-              ),
-            ],
-
-            if (appState.serverConnect.isLoggedIn) ...[
-              ElevatedButton(
-                  onPressed: () {
-                    Routemaster.of(context).replace('/child_list');
-                  },
-                  child: Text(TextConst.txtShowcase)
-              ),
-              ElevatedButton(
-                  onPressed: () {
-                    Routemaster.of(context).replace('/own_pack_list');
-                  },
-                  child: Text(TextConst.txtOwnPackList)
-              ),
-            ]
-
-          ],
+          actions: widget.actions,
         ),
         body: _getBody(isMobile, drawerPanelWidth),
       );

@@ -1,4 +1,5 @@
 import 'package:decard_web/app_state.dart';
+import 'package:decard_web/home_page.dart';
 import 'package:decard_web/own_pack_list.dart';
 import 'package:decard_web/pack_view.dart';
 import 'package:decard_web/page_not_found.dart';
@@ -7,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'child_list.dart';
+import 'pack_editor.dart';
 import 'login_email.dart';
 import 'login_page.dart';
 import 'pack_list.dart';
@@ -29,10 +31,40 @@ RouteMap _buildRouteMap(BuildContext context) {
     routes: {
       '/': (route) {
         if (appState.serverConnect.isLoggedIn) {
-          return const NoAnimationPage(child: ChildList());
+          return TabPage(
+            child: const HomePage(),
+            paths: const [HomePage.tabShowcase, HomePage.tabChildren, HomePage.tabPossessions],
+            pageBuilder: (child) => NoAnimationPage(child: child),
+          );
         }
 
         return NoAnimationPage(child: WebPackList(packInfoManager: appState.packInfoManager));
+      },
+
+      '/${HomePage.tabShowcase}': (route) {
+        return const NoAnimationPage(
+          child: HomePageTabView(tabKey : HomePage.tabShowcase),
+        );
+      },
+
+      '/${HomePage.tabChildren}': (route) {
+        return const NoAnimationPage(
+          child: HomePageTabView(tabKey : HomePage.tabChildren),
+        );
+      },
+
+      '/${HomePage.tabPossessions}': (route) {
+        return const NoAnimationPage(
+          child: HomePageTabView(tabKey : HomePage.tabPossessions),
+        );
+      },
+
+      '/pack_editor': (route) {
+        return TabPage(
+          child: const PackEditor(),
+          paths: const [PackEditor.tabHead, PackEditor.tabStyles, PackEditor.tabCards, PackEditor.tabSources],
+          pageBuilder: (child) => NoAnimationPage(child: child),
+        );
       },
 
       '/pack/:id': (route) => NoAnimationPage(child: PackView(

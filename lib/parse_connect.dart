@@ -39,7 +39,7 @@ class ParseConnect {
         coreStore: await CoreStoreSharedPrefsImp.getInstance(),
     );
 
-    //_user = await ParseUser.currentUser();
+    _user = await ParseUser.currentUser();
 
     if (_user == null) {
       final parseUser = ParseUser.forQuery();
