@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
 
+import 'pack_cards_ui.dart';
+import 'pack_head_ui.dart';
+import 'pack_sources_ui.dart';
+import 'pack_styles_ui.dart';
+
 class PackEditor extends StatelessWidget {
   static const String tabHead    = 'head';
   static const String tabStyles  = 'styles';
@@ -63,16 +68,16 @@ class PackEditorTabView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (tabKey == PackEditor.tabHead) {
-      return Container(); //WebPackList();
+      return const PackHeadUI();
     }
     if (tabKey == PackEditor.tabStyles) {
-      return Container(); //const ChildList();
+      return const PackStylesUI();
     }
     if (tabKey == PackEditor.tabCards) {
-      return Container(); //const OwnPackList();
+      return const PackCardsUI();
     }
     if (tabKey == PackEditor.tabSources) {
-      return Container(); //const OwnPackList();
+      return const PackSourcesUI();
     }
 
     return Container();

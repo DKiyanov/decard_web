@@ -2,7 +2,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
-
+import 'package:simple_events/simple_events.dart' as event;
 import 'common.dart';
 
 class ParseConnect {
@@ -26,6 +26,8 @@ class ParseConnect {
 
   String _lastError = '';
   String get lastError => _lastError;
+
+  final onLoggedInChange = event.SimpleEvent();
 
   Future<void> init() async {
     await _init();
@@ -77,6 +79,7 @@ class ParseConnect {
 
     if (result){
       _loginId = loginID;
+      onLoggedInChange.send();
       return true;
     } else {
       _lastError = TextConst.errFailedLogin;
@@ -107,6 +110,7 @@ class ParseConnect {
       _user = await ParseUser.currentUser();
       await _user!.fetch();
       _loginId = _user?.username??'';
+      onLoggedInChange.send();
       return true;
     } else {
       _lastError = TextConst.errFailedLogin;
@@ -146,6 +150,7 @@ class ParseConnect {
       _user = await ParseUser.currentUser();
       await _user!.fetch();
       _loginId = _user?.username??'';
+      onLoggedInChange.send();
       return true;
     } else {
       _lastError = TextConst.errFailedLogin;

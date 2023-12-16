@@ -1,17 +1,17 @@
 import 'package:decard_web/app_state.dart';
 import 'package:decard_web/home_page.dart';
-import 'package:decard_web/own_pack_list.dart';
 import 'package:decard_web/pack_view.dart';
 import 'package:decard_web/page_not_found.dart';
+import 'package:decard_web/showcase_out.dart';
 import 'package:decard_web/upload_file.dart';
 import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
 import 'package:url_strategy/url_strategy.dart';
-import 'child_list.dart';
-import 'pack_editor.dart';
+import 'pack_editor/pack_editor.dart';
 import 'login_email.dart';
 import 'login_page.dart';
 import 'pack_list.dart';
+import 'package:simple_events/simple_events.dart' as event;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +20,43 @@ void main() async {
   runApp(const DecardWebApp());
 }
 
-RouteMap _buildRouteMap(BuildContext context) {
+RouteMap _buildRouteMapOut(BuildContext context) {
+  return RouteMap(
+    onUnknownRoute: (path) {
+      return const NoAnimationPage(
+        child: PageNotFound(),
+      );
+    },
+
+    routes: {
+      '/': (route) {
+        return const NoAnimationPage(child: ShowcaseOut());
+      },
+
+      '/pack/:id': (route) => NoAnimationPage(child: PackView(
+          cardController: appState.cardController,
+          packId: int.parse(route.pathParameters['id']!)
+      )),
+
+      '/login': (route) => NoAnimationPage(
+            child: LoginPage(
+              redirectTo: route.queryParameters['redirectTo'],
+            ),
+          ),
+
+      '/login/login_email': (route) => NoAnimationPage(
+        child: LoginEmail(
+          connect: appState.serverConnect,
+          onLoginOk: (context){
+            Routemaster.of(context).push(route.queryParameters['redirectTo']??'/');
+          },
+        ),
+      ),
+    },
+  );
+}
+
+RouteMap _buildRouteMapIn(BuildContext context) {
   return RouteMap(
     onUnknownRoute: (path) {
       return const NoAnimationPage(
@@ -67,43 +103,47 @@ RouteMap _buildRouteMap(BuildContext context) {
         );
       },
 
+      '/pack_editor/${PackEditor.tabHead}': (route) {
+        return const NoAnimationPage(
+          child: PackEditorTabView(tabKey : PackEditor.tabHead),
+        );
+      },
+
+      '/pack_editor/${PackEditor.tabStyles}': (route) {
+        return const NoAnimationPage(
+          child: PackEditorTabView(tabKey : PackEditor.tabStyles),
+        );
+      },
+
+      '/pack_editor/${PackEditor.tabCards}': (route) {
+        return const NoAnimationPage(
+          child: PackEditorTabView(tabKey : PackEditor.tabCards),
+        );
+      },
+
+      '/pack_editor/${PackEditor.tabSources}': (route) {
+        return const NoAnimationPage(
+          child: PackEditorTabView(tabKey : PackEditor.tabSources),
+        );
+      },
+
       '/pack/:id': (route) => NoAnimationPage(child: PackView(
           cardController: appState.cardController,
           packId: int.parse(route.pathParameters['id']!)
       )),
-
-      '/login': (route) => NoAnimationPage(
-            child: LoginPage(
-              redirectTo: route.queryParameters['redirectTo'],
-            ),
-          ),
-
-      '/login/login_email': (route) => NoAnimationPage(
-        child: LoginEmail(
-          connect: appState.serverConnect,
-          onLoginOk: (context){
-            Routemaster.of(context).push(route.queryParameters['redirectTo']??'/');
-          },
-        ),
-      ),
-
-      '/view_pack_list': (route) => NoAnimationPage(
-        child: WebPackList(packInfoManager: appState.packInfoManager),
-      ),
-
-      '/child_list': (route) => const NoAnimationPage(
-        child: ChildList(),
-      ),
-
-      '/own_pack_list': (route) => const NoAnimationPage(
-        child: OwnPackList(),
-      ),
 
       '/upload_file': (route) => const NoAnimationPage(
         child: UploadFile(),
       ),
     },
   );
+}
+
+RouteMap _buildRouteMap(BuildContext context) {
+  if (appState.serverConnect.isLoggedIn) {
+    return _buildRouteMapIn(context);
+  }
+  return _buildRouteMapOut(context);
 }
 
 class NoAnimationPage<T> extends TransitionPage<T> {
@@ -115,13 +155,34 @@ class NoAnimationPage<T> extends TransitionPage<T> {
         );
 }
 
-class DecardWebApp extends StatelessWidget {
+class DecardWebApp extends StatefulWidget {
   final RouteInformationProvider? routeInformationProvider;
 
   const DecardWebApp({
     Key? key,
     this.routeInformationProvider,
   }) : super(key: key);
+
+  @override
+  State<DecardWebApp> createState() => _DecardWebAppState();
+}
+
+class _DecardWebAppState extends State<DecardWebApp> {
+  event.Listener? onLoggedInChangeListener;
+
+  @override
+  void initState() {
+    super.initState();
+    onLoggedInChangeListener = appState.serverConnect.onLoggedInChange.subscribe((listener, data) {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    onLoggedInChangeListener?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -132,7 +193,7 @@ class DecardWebApp extends StatelessWidget {
         platform: TargetPlatform.android,
       ),
       routeInformationParser: const RoutemasterParser(),
-      routeInformationProvider: routeInformationProvider,
+      routeInformationProvider: widget.routeInformationProvider,
       routerDelegate: RoutemasterDelegate(
         routesBuilder: (context) {
            return _buildRouteMap(context);

@@ -1,4 +1,6 @@
+import 'package:decard_web/simple_menu.dart';
 import 'package:flutter/material.dart';
+import 'package:routemaster/routemaster.dart';
 import 'common.dart';
 
 class OwnPackList extends StatefulWidget {
@@ -16,6 +18,14 @@ class _OwnPackListState extends State<OwnPackList> {
       appBar: AppBar(
         centerTitle: true,
         title: Text(TextConst.txtOwnPackList),
+        leading: popupMenu(icon: const Icon(Icons.menu), menuItemList: [
+          SimpleMenuItem(
+              child: const Text('Создать новый пакет'),
+              onPress: () {
+                Routemaster.of(context).push('/pack_editor');
+              }
+          )
+        ]),
         actions: widget.actions
       ),
       body: const Center(child: Text('Пожитки')),
