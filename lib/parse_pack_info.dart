@@ -177,7 +177,9 @@ class WebPackListManager {
   }
 }
 
-Future<int?> loadPack(DbSource dbSource, int packId) async {
+typedef LoadPackAddInfoCallback = Function(String jsonStr, String jsonUrl);
+
+Future<int?> loadPack(DbSource dbSource, int packId, {LoadPackAddInfoCallback? addInfoCallback}) async {
   Map<String, String>? fileUrlMap;
 
   if (kIsWeb) {
@@ -188,17 +190,12 @@ Future<int?> loadPack(DbSource dbSource, int packId) async {
 
   if (fileUrlMap == null) return null;
 
-  final jsonFileID = await loadPackEx(dbSource, packId, fileUrlMap);
-  return jsonFileID;
-}
-
-Future<int?> loadPackEx(DbSource dbSource, int packId, Map<String, String> fileUrlMap) async {
   String? jsonUrl;
 
   for (var fileUrlMapEntry in fileUrlMap.entries) {
-
     if (fileUrlMapEntry.key.toLowerCase().endsWith(DjfFileExtension.json)) {
       jsonUrl = fileUrlMapEntry.value;
+      break;
     }
   }
 
@@ -209,6 +206,12 @@ Future<int?> loadPackEx(DbSource dbSource, int packId, Map<String, String> fileU
   if (jsonStr == null) return null;
 
   final jsonFileID = await dbSource.loadJson(sourceFileID: '$packId', jsonStr: jsonStr, fileUrlMap: fileUrlMap);
+
+  if (jsonFileID == null) return null;
+
+  if (addInfoCallback != null) {
+    addInfoCallback.call(jsonStr, jsonUrl);
+  }
 
   return jsonFileID;
 }

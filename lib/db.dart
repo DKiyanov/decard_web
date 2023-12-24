@@ -256,5 +256,6 @@ abstract class DbSource {
     await tabCardStyle.deleteJsonFile(jsonFileID);
     await tabQualityLevel.deleteJsonFile(jsonFileID);
     await tabTemplateSource.deleteJsonFile(jsonFileID);
+    await tabFileUrlMap.deleteJsonFile(jsonFileID);
   }
 }

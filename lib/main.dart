@@ -52,6 +52,7 @@ RouteMap _buildRouteMapOut(BuildContext context) {
           },
         ),
       ),
+
     },
   );
 }
@@ -95,37 +96,9 @@ RouteMap _buildRouteMapIn(BuildContext context) {
         );
       },
 
-      '/pack_editor': (route) {
-        return TabPage(
-          child: const PackEditor(),
-          paths: const [PackEditor.tabHead, PackEditor.tabStyles, PackEditor.tabCards, PackEditor.tabSources],
-          pageBuilder: (child) => NoAnimationPage(child: child),
-        );
-      },
-
-      '/pack_editor/${PackEditor.tabHead}': (route) {
-        return const NoAnimationPage(
-          child: PackEditorTabView(tabKey : PackEditor.tabHead),
-        );
-      },
-
-      '/pack_editor/${PackEditor.tabStyles}': (route) {
-        return const NoAnimationPage(
-          child: PackEditorTabView(tabKey : PackEditor.tabStyles),
-        );
-      },
-
-      '/pack_editor/${PackEditor.tabCards}': (route) {
-        return const NoAnimationPage(
-          child: PackEditorTabView(tabKey : PackEditor.tabCards),
-        );
-      },
-
-      '/pack_editor/${PackEditor.tabSources}': (route) {
-        return const NoAnimationPage(
-          child: PackEditorTabView(tabKey : PackEditor.tabSources),
-        );
-      },
+      '/pack_editor/:id': (route) => NoAnimationPage(child: PackEditor(
+          packId: int.parse(route.pathParameters['id']!)
+      )),
 
       '/pack/:id': (route) => NoAnimationPage(child: PackView(
           cardController: appState.cardController,

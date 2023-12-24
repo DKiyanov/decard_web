@@ -1,3 +1,4 @@
+import 'package:decard_web/app_state.dart';
 import 'package:flutter/material.dart';
 import 'package:decard_web/parse_pack_info.dart';
 import 'package:routemaster/routemaster.dart';
@@ -163,7 +164,7 @@ class _WebPackListState extends State<WebPackList> {
       if (isMobile) {
         drawer = Drawer(
           child: Container(
-            child: _getFilerPanel(),
+            child: _getFilterPanel(),
           ),
         );
       }
@@ -186,7 +187,7 @@ class _WebPackListState extends State<WebPackList> {
     }
 
     return Row(children: [
-      _getFilerPanel(width),
+      _getFilterPanel(width),
       Expanded(child: _getPackList())
     ]);
   }
@@ -196,9 +197,25 @@ class _WebPackListState extends State<WebPackList> {
         children: _packGuidList.map((guidPack) {
           final packInfo = guidPack.value.first;
 
+          Widget? title;
+
+          if (appState.serverConnect.isLoggedIn) {
+            title = Row(children: [
+              Expanded(child: Text(packInfo.title)),
+              InkWell(
+                  child: const Icon(Icons.view_column_outlined),
+                  onTap: (){
+                    Routemaster.of(context).push('/pack_editor/${packInfo.packId}');
+                  }
+              )
+            ]);
+          } else {
+            title = Text(packInfo.title);
+          }
+
           if (guidPack.value.length == 1) {
             return ListTile(
-              title: Text(packInfo.title),
+              title: title,
               subtitle: _getSubtitle(packInfo),
               onTap: (){
                 Routemaster.of(context).push('/pack/${packInfo.packId}');
@@ -218,8 +235,10 @@ class _WebPackListState extends State<WebPackList> {
             ));
           }
 
+
+
           return DkExpansionTile(
-            title: Text(packInfo.title),
+            title: title,
             subtitle: Text(packInfo.tags),
             onTap: (){
               Routemaster.of(context).push('/pack/${packInfo.packId}');
@@ -235,7 +254,7 @@ class _WebPackListState extends State<WebPackList> {
     return Text(subtitle);
   }
 
-  Widget _getFilerPanel([double? width]) {
+  Widget _getFilterPanel([double? width]) {
     return Container(
       width: width,
       color: _filterPanelColor,

@@ -212,7 +212,7 @@ class _PackViewState extends State<PackView> {
       return CardWidget(
         key        : ValueKey(card),
         card       : card,
-        cardParam   : cardParam,
+        cardParam  : cardParam,
         controller : cardViewController,
         whenResultChild: Row(
           children: [
