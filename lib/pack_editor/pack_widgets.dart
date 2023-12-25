@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:simple_events/simple_events.dart' as event;
-
+import '../db.dart';
 import '../dk_expansion_tile.dart';
 import '../simple_menu.dart';
 
@@ -137,8 +136,9 @@ class JsonExpansionFieldGroup extends StatefulWidget {
 class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
   String _title = '';
   late FieldDesc _titleFieldDesc;
-  final _titleKey = <String>[];
-  final _onTitleChange = event.SimpleEvent();
+  final _titleKeyList = <String>[];
+
+  final _titleWidgetKey = GlobalKey();
 
   @override
   void initState() {
@@ -171,8 +171,9 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
 
     children.add(Container(height: 8));
 
-    final titleWidget = event.EventReceiverWidget(
-      builder: (_) {
+    final titleWidget = StatefulBuilder(
+      key:  _titleWidgetKey,
+      builder: (context,  setState) {
         Widget? prevTitleWidget;
         if (_title.isNotEmpty) {
           prevTitleWidget = Text(_title);
@@ -190,7 +191,6 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
         }
         return titleWidget;
       },
-      events: [_onTitleChange],
     );
 
     Widget? subTitle;
@@ -218,7 +218,7 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
     if (_title != newTitle) {
       _title = newTitle;
       widget.ownerDelegate?.title = _title;
-      _onTitleChange.send();
+      _titleWidgetKey.currentState?.setState(() {});
     }
   }
 
@@ -226,13 +226,13 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
     final regexp = RegExp(r'<@(.*?)@>');
     final matches = regexp.allMatches(_titleFieldDesc.title);
     for (var match in matches) {
-      _titleKey.add(match.group(1)!);
+      _titleKeyList.add(match.group(1)!);
     }
   }
 
   String _buildTitle() {
     String title = _titleFieldDesc.title;
-    for (var key in _titleKey) {
+    for (var key in _titleKeyList) {
       title = title.replaceAll('<@$key@>', (widget.json[key]??'').toString() );
     }
     return title;
@@ -362,11 +362,14 @@ class _JsonTextFieldState extends State<JsonTextField> {
   bool _isEmpty = false;
   String _errorText = '';
 
+  String _prevValue = '';
+
   @override
   void initState() {
     super.initState();
 
-    controller.text = widget.json[widget.fieldName]?.toString()??widget.defaultValue;
+    _prevValue = widget.json[widget.fieldName]?.toString()??widget.defaultValue;
+    controller.text = _prevValue;
     _isEmpty = controller.text.isEmpty;
     _errorText = widget.onValidate?.call(controller.text)??"";
 
@@ -428,6 +431,9 @@ class _JsonTextFieldState extends State<JsonTextField> {
   }
 
   void onChange(String value) {
+    if (_prevValue == value) return;
+    _prevValue = value;
+
     widget.json[widget.fieldName] = getJsonValue(widget.fieldType, value);
     JsonWidgetChangeListener.of(context)?.setChanged();
 
@@ -1330,8 +1336,10 @@ Widget suffixDropdown(TextEditingController controller, List<String> values) {
 class JsonOwner extends StatefulWidget {
   final Map<String, dynamic> json;
   final Widget child;
+  final DbSource dbSource;
+  final VoidCallback onDataChanged;
 
-  const JsonOwner({required this.json, required this.child, Key? key}) : super(key: key);
+  const JsonOwner({required this.json, required this.child, required this.dbSource, required this.onDataChanged, Key? key}) : super(key: key);
 
   @override
   State<JsonOwner> createState() => JsonOwnerState();
@@ -1342,8 +1350,6 @@ class JsonOwner extends StatefulWidget {
 }
 
 class JsonOwnerState extends State<JsonOwner> {
-  bool dataChanged = false;
-
   @override
   Widget build(BuildContext context) {
     return JsonWidgetChangeListener(
@@ -1381,7 +1387,7 @@ class JsonOwnerState extends State<JsonOwner> {
   }
 
   void onChange() {
-    dataChanged = true;
+    widget.onDataChanged.call();
   }
 }
 

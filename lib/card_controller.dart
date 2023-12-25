@@ -29,6 +29,13 @@ class CardController {
   final onChange = event.SimpleEvent();
   final onAddEarn = event.SimpleEvent<double>();
 
+  void setNoCard() {
+    _card = null;
+    _cardParam = null;
+    _cardViewController = null;
+    onChange.send();
+  }
+
   /// Sets the current card data
   Future<void> setCard(int jsonFileID, int cardID, {int? bodyNum, CardSetBody setBody = CardSetBody.random}) async {
     _card = await CardData.create(dbSource, jsonFileID, cardID, bodyNum: bodyNum, setBody: setBody);

@@ -229,8 +229,8 @@ abstract class DbSource {
     _loader = DataLoader(this);
   }
 
-  Future<int?> loadJson({required String sourceFileID, required String jsonStr, required Map<String, String> fileUrlMap}) async {
-    final jsonFileID = await _loader.loadJson(sourceFileID, jsonStr, (guid, version) async {
+  Future<int?> loadJson({required String sourceFileID, required Map<String, dynamic> jsonMap, required Map<String, String> fileUrlMap}) async {
+    final jsonFileID = await _loader.loadJson(sourceFileID, jsonMap, (guid, version) async {
       return true;
     });
 

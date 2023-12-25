@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:decard_web/db.dart';
@@ -177,7 +178,7 @@ class WebPackListManager {
   }
 }
 
-typedef LoadPackAddInfoCallback = Function(String jsonStr, String jsonUrl);
+typedef LoadPackAddInfoCallback = Function(String jsonStr, String jsonUrl, Map<String, String> fileUrlMap);
 
 Future<int?> loadPack(DbSource dbSource, int packId, {LoadPackAddInfoCallback? addInfoCallback}) async {
   Map<String, String>? fileUrlMap;
@@ -205,12 +206,14 @@ Future<int?> loadPack(DbSource dbSource, int packId, {LoadPackAddInfoCallback? a
 
   if (jsonStr == null) return null;
 
-  final jsonFileID = await dbSource.loadJson(sourceFileID: '$packId', jsonStr: jsonStr, fileUrlMap: fileUrlMap);
+  final jsonMap = jsonDecode(jsonStr);
+
+  final jsonFileID = await dbSource.loadJson(sourceFileID: '$packId', jsonMap: jsonMap, fileUrlMap: fileUrlMap);
 
   if (jsonFileID == null) return null;
 
   if (addInfoCallback != null) {
-    addInfoCallback.call(jsonStr, jsonUrl);
+    addInfoCallback.call(jsonStr, jsonUrl, fileUrlMap);
   }
 
   return jsonFileID;

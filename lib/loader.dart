@@ -26,21 +26,21 @@ class DataLoader {
 
   DataLoader(this.dbSource);
 
-  Future<int?> loadJson(String sourceFileID, String jsonStr, CheckCanLoadFile? checkCanLoadFile) async {
+  Future<int?> loadJson(String sourceFileID, Map<String, dynamic> jsonMap, CheckCanLoadFile? checkCanLoadFile) async {
     final jsonFileRow = await dbSource.tabJsonFile.getRowBySourceID(sourceFileID: sourceFileID);
     if (jsonFileRow != null) {
       return jsonFileRow[TabJsonFile.kJsonFileID];
     }
 
-    final json = jsonDecode(jsonStr);
+//    final jsonMap = jsonDecode(jsonStr);
 
-    final String guid = json[TabJsonFile.kGuid]??'';
+    final String guid = jsonMap[TabJsonFile.kGuid]??'';
     if (guid.isEmpty) {
       errorList.add('filed ${TabJsonFile.kGuid} not found');
       return null;
     }
 
-    final int fileVersion = json[TabJsonFile.kVersion]??0;
+    final int fileVersion = jsonMap[TabJsonFile.kVersion]??0;
 
     if (checkCanLoadFile != null) {
       if (! await checkCanLoadFile.call(guid, fileVersion)) {
@@ -48,9 +48,9 @@ class DataLoader {
       }
     }
 
-    final jsonFileID = await dbSource.tabJsonFile.insertRow(sourceFileID, json);
+    final jsonFileID = await dbSource.tabJsonFile.insertRow(sourceFileID, jsonMap);
 
-    final styleList = (json[DjfFile.cardStyleList]) as List;
+    final styleList = (jsonMap[DjfFile.cardStyleList]) as List;
     for (Map<String, dynamic> cardStyle in styleList) {
       await dbSource.tabCardStyle.insertRow(
         jsonFileID   : jsonFileID,
@@ -59,7 +59,7 @@ class DataLoader {
       );
     }
 
-    final qualityLevelList = (json[DjfFile.qualityLevelList]) as List;
+    final qualityLevelList = (jsonMap[DjfFile.qualityLevelList]) as List;
     for (Map<String, dynamic> qualityLevel in qualityLevelList) {
       await dbSource.tabQualityLevel.insertRow(
           jsonFileID   : jsonFileID,
@@ -71,13 +71,13 @@ class DataLoader {
 
     final cardKeyList = <String>[];
 
-    final templateList = (json[DjfFile.templateList]) as List?;
-    final templatesSources = (json[DjfFile.templatesSources]) as List?;
+    final templateList = (jsonMap[DjfFile.templateList]) as List?;
+    final templatesSources = (jsonMap[DjfFile.templatesSources]) as List?;
     if (templateList != null && templatesSources != null) {
       await _processTemplateList(jsonFileID: jsonFileID, templateList : templateList, sourceList: templatesSources, cardKeyList : cardKeyList);
     }
 
-    final cardList = (json[DjfFile.cardList]) as List?;
+    final cardList = (jsonMap[DjfFile.cardList]) as List?;
     if (cardList != null) {
       await _processCardList(jsonFileID: jsonFileID, cardList : cardList, cardKeyList : cardKeyList);
     }

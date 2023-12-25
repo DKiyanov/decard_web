@@ -10,16 +10,16 @@ class MemDbRow{
 }
 
 class MemDB{
-  final rowList = <MemDbRow>[];
+  final _rowList = <MemDbRow>[];
 
   insertRow(int jsonFileID, String tabName, dynamic key, Map<String, dynamic> row) {
-    rowList.add(MemDbRow(jsonFileID, tabName, key, row));
+    _rowList.add(MemDbRow(jsonFileID, tabName, key, row));
   }
 
   List<Map<String, dynamic>> getTabRows(String tabName, {dynamic key, Map<String, dynamic>? filter}) {
     final result = <Map<String, dynamic>>[];
 
-    for (var dbRow in rowList) {
+    for (var dbRow in _rowList) {
       if (dbRow.tabName == tabName) {
         if (key != null && dbRow.key != key) continue;
 
@@ -45,7 +45,7 @@ class MemDB{
   List<Map<String, dynamic>> getRows(int jsonFileID, String tabName, {dynamic key, Map<String, dynamic>? filter}) {
     final result = <Map<String, dynamic>>[];
 
-    for (var dbRow in rowList) {
+    for (var dbRow in _rowList) {
       if (dbRow.jsonFileID == jsonFileID && dbRow.tabName == tabName) {
         if (key != null && dbRow.key != key) continue;
 
@@ -69,7 +69,7 @@ class MemDB{
   }
 
   Map<String, dynamic>? getRow(int jsonFileID, String tabName, dynamic key) {
-    for (var dbRow in rowList) {
+    for (var dbRow in _rowList) {
       if (dbRow.jsonFileID == jsonFileID && dbRow.tabName == tabName && dbRow.key == key) {
         return dbRow.row;
       }
@@ -79,7 +79,11 @@ class MemDB{
   }
 
   void deleteRows(int jsonFileID, String tabName){
-    rowList.removeWhere((dbRow) => dbRow.jsonFileID == jsonFileID && dbRow.tabName == tabName);
+    _rowList.removeWhere((dbRow) => dbRow.jsonFileID == jsonFileID && dbRow.tabName == tabName);
+  }
+
+  void clearDb() {
+    _rowList.clear();
   }
 }
 

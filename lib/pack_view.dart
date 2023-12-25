@@ -49,7 +49,7 @@ class _PackViewState extends State<PackView> {
     _jsonFileID = await loadPack(appState.dbSource, widget.packId);
 
     _cardNavigatorData = CardNavigatorData(appState.dbSource);
-    await _cardNavigatorData.init();
+    await _cardNavigatorData.setData();
 
     final card = _cardNavigatorData.cardList.firstWhere((card) => card.jsonFileID == _jsonFileID);
 

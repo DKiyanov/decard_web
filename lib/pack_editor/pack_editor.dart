@@ -9,7 +9,9 @@ import '../card_navigator.dart';
 import '../card_widget.dart';
 import '../common.dart';
 import '../db_mem.dart';
+import '../decardj.dart';
 import '../parse_pack_info.dart';
+import 'pack_file_source.dart';
 import 'pack_head_widget.dart';
 import 'pack_quality_level_widget.dart';
 import 'pack_style_widget.dart';
@@ -25,22 +27,35 @@ class PackEditor extends StatefulWidget {
   State<PackEditor> createState() => _PackEditorState();
 }
 
-class _PackEditorState extends State<PackEditor> with SingleTickerProviderStateMixin {
+class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   bool _isStarting = true;
 
   late DbSourceMem  _dbSource;
   late CardController _cardController;
-  late int? _jsonFileID;
+  int? _jsonFileID;
 
   late CardNavigatorData _cardNavigatorData;
 
-  late String _packJsonUrl;
+  late String packJsonUrl;
   late Map<String, dynamic> _packJson;
+  late Map<String, String> _fileUrlMap;
+
   late Map<String, FieldDesc> _descMap;
 
   late TabController _editorTabController;
+  late TabController _rightTabController;
 
-  final pagePadding = const EdgeInsets.only(left: 10, right: 20);
+  final _headScrollController   = ScrollController();
+  final _stylesScrollController = ScrollController();
+  final _cardsScrollController  = ScrollController();
+
+  final _pagePadding = const EdgeInsets.only(left: 10, right: 20);
+
+  bool _dataChanged = false;
+  final _dataChangedButtonKey = GlobalKey();
+
+  final _packTitleKey = GlobalKey();
+  String _packTitle = '';
 
   @override
   void initState() {
@@ -52,17 +67,27 @@ class _PackEditorState extends State<PackEditor> with SingleTickerProviderStateM
       vsync: this,
     );
 
+    _rightTabController = TabController(
+      initialIndex: 0,
+      length: 3,
+      vsync: this,
+    );
+
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _starting();
     });
   }
 
   void _starting() async {
+    _descMap = loadDescFromMap(jsonDecode(descJsonStr));
+
     _dbSource = DbSourceMem.create();
     _cardController = CardController(dbSource: _dbSource);
-    _jsonFileID = await loadPack(_dbSource, widget.packId, addInfoCallback: (jsonStr, jsonUrl){
-      _packJsonUrl = jsonUrl;
+    _jsonFileID = await loadPack(_dbSource, widget.packId, addInfoCallback: (jsonStr, jsonUrl, fileUrlMap){
+      packJsonUrl = jsonUrl;
       _packJson    = jsonDecode(jsonStr);
+      _fileUrlMap  = fileUrlMap;
     });
 
     if (_jsonFileID == null) {
@@ -70,10 +95,10 @@ class _PackEditorState extends State<PackEditor> with SingleTickerProviderStateM
       return;
     }
 
-    _descMap = loadDescFromMap(jsonDecode(descJsonStr));
+    _setEditorTitle();
 
     _cardNavigatorData = CardNavigatorData(_dbSource);
-    await _cardNavigatorData.init();
+    await _cardNavigatorData.setData();
 
     final card = _cardNavigatorData.cardList.firstWhereOrNull((card) => card.jsonFileID == _jsonFileID);
 
@@ -88,8 +113,48 @@ class _PackEditorState extends State<PackEditor> with SingleTickerProviderStateM
 
   @override
   void dispose() {
+    _headScrollController.dispose();
+
+    _stylesScrollController.dispose();
+    _cardsScrollController.dispose();
     _editorTabController.dispose();
+
     super.dispose();
+  }
+
+  void _refresh() async {
+    final cardKey = _cardController.card?.head.cardKey;
+
+    _dbSource.db.clearDb();
+   _jsonFileID = await _dbSource.loadJson(sourceFileID: '${widget.packId}', jsonMap: _packJson, fileUrlMap: _fileUrlMap);
+
+    await _cardNavigatorData.setData();
+
+    await _setCard(cardKey);
+
+    Future.delayed(const Duration(milliseconds: 100), (){
+      _cardController.onChange.send();
+    });
+
+    _setDataChanged(false);
+  }
+
+  Future<void> _setCard(String? cardKey) async {
+    if (cardKey != null) {
+      final cardHead = _cardNavigatorData.cardList.firstWhereOrNull((cardHead) => cardHead.cardKey == cardKey);
+      if (cardHead != null) {
+        await _cardController.setCard(_jsonFileID!, cardHead.cardID);
+        return;
+      }
+    }
+
+    if (_cardNavigatorData.cardList.isNotEmpty) {
+      final cardHead = _cardNavigatorData.cardList.first;
+      await _cardController.setCard(_jsonFileID!, cardHead.cardID);
+      return;
+    }
+
+    _cardController.setNoCard();
   }
 
   @override
@@ -106,8 +171,27 @@ class _PackEditorState extends State<PackEditor> with SingleTickerProviderStateM
 
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
-        title: const Text('Editor'),
+
+        title: StatefulBuilder(
+          key: _packTitleKey,
+          builder: (context, setState) {
+            return Text('Редактирование пакета: $_packTitle');
+          }
+        ),
+
+        actions: [
+          StatefulBuilder(
+            key: _dataChangedButtonKey,
+            builder: (context, setState) {
+              return IconButton(
+                onPressed: !_dataChanged? null : (){
+                  _refresh();
+                },
+                icon: Icon(Icons.refresh, color: _dataChanged? Colors.red : Colors.grey),
+              );
+            }
+          ),
+        ],
       ),
       body:  _body(),
     );
@@ -116,7 +200,7 @@ class _PackEditorState extends State<PackEditor> with SingleTickerProviderStateM
   Widget _body() {
     return Row(children: [
       Expanded(child: _editor()),
-      Expanded(child: _packView()),
+      Expanded(child: _rightPanel()),
     ]);
   }
 
@@ -136,6 +220,11 @@ class _PackEditorState extends State<PackEditor> with SingleTickerProviderStateM
       Expanded(
         child: JsonOwner(
           json: _packJson,
+          dbSource: _dbSource,
+          onDataChanged: () {
+            _setDataChanged(true);
+            _setEditorTitle();
+          },
           child: TabBarView(
             controller: _editorTabController,
             children: [
@@ -150,10 +239,38 @@ class _PackEditorState extends State<PackEditor> with SingleTickerProviderStateM
     ]);
   }
 
+  Widget _rightPanel() {
+    return Column(children: [
+      TabBar(
+        controller: _rightTabController,
+        isScrollable: false,
+        labelColor: Colors.black,
+        tabs: const [
+          Tab(icon: Icon(Icons.source ), text: 'Ресурсы'),
+          Tab(icon: Icon(Icons.table_chart_outlined      ), text: 'Значения параметров'),
+          Tab(icon: Icon(Icons.streetview_outlined), text: 'Пакет'),
+        ],
+      ),
+
+      Expanded(
+        child: TabBarView(
+          controller: _rightTabController,
+          children: [
+            _fileSources(),
+            _templatesSources(),
+            _packView()
+          ],
+        ),
+      )
+
+    ]);
+  }
+
   Widget _head() {
     return Padding(
-      padding: pagePadding,
+      padding: _pagePadding,
       child: ListView(
+        controller: _headScrollController,
         children: [
           PackHeadWidget(json: _packJson, fieldDesc: _descMap["head"]!),
           _qualityLevels(),
@@ -164,8 +281,9 @@ class _PackEditorState extends State<PackEditor> with SingleTickerProviderStateM
 
   Widget _styles() {
     return Padding(
-      padding: pagePadding,
+      padding: _pagePadding,
       child: SingleChildScrollView(
+        controller: _stylesScrollController,
         child: JsonObjectArray(
           json: _packJson,
           fieldName: "cardStyleList",
@@ -178,8 +296,9 @@ class _PackEditorState extends State<PackEditor> with SingleTickerProviderStateM
 
   Widget _cards() {
     return Padding(
-      padding: pagePadding,
+      padding: _pagePadding,
       child: SingleChildScrollView(
+        controller: _cardsScrollController,
         child: JsonObjectArray(
           json: _packJson,
           fieldName: "templateList",
@@ -235,8 +354,9 @@ class _PackEditorState extends State<PackEditor> with SingleTickerProviderStateM
       cardController: _cardController,
       cardNavigatorData: _cardNavigatorData,
       itemTextColor: Colors.black,
-      selItemTextColor: Colors.yellowAccent,
+      selItemTextColor: Colors.blue,
       bodyButtonColor: Colors.orangeAccent,
+      mode: NavigatorMode.noPackHead,
     );
   }
 
@@ -252,6 +372,7 @@ class _PackEditorState extends State<PackEditor> with SingleTickerProviderStateM
       key: ValueKey(widget.packId),
       cardController: _cardController,
       cardNavigatorData: _cardNavigatorData,
+      mode: NavigatorMode.noPackHead,
     );
   }
 
@@ -264,5 +385,26 @@ class _PackEditorState extends State<PackEditor> with SingleTickerProviderStateM
         controller : cardViewController,
       );
     });
+  }
+
+  Widget _fileSources(){
+    return PackFileSource(fileUrlMap: _fileUrlMap);
+  }
+
+  Widget _templatesSources() {
+    return const Center(child: Text('Значения параметров'));
+  }
+
+  void _setDataChanged(bool dataChanged){
+    _dataChanged = dataChanged;
+    _dataChangedButtonKey.currentState?.setState(() {});
+  }
+
+  void _setEditorTitle(){
+    final newTitle = _packJson[DjfFile.title]??"";
+    if (_packTitle != newTitle) {
+      _packTitle = newTitle;
+      _packTitleKey.currentState?.setState(() {});
+    }
   }
 }

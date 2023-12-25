@@ -11,34 +11,53 @@ import 'dk_expansion_tile.dart';
 class CardNavigatorData {
   DbSource dbSource;
 
-  late List<PacInfo>  fileList;
-  late List<CardHead> cardList;
+  final fileList = <PacInfo>[];
+  final cardList = <CardHead>[];
 
   CardNavigatorData(this.dbSource);
 
-  Future<void> init() async {
+  final onChange = event.SimpleEvent();
+
+  Future<void> setData() async {
     final fileRows = await dbSource.tabJsonFile.getAllRows();
     if (fileRows.isEmpty) return;
 
-    fileList = fileRows.map((row) => PacInfo.fromMap(row)).toList();
+    fileList.clear();
+    fileList.addAll( fileRows.map((row) => PacInfo.fromMap(row)).toList() );
 
     fileList.sort((a, b) => a.jsonFileID.compareTo(b.jsonFileID));
 
     final cardRows = await dbSource.tabCardHead.getAllRows();
     if (cardRows.isEmpty) return;
 
-    cardList = cardRows.map((row) => CardHead.fromMap(row)).toList();
+    cardList.clear();
+    cardList.addAll( cardRows.map((row) => CardHead.fromMap(row)).toList() );
     cardList.sort((a, b) => a.cardID.compareTo(b.cardID));
+
+    onChange.send();
   }
+
+  void sendChanged() {
+    onChange.send();
+  }
+}
+
+enum NavigatorMode{
+  multiPack,
+  singlePack,
+  noPackHead
 }
 
 class CardNavigator extends StatefulWidget {
   final CardController cardController;
   final CardNavigatorData cardNavigatorData;
+  final NavigatorMode mode;
 
   const CardNavigator({
     required this.cardController,
     required this.cardNavigatorData,
+    this.mode = NavigatorMode.multiPack,
+
     Key? key
   }) : super(key: key);
 
@@ -55,13 +74,13 @@ class _CardNavigatorState extends State<CardNavigator> {
   CardHead? _selCard;
   int _selBodyNum = 0;
 
-  late event.Listener cardControllerOnChangeListener;
+  event.Listener? _cardControllerOnChangeListener;
 
   @override
   void initState() {
     super.initState();
 
-    cardControllerOnChangeListener = widget.cardController.onChange.subscribe((listener, data) {
+    _cardControllerOnChangeListener = widget.cardController.onChange.subscribe((listener, data) {
       onChange();
     });
 
@@ -90,7 +109,7 @@ class _CardNavigatorState extends State<CardNavigator> {
 
   @override
   void dispose() {
-    cardControllerOnChangeListener.dispose();
+    _cardControllerOnChangeListener?.dispose();
     super.dispose();
   }
 
@@ -160,40 +179,50 @@ class _CardNavigatorState extends State<CardNavigator> {
       padding: const EdgeInsets.only(left: 4, right: 4),
       child: Column(children: [
 
-        // select file
-        Row(children: [
-          ElevatedButton(
+        if (widget.mode == NavigatorMode.multiPack && _fileList.length > 1) ...[
+          // select file
+          Row(children: [
+            ElevatedButton(
               onPressed: ()=> setFileDirect(-1),
               child: const Icon( Icons.arrow_left),
-          ),
+            ),
 
-          Container(width: 4),
+            Container(width: 4),
 
-          Expanded(child: DropdownButton<PacInfo>(
-            value: _selFile,
-            icon: const Icon(Icons.arrow_drop_down),
-            isExpanded: true,
-            onChanged: (value) {
-              setSelFile(value!);
-              setFirstCard();
-              setSelected();
-            },
+            Expanded(child: DropdownButton<PacInfo>(
+              value: _selFile,
+              icon: const Icon(Icons.arrow_drop_down),
+              isExpanded: true,
+              onChanged: (value) {
+                setSelFile(value!);
+                setFirstCard();
+                setSelected();
+              },
 
-            items: _fileList.map<DropdownMenuItem<PacInfo>>((fileInfo) {
-              return DropdownMenuItem<PacInfo>(
-                value: fileInfo,
-                child: Text(fileInfo.title, overflow: TextOverflow.ellipsis),
-              );
-            }).toList(),
-          ) ),
+              items: _fileList.map<DropdownMenuItem<PacInfo>>((fileInfo) {
+                return DropdownMenuItem<PacInfo>(
+                  value: fileInfo,
+                  child: Text(fileInfo.title, overflow: TextOverflow.ellipsis),
+                );
+              }).toList(),
+            ) ),
 
-          Container(width: 4),
+            Container(width: 4),
 
-          ElevatedButton(
-            onPressed: ()=> setFileDirect(1),
-            child: const Icon( Icons.arrow_right),
-          ),
-        ]),
+            ElevatedButton(
+              onPressed: ()=> setFileDirect(1),
+              child: const Icon( Icons.arrow_right),
+            ),
+          ]),
+        ],
+
+        // file header
+        if (widget.mode == NavigatorMode.singlePack || (widget.mode == NavigatorMode.multiPack && _fileList.length == 1)) ...[
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(_selFile!.title),
+          )
+        ],
 
         // select card
         Row(children: [
@@ -288,6 +317,7 @@ class CardNavigatorTree extends StatefulWidget {
   final Color itemTextColor;
   final Color selItemTextColor;
   final Color bodyButtonColor;
+  final NavigatorMode mode;
 
   const CardNavigatorTree({
     required this.cardController,
@@ -295,6 +325,8 @@ class CardNavigatorTree extends StatefulWidget {
     required this.itemTextColor,
     required this.selItemTextColor,
     required this.bodyButtonColor,
+    this.mode = NavigatorMode.multiPack,
+
     Key? key
   }) : super(key: key);
 
@@ -306,11 +338,22 @@ class _CardNavigatorTreeState extends State<CardNavigatorTree> {
   late _TreeParam _treeParam;
   final _scrollController = ScrollController();
 
+  event.Listener? _cardNavigatorDataListener;
+
   @override
   void initState() {
     super.initState();
 
     _treeParam = _TreeParam(itemTextColor: widget.itemTextColor, selItemTextColor: widget.selItemTextColor, bodyButtonColor: widget.bodyButtonColor);
+    _cardNavigatorDataListener = widget.cardNavigatorData.onChange.subscribe((listener, data) {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _cardNavigatorDataListener?.dispose();
+    super.dispose();
   }
 
   @override
@@ -319,8 +362,30 @@ class _CardNavigatorTreeState extends State<CardNavigatorTree> {
       return Container();
     }
 
+    if (widget.mode == NavigatorMode.singlePack || widget.mode == NavigatorMode.noPackHead) {
+      final file = widget.cardNavigatorData.fileList.firstWhere((file) => file.jsonFileID == widget.cardController.card!.head.jsonFileID);
+      final cardList = widget.cardNavigatorData.cardList.where((card) => card.jsonFileID == file.jsonFileID).toList();
+
+      return Scrollbar(
+        thumbVisibility: true,
+        controller: _scrollController,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          child: _TreeFileWidget(
+            cardController: widget.cardController,
+            jsonFileID: file.jsonFileID,
+            title: file.title,
+            cardList: cardList,
+            treeParam: _treeParam,
+            noFileHead: widget.mode == NavigatorMode.noPackHead,
+          )
+        ),
+      );
+    }
+
     return Scrollbar(
       thumbVisibility: true,
+      controller: _scrollController,
       child: ListView.builder (
         controller: _scrollController,
         itemCount: widget.cardNavigatorData.fileList.length,
@@ -338,6 +403,7 @@ class _CardNavigatorTreeState extends State<CardNavigatorTree> {
         },
       ),
     );
+
   }
 }
 
@@ -347,7 +413,9 @@ class _TreeFileWidget extends StatefulWidget {
   final String title;
   final List<CardHead> cardList;
   final _TreeParam treeParam;
-  const _TreeFileWidget({required this.cardController, required this.jsonFileID, required this.title, required this.cardList, required this.treeParam, Key? key}) : super(key: key);
+  final bool noFileHead;
+
+  const _TreeFileWidget({required this.cardController, required this.jsonFileID, required this.title, required this.cardList, required this.treeParam, this.noFileHead = false, Key? key}) : super(key: key);
 
   @override
   State<_TreeFileWidget> createState() => _TreeFileWidgetState();
@@ -443,6 +511,10 @@ class _TreeFileWidgetState extends State<_TreeFileWidget> {
       ));
 
       groupMap[card.group] = null;
+    }
+
+    if (widget.noFileHead) {
+      return Column(children: children);
     }
 
     return DkExpansionTile(
