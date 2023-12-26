@@ -318,7 +318,7 @@ packages:
     source: hosted
     version: "2.3.1"
   intl:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: intl
       url: "https://pub.dartlang.org"
@@ -506,6 +506,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.1.5"
+  pluto_grid:
+    dependency: "direct main"
+    description:
+      name: pluto_grid
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "5.4.9"
   pointer_interceptor:
     dependency: transitive
     description:
@@ -527,6 +534,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.0.1"
+  rxdart:
+    dependency: transitive
+    description:
+      name: rxdart
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.27.7"
   sembast:
     dependency: transitive
     description:

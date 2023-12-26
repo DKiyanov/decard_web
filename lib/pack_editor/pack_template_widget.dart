@@ -136,20 +136,11 @@ class _PackTemplateWidgetState extends State<PackTemplateWidget> {
   }
 
   List<String> _getParameters() {
-    final resultParamList = <String>[];
-
     widget.json[keyParameters] = null;
     final jsonStr = jsonEncode(widget.json);
     widget.json[keyParameters] = _paramList;
 
-    final regexp = RegExp(r'<@(.*?)@>');
-    final matches = regexp.allMatches(jsonStr);
-    for (var match in matches) {
-      final param = match.group(1)!;
-      if (!resultParamList.contains(param)) {
-        resultParamList.add(param);
-      }
-    }
+    final resultParamList = getParamList(jsonStr);
 
     resultParamList.sort((a, b) => a.compareTo(b));
 

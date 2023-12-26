@@ -223,11 +223,7 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
   }
 
   void _getTitleKey() {
-    final regexp = RegExp(r'<@(.*?)@>');
-    final matches = regexp.allMatches(_titleFieldDesc.title);
-    for (var match in matches) {
-      _titleKeyList.add(match.group(1)!);
-    }
+    _titleKeyList.addAll( getParamList(_titleFieldDesc.title) );
   }
 
   String _buildTitle() {
@@ -1509,4 +1505,19 @@ class _JsonDropdownAsyncState extends State<JsonDropdownAsync> {
 
     setState(() {});
   }
+}
+
+List<String> getParamList(String str) {
+  final result = <String>[];
+
+  final regexp = RegExp(r'<@(.*?)@>');
+  final matches = regexp.allMatches(str);
+  for (var match in matches) {
+    final value = match.group(1)!;
+    if (!result.contains(value)) {
+      result.add(value);
+    }
+  }
+
+  return result;
 }

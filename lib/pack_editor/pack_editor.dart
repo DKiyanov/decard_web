@@ -17,6 +17,7 @@ import 'pack_quality_level_widget.dart';
 import 'pack_style_widget.dart';
 import 'pack_template_widget.dart';
 import 'desc_json.dart';
+import 'pack_templates_sources.dart';
 import 'pack_widgets.dart';
 
 class PackEditor extends StatefulWidget {
@@ -198,10 +199,19 @@ class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Widget _body() {
-    return Row(children: [
-      Expanded(child: _editor()),
-      Expanded(child: _rightPanel()),
-    ]);
+    return JsonOwner(
+      json: _packJson,
+      dbSource: _dbSource,
+      onDataChanged: () {
+        _setDataChanged(true);
+        _setEditorTitle();
+      },
+
+      child: Row(children: [
+        Expanded(child: _editor()),
+        Expanded(child: _rightPanel()),
+      ]),
+    );
   }
 
   Widget _editor() {
@@ -218,21 +228,13 @@ class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
       ),
 
       Expanded(
-        child: JsonOwner(
-          json: _packJson,
-          dbSource: _dbSource,
-          onDataChanged: () {
-            _setDataChanged(true);
-            _setEditorTitle();
-          },
-          child: TabBarView(
-            controller: _editorTabController,
-            children: [
-              _head(),
-              _styles(),
-              _cards()
-            ],
-          ),
+        child: TabBarView(
+          controller: _editorTabController,
+          children: [
+            _head(),
+            _styles(),
+            _cards()
+          ],
         ),
       )
 
@@ -286,8 +288,8 @@ class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
         controller: _stylesScrollController,
         child: JsonObjectArray(
           json: _packJson,
-          fieldName: "cardStyleList",
-          fieldDesc: _descMap["cardStyleList"]!,
+          fieldName: DjfFile.cardStyleList,
+          fieldDesc: _descMap[DjfFile.cardStyleList]!,
           objectWidgetCreator: _getStyleWidget,
         ),
       ),
@@ -301,8 +303,8 @@ class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
         controller: _cardsScrollController,
         child: JsonObjectArray(
           json: _packJson,
-          fieldName: "templateList",
-          fieldDesc: _descMap["templateList"]!,
+          fieldName: DjfFile.templateList,
+          fieldDesc: _descMap[DjfFile.templateList]!,
           objectWidgetCreator: _getTemplateWidget,
         ),
       ),
@@ -312,8 +314,8 @@ class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   Widget _qualityLevels() {
     return JsonObjectArray(
       json: _packJson,
-      fieldName: "qualityLevelList",
-      fieldDesc: _descMap["qualityLevelList"]!,
+      fieldName: DjfFile.qualityLevelList,
+      fieldDesc: _descMap[DjfFile.qualityLevelList]!,
       objectWidgetCreator: _getQualityLevelWidget,
     );
   }
@@ -392,7 +394,9 @@ class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Widget _templatesSources() {
-    return const Center(child: Text('Значения параметров'));
+    //return const Center(child: Text('Значения параметров'));
+
+    return TemplatesSources(json: _packJson);
   }
 
   void _setDataChanged(bool dataChanged){

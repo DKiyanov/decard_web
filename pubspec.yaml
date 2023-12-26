@@ -13,7 +13,6 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.2
-  intl: ^0.17.0
   routemaster: ^1.0.1
 
   url_strategy: ^0.2.0
@@ -34,6 +33,7 @@ dependencies:
   http: ^0.13.4
   path_provider: ^2.0.14
   flutter_archive: ^5.0.0
+  pluto_grid: ^5.4.9
   simple_events:
     path: ../simple_events
   
