@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:decard_web/app_state.dart';
 import 'package:decard_web/home_page.dart';
 import 'package:decard_web/pack_view.dart';
@@ -160,6 +162,7 @@ class _DecardWebAppState extends State<DecardWebApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
+
       title: 'DecardWebApp',
       theme: ThemeData(
         primarySwatch: Colors.blue,
@@ -171,6 +174,9 @@ class _DecardWebAppState extends State<DecardWebApp> {
         routesBuilder: (context) {
            return _buildRouteMap(context);
         },
+      ),
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.stylus, PointerDeviceKind.unknown},
       ),
     );
   }

@@ -256,6 +256,7 @@ class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
       Expanded(
         child: TabBarView(
+          physics: const NeverScrollableScrollPhysics(),
           controller: _rightTabController,
           children: [
             _fileSources(),

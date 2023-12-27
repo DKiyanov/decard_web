@@ -207,7 +207,8 @@ class _TemplateParamTabState extends State<TemplateParamTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Row(children: [
+        Row( mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
           Tooltip(
             message: 'Добавить запись',
             child: IconButton(
