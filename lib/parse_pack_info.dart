@@ -391,3 +391,51 @@ Future<void> _deleteFileFromAppPack(int packId, String filePath) async {
 
   dir.delete(recursive: true);
 }
+
+Future<String?> moveFileInsidePack(int packId, String oldFilePath, String newFilePath, String oldUrl) async {
+  final query = QueryBuilder<ParseObject>(ParseObject(WebPackSubFileFields.className));
+  query.whereEqualTo(WebPackFields.packId, packId);
+  query.whereEqualTo(WebPackSubFileFields.path, oldFilePath);
+
+  final serverFile = await query.first();
+  if (serverFile == null) return null;
+
+  serverFile.set<String>(WebPackSubFileFields.path, newFilePath);
+  await serverFile.save();
+
+  if (!kIsWeb) {
+    final packPath = await getPackAppBasePath(packId);
+    final newUrl = path_util.join(packPath, newFilePath);
+    final file = File(oldUrl);
+    if (!file.existsSync()) return null;
+
+    final newDirPath = path_util.dirname(newUrl);
+    final newDir = Directory(newDirPath);
+    if (!newDir.existsSync()) {
+      await newDir.create(recursive: true);
+    }
+
+    await file.rename(newUrl);
+
+    final oldDirPath = path_util.dirname(oldUrl);
+    final oldDir = Directory(oldDirPath);
+
+    final oldDirList = oldDir.listSync(recursive: true);
+
+    bool fileExists = false;
+    for (var fileSystemObject in oldDirList) {
+      if (fileSystemObject is File) {
+        fileExists = true;
+        break;
+      }
+    }
+
+    if (!fileExists) {
+      oldDir.delete(recursive: true);
+    }
+
+    return newUrl;
+  }
+
+  return oldUrl;
+}

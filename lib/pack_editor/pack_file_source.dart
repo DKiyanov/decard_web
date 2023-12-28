@@ -51,6 +51,9 @@ class _PackFileSourceState extends State<PackFileSource> {
   late PackFileSourceController _selectController;
   late event.Listener _selectControllerListener;
 
+  bool _moveButtonVisible = false;
+  final _moveButtonKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -65,11 +68,22 @@ class _PackFileSourceState extends State<PackFileSource> {
       }
     }
 
-    _selectController = PackFileSourceController(fileList);
+    _selectController = PackFileSourceController(fileList, (){
+      _calcMoveButtonVisible();
+    });
 
     _selectControllerListener = _selectController.onChange.subscribe((listener, data) {
       _previewPanelKey.currentState?.setState(() {});
+      _calcMoveButtonVisible();
     });
+  }
+
+  void _calcMoveButtonVisible() {
+    final newMoveButtonVisible = _selectController.checkboxPaths.isNotEmpty && _selectController.selectedPath.isNotEmpty;
+    if (_moveButtonVisible != newMoveButtonVisible) {
+      _moveButtonVisible = newMoveButtonVisible;
+      _moveButtonKey.currentState?.setState(() {});
+    }
   }
 
   @override
@@ -100,6 +114,11 @@ class _PackFileSourceState extends State<PackFileSource> {
               message: 'Удалить',
               child: IconButton(
                   onPressed: (){
+                    if (_selectController.checkboxPaths.isNotEmpty) {
+                      _deleteSelectedFilesFromPack();
+                      return;
+                    }
+
                     if (_selectController.isDir) {
                       _deleteFolder(_selectController.selectedDir);
                       return;
@@ -153,6 +172,24 @@ class _PackFileSourceState extends State<PackFileSource> {
               ),
             ),
 
+            StatefulBuilder(
+              key: _moveButtonKey,
+              builder: (context, setState) {
+                if (!_moveButtonVisible) {
+                  return Container();
+                }
+
+                return Tooltip(
+                  message: 'Переместить выбранные файлы в выбранный каталог',
+                  child: IconButton(
+                    onPressed: (){
+                      _moveFilesToFolder();
+                    },
+                    icon: const Icon(Icons.move_down),
+                  ),
+                );
+              }
+            ),
         ]),
 
         if (_mode == _PackFileSourceMode.preview) ...[
@@ -232,12 +269,33 @@ class _PackFileSourceState extends State<PackFileSource> {
 
   Future<void> _deleteFileFromPackEx(String filePath) async {
     _selectController.fileList.remove(filePath);
+    _selectController.setCheckbox(filePath, false);
 
     final path = path_util.join(widget.rootPath, filePath);
     deleteFileFromPack(widget.packId, path);
 
     widget.dbSource.tabFileUrlMap.deleteRow(jsonFileID: widget.jsonFileID, fileName: filePath) ;
     widget.fileUrlMap.remove(filePath);
+  }
+
+  Future<void> _deleteSelectedFilesFromPack() async {
+    if (_selectController.checkboxPaths.isEmpty) return;
+    if (! await warningDialog(context, 'Удалить выбранные файл ?')) return;
+
+    final delFileList = <String>[];
+    delFileList.addAll(_selectController.checkboxPaths);
+
+    for (var filePath in delFileList) {
+      await _deleteFileFromPackEx(filePath);
+    }
+
+    if (!mounted) return;
+
+    JsonWidgetChangeListener.of(context)?.setChanged();
+
+    _selectController.setSelection("", true);
+
+    setState(() {});
   }
 
   Widget _previewPanel() {
@@ -312,12 +370,64 @@ class _PackFileSourceState extends State<PackFileSource> {
 
     setState(() {});
   }
+
+  Future<void> _moveFilesToFolder() async {
+    if (! await warningDialog(context, 'Переместить выбранные файлы в "${_selectController.selectedDir.isEmpty? 'Корневой каталог' : _selectController.selectedDir}" ?')) return;
+
+    final moveFileList = <String>[];
+    moveFileList.addAll(_selectController.checkboxPaths);
+
+    for (var filePath in moveFileList) {
+      await _moveFileToFolder(filePath, _selectController.selectedDir);
+    }
+
+    if (!mounted) return;
+
+    JsonWidgetChangeListener.of(context)?.setChanged();
+
+    _selectController.setSelection("", false);
+
+    setState(() {});
+  }
+
+  Future<void> _moveFileToFolder(String filePath, String folderPath) async {
+    final fileName = path_util.basename(filePath);
+    final newFilePath = path_util.join(folderPath, fileName);
+
+    if (filePath == newFilePath) return;
+    if (_selectController.fileList.contains(newFilePath)) return;
+
+    final url = widget.fileUrlMap[filePath]!;
+
+    final oldFilePathOk = path_util.join(widget.rootPath, filePath);
+    final newFilePathOk = path_util.join(widget.rootPath, newFilePath);
+
+    final newUrl = await moveFileInsidePack(widget.packId, oldFilePathOk, newFilePathOk, url);
+
+    if (newUrl == null) return;
+
+    _selectController.multiSelPaths.remove(filePath);
+
+    _selectController.fileList.remove(filePath);
+    _selectController.fileList.add(newFilePath);
+
+    if (_selectController.checkboxPaths.remove(filePath)) {
+      _selectController.checkboxPaths.add(newFilePath);
+    }
+
+    widget.fileUrlMap.remove(filePath);
+    widget.dbSource.tabFileUrlMap.deleteRow(jsonFileID: widget.jsonFileID, fileName: filePath);
+
+    widget.fileUrlMap[newFilePath] = newUrl;
+    widget.dbSource.tabFileUrlMap.insertRow(jsonFileID: widget.jsonFileID, fileName: newFilePath, url: newUrl);
+  }
 }
 
 class PackFileSourceController {
   final List<String> fileList;
+  final VoidCallback onCheckboxChanged;
 
-  PackFileSourceController(this.fileList);
+  PackFileSourceController(this.fileList, this.onCheckboxChanged);
 
   String _selectedPath = "";
   String get selectedPath => _selectedPath;
@@ -350,6 +460,25 @@ class PackFileSourceController {
 
     onChange.send();
   }
+
+  void setCheckbox(String path, bool checked){
+    final nowCheckboxShow = checkboxPaths.isNotEmpty;
+
+    if (checked && !checkboxPaths.contains(path)) {
+      checkboxPaths.add(path);
+    }
+    if (!checked) {
+      checkboxPaths.remove(path);
+    }
+
+    final newCheckboxShow = checkboxPaths.isNotEmpty;
+
+    if (nowCheckboxShow != newCheckboxShow) {
+      onChange.send();
+    }
+
+    onCheckboxChanged.call();
+  }
 }
 
 class _Folder extends StatelessWidget {
@@ -372,21 +501,37 @@ class _Folder extends StatelessWidget {
 
         if (fileName != '.') {
           children.add(
-              ListTile(
-                title: _PathWidget(
-                  path: filePath,
-                  selectController: controller, builder: (context, selColor, selBackgroundColor) {
-                  return Container(
-                      color: selBackgroundColor,
-                      child: Text(path_util.basename(filePath), style: TextStyle(color: selColor))
-                  );
-                },
-                ),
+            _PathWidget(
+              path: filePath,
+              isFile: true,
 
-                onTap: (){
-                  controller.setSelection(filePath, true);
-                },
-              )
+              selectController: controller,
+              builder: (context, selColor, selBackgroundColor, setCheckbox) {
+                Widget? leading;
+
+                if (setCheckbox != null) {
+                  leading = Checkbox(
+                    value: controller.checkboxPaths.contains(filePath),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setCheckbox.call(value);
+                    }
+                  );
+                }
+
+                return ListTile(
+                  leading: leading,
+                  title: Text(path_util.basename(filePath), style: TextStyle(color: selColor)),
+                  tileColor: selBackgroundColor,
+                  onTap: (){
+                    controller.setSelection(filePath, true);
+                  },
+                  onLongPress: (){
+                    controller.setCheckbox(filePath, true);
+                  },
+                );
+              }
+            )
           );
         }
       }
@@ -414,7 +559,8 @@ class _Folder extends StatelessWidget {
         child: DkExpansionTile(
           title: _PathWidget(
             path: lowPath,
-            selectController: controller, builder: (context, selColor, selBackgroundColor) {
+            isFile: false,
+            selectController: controller, builder: (context, selColor, selBackgroundColor, showCheckBox) {
               return Container(
                 color: selBackgroundColor,
                 child: Text(lowPath, style: TextStyle(color: selColor??Colors.black))
@@ -437,13 +583,15 @@ class _Folder extends StatelessWidget {
   }
 }
 
-typedef _SelectBuilder = Widget Function(BuildContext context, Color? selColor, Color? selBackgroudColor);
+typedef _SetCheckbox = void Function(bool checked);
+typedef _SelectBuilder = Widget Function(BuildContext context, Color? selColor, Color? selBackgroudColor, _SetCheckbox? setCheckbox);
 
 class _PathWidget extends StatefulWidget {
   final String path;
+  final bool isFile;
   final PackFileSourceController selectController;
   final _SelectBuilder builder;
-  const _PathWidget({required this.path, required this.selectController, required this.builder, Key? key}) : super(key: key);
+  const _PathWidget({required this.path, required this.isFile, required this.selectController, required this.builder, Key? key}) : super(key: key);
 
   @override
   State<_PathWidget> createState() => _PathWidgetState();
@@ -454,6 +602,7 @@ class _PathWidgetState extends State<_PathWidget> {
 
   Color? color;
   Color? backgroundColor;
+  bool showCheckbox = false;
 
   @override
   void initState() {
@@ -475,6 +624,7 @@ class _PathWidgetState extends State<_PathWidget> {
   void onChangeSelection() {
     Color? newColor;
     Color? newBackgroundColor;
+    bool newShowCheckbox = false;
 
     if (widget.selectController.selectedPath == widget.path) {
       newColor = Colors.blue;
@@ -484,9 +634,13 @@ class _PathWidgetState extends State<_PathWidget> {
       newBackgroundColor = Colors.deepOrangeAccent;
     }
 
-    if (color != newColor || backgroundColor != newBackgroundColor) {
+    newShowCheckbox = widget.isFile && widget.selectController.checkboxPaths.isNotEmpty;
+
+    if (color != newColor || backgroundColor != newBackgroundColor || showCheckbox != newShowCheckbox) {
       color = newColor;
       backgroundColor = newBackgroundColor;
+      showCheckbox = newShowCheckbox;
+
       if (mounted) {
         setState(() {});
       }
@@ -495,7 +649,12 @@ class _PathWidgetState extends State<_PathWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return widget.builder.call(context, color, backgroundColor);
+    return widget.builder.call(context, color, backgroundColor, !showCheckbox ? null : _setCheckbox);
+  }
+
+  void _setCheckbox(bool checked) {
+    widget.selectController.setCheckbox(widget.path, checked);
+    setState(() {});
   }
 }
 
