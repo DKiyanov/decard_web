@@ -1,20 +1,55 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dropzone/flutter_dropzone.dart';
 import 'package:path/path.dart' as path_util;
 
 import '../card_model.dart';
+import '../parse_pack_info.dart';
+import 'pack_file_source.dart';
+import 'package:simple_events/simple_events.dart' as event;
 
 class _FileInfo {
   final dynamic file;
   final String filename;
   final int fileSize;
+  final String path;
+  final bool isNew;
   bool uploaded = false;
+  String? url;
 
-  _FileInfo(this.file, this.filename, this.fileSize);
+  _FileInfo({
+    required this.file,
+    required this.filename,
+    required this.fileSize,
+    required this.path,
+    required this.isNew
+  });
 }
 
+typedef OnCheckFileExists = bool Function(String filePath);
+typedef OnFileUpload = Function(String filePath, String url);
+
 class PackFileSourceUpload extends StatefulWidget {
-  const PackFileSourceUpload({Key? key}) : super(key: key);
+  final int packId;
+  final String rootPath;
+  final PackFileSourceController selectController;
+  final OnCheckFileExists? onCheckFileExists;
+  final OnFileUpload? onFileUpload;
+  final VoidCallback? onClearFileUploadList;
+
+  const PackFileSourceUpload({
+    required this.packId,
+    required this.rootPath,
+    required this.selectController,
+    this.onCheckFileExists,
+    this.onFileUpload,
+    this.onClearFileUploadList,
+
+    Key? key
+  }) : super(key: key);
 
   @override
   State<PackFileSourceUpload> createState() => _PackFileSourceUploadState();
@@ -27,36 +62,61 @@ class _PackFileSourceUploadState extends State<PackFileSourceUpload> {
 
   final _fileList = <_FileInfo>[];
 
-  void _addFiles(List<dynamic> fileList) async {
-    for (var file in fileList) {
-      final filename = await _dzController.getFilename(file);
-      final fileExt = path_util.extension(filename).toLowerCase().substring(1);
+  late event.Listener _selectControllerListener;
 
-      if (FileExt.textExtList.contains(fileExt) ||
-          FileExt.imageExtList.contains(fileExt) ||
-          FileExt.audioExtList.contains(fileExt)) {
-        _fileList.add(
-            _FileInfo(
-                file,
-                filename,
-                await _dzController.getFileSize(file)
-            )
-        );
-      }
+  final _titleKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+
+    _selectControllerListener = widget.selectController.onChange.subscribe((listener, data) {
+      _titleKey.currentState?.setState(() {});
+    });
+
+    if (!kIsWeb) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _pickFiles();
+      });
     }
   }
 
   @override
+  void dispose() {
+    _selectControllerListener.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final children = _fileList.map((fileInfo) => ListTile(
+      tileColor: fileInfo.uploaded? Colors.green : !fileInfo.isNew? Colors.deepOrangeAccent : null,
+      title: Text(fileInfo.filename),
+    )).toList();
+
     return Column(children: [
-      if (_fileList.isNotEmpty) ...[
+      if (_fileList.isNotEmpty || !kIsWeb) ...[
         Row(children: [
+          if (!kIsWeb) ...[
+            ElevatedButton(
+              onPressed: () {
+                _pickFiles();
+              },
+              child: const Icon(Icons.folder_special_sharp),
+            ),
+
+            Container(width: 4),
+          ],
+
           Expanded(
             child: ElevatedButton(
                 onPressed: _fileList.any((fileInfo) => !fileInfo.uploaded)? () {
                   _sendAllFiles();
                 } : null,
-                child: const Text('Загрузить файлы')
+                child: Text('Загрузить файлы в\n${widget.selectController.selectedDir.isEmpty ? 'Корневой каталог' : widget.selectController.selectedDir}',
+                  key: _titleKey,
+                  textAlign: TextAlign.center,
+                )
             ),
           ),
 
@@ -65,86 +125,162 @@ class _PackFileSourceUploadState extends State<PackFileSourceUpload> {
           ElevatedButton(
             onPressed: (){
               _fileList.clear();
+              widget.onClearFileUploadList?.call();
               setState(() {});
             },
             child: const Icon(Icons.clear, color: Colors.red,),
           )
         ]),
 
-        LimitedBox(
-          maxHeight: 150,
-          child: ListView(
-            shrinkWrap: true,
-            children: _fileList.map((fileInfo) => ListTile(
-              tileColor: fileInfo.uploaded? Colors.green : null,
-              title: Text(fileInfo.filename),
-            )).toList(),
+        if (kIsWeb) ...[
+          LimitedBox(
+            maxHeight: 150,
+            child: ListView(
+              shrinkWrap: true,
+              children: children,
+            ),
           ),
-        ),
+
+          Expanded( child: _dropZoneWidget() ),
+        ],
+
+        if (!kIsWeb) ...[
+          Expanded(
+            child: ListView(
+              children: children,
+            ),
+          ),
+        ],
+
       ],
-
-      Expanded(
-        child: Container(
-          color: _dzHover ? Colors.red : Colors.green,
-
-          child: Stack(
-            children: [
-              DropzoneView(
-                operation: DragOperation.copy,
-                cursor: CursorType.grab,
-
-                onCreated: (ctrl) {
-                  _dzController = ctrl;
-                },
-
-                onHover: () {
-                  _dzHover = true;
-                  setState((){});
-                },
-                onLeave: () {
-                  _dzHover = false;
-                  setState((){});
-                },
-
-                onDropMultiple: (fileList) async {
-                  if (fileList == null) return;
-                  _addFiles(fileList);
-                  _dzHover = false;
-                  setState(() {});
-                },
-              ),
-
-              Center(
-                child: ElevatedButton(
-                  onPressed: () async{
-                    final fileList = await _dzController.pickFiles();
-                    _addFiles(fileList);
-                    setState(() {});
-                  },
-                  child: const Text('Select file'),
-                ),
-              )
-
-            ],
-          ),
-        ),
-      ),
-
     ]);
+  }
+
+  Widget _dropZoneWidget() {
+    return Container(
+      color: _dzHover ? Colors.red : Colors.green,
+
+      child: Stack(
+        children: [
+          DropzoneView(
+            operation: DragOperation.copy,
+            cursor: CursorType.grab,
+
+            onCreated: (ctrl) {
+              _dzController = ctrl;
+            },
+
+            onHover: () {
+              _dzHover = true;
+              setState((){});
+            },
+            onLeave: () {
+              _dzHover = false;
+              setState((){});
+            },
+
+            onDropMultiple: (fileList) async {
+              if (fileList == null) return;
+              await _dropZoneAddFiles(fileList);
+              _dzHover = false;
+              setState(() {});
+            },
+          ),
+
+          Center(
+            child: ElevatedButton(
+              onPressed: () async {
+                final fileList = await _dzController.pickFiles();
+                await _dropZoneAddFiles(fileList);
+                setState(() {});
+              },
+              child: const Text('Выбирите файлы'),
+            ),
+          )
+
+        ],
+      ),
+    );
+  }
+
+  Future<void> _dropZoneAddFiles(List<dynamic> fileList) async {
+    for (var file in fileList) {
+      final fileName = await _dzController.getFilename(file);
+      final fileExt = path_util.extension(fileName).toLowerCase().substring(1);
+
+      if (!FileExt.sourceExtList.contains(fileExt)) continue;
+
+      final path = path_util.join(widget.selectController.selectedDir, fileName);
+
+      _fileList.add(
+        _FileInfo(
+          file     : file,
+          filename : fileName,
+          fileSize : await _dzController.getFileSize(file),
+          path     : path,
+          isNew    : _checkIsNew(path),
+        )
+      );
+    }
+  }
+
+  Future<void> _pickFiles() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: FileExt.sourceExtList,
+    );
+
+    if (result == null) return;
+
+    for (var selFilePath in result.paths) {
+      final fileName = path_util.basename(selFilePath!);
+      final path = path_util.join(widget.selectController.selectedDir, fileName);
+      final file = File(selFilePath);
+
+      _fileList.add(
+          _FileInfo(
+            file     : file,
+            filename : fileName,
+            fileSize : file.lengthSync(),
+            path     : path,
+            isNew    : _checkIsNew(path),
+          )
+      );
+    }
+
+    setState(() {});
+  }
+
+  bool _checkIsNew(String filePath) {
+    return !(widget.onCheckFileExists?.call(filePath)??false);
+  }
+
+  Future<Uint8List> _getFileContent(_FileInfo fileInfo) async {
+    if (kIsWeb) {
+      return await _dzController.getFileData(fileInfo.file);
+    }
+
+    final File file = fileInfo.file as File;
+    return await file.readAsBytes();
   }
 
   Future<void> _sendAllFiles() async {
     for (var fileInfo in _fileList) {
       if (!fileInfo.uploaded) {
-        await _putFileToServer(fileInfo.file);
-        fileInfo.uploaded = true;
+        await _putFileToServer(fileInfo);
+        widget.onFileUpload?.call(fileInfo.path, fileInfo.url!);
+
         setState(() {});
       }
     }
   }
 
   /// sends file to the server
-  Future<void> _putFileToServer(dynamic htmlFile) async {
+  Future<void> _putFileToServer(_FileInfo fileInfo) async {
+    final path = path_util.join(widget.rootPath, widget.selectController.selectedDir, fileInfo.filename);
+    final fileContent  = await _getFileContent(fileInfo);
 
+    fileInfo.url = await addFileToPack(widget.packId, path, fileContent);
+    fileInfo.uploaded = true;
   }
 }

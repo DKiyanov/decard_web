@@ -38,6 +38,7 @@ class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   late CardNavigatorData _cardNavigatorData;
 
   late String packJsonUrl;
+  late String packRootPath;
   late Map<String, dynamic> _packJson;
   late Map<String, String> _fileUrlMap;
 
@@ -85,8 +86,9 @@ class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
     _dbSource = DbSourceMem.create();
     _cardController = CardController(dbSource: _dbSource);
-    _jsonFileID = await loadPack(_dbSource, widget.packId, addInfoCallback: (jsonStr, jsonUrl, fileUrlMap){
-      packJsonUrl = jsonUrl;
+    _jsonFileID = await loadPack(_dbSource, widget.packId, addInfoCallback: (jsonStr, jsonUrl, rootPath, fileUrlMap){
+      packJsonUrl  = jsonUrl;
+      packRootPath = rootPath;
       _packJson    = jsonDecode(jsonStr);
       _fileUrlMap  = fileUrlMap;
     });
@@ -127,7 +129,7 @@ class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
     final cardKey = _cardController.card?.head.cardKey;
 
     _dbSource.db.clearDb();
-   _jsonFileID = await _dbSource.loadJson(sourceFileID: '${widget.packId}', jsonMap: _packJson, fileUrlMap: _fileUrlMap);
+   _jsonFileID = await _dbSource.loadJson(sourceFileID: '${widget.packId}', rootPath: packRootPath, jsonMap: _packJson, fileUrlMap: _fileUrlMap);
 
     await _cardNavigatorData.setData();
 
@@ -391,7 +393,13 @@ class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Widget _fileSources(){
-    return PackFileSource(fileUrlMap: _fileUrlMap);
+    return PackFileSource(
+      packId     : widget.packId,
+      jsonFileID : _jsonFileID!,
+      rootPath   : packRootPath,
+      dbSource   : _dbSource,
+      fileUrlMap : _fileUrlMap
+    );
   }
 
   Widget _templatesSources() {

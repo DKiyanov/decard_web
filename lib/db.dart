@@ -24,14 +24,14 @@ abstract class TabJsonFile {
   static const String kSite         = DjfFile.site;
   static const String kEmail        = DjfFile.email;
   static const String kLicense      = DjfFile.license;
-  static const String kSourceDir    = 'SourceDir';
+  static const String kRootPath    = 'rootPath';
 
   Future<List<Map<String, Object?>>> getRowByGuid(String guid, {int? version});
 
   Future<Map<String, dynamic>?> getRowBySourceID({required String sourceFileID});
 
   // return jsonFileID
-  Future<int> insertRow(String sourceFileID, Map jsonMap);
+  Future<int> insertRow(String sourceFileID, String rootPath, Map jsonMap);
 
   Future<Map<String, dynamic>?> getRow({required int jsonFileID});
 
@@ -209,6 +209,10 @@ abstract class TabFileUrlMap {
 
   /// important, this function mast by synchronous
   String? getFileUrl({required int jsonFileID, required String fileName});
+
+  Future<void> deleteRow({required int jsonFileID, required String fileName});
+
+  Future<void> insertRow({required int jsonFileID, required String fileName, required String url});
 }
 
 abstract class DbSource {
@@ -229,8 +233,8 @@ abstract class DbSource {
     _loader = DataLoader(this);
   }
 
-  Future<int?> loadJson({required String sourceFileID, required Map<String, dynamic> jsonMap, required Map<String, String> fileUrlMap}) async {
-    final jsonFileID = await _loader.loadJson(sourceFileID, jsonMap, (guid, version) async {
+  Future<int?> loadJson({required String sourceFileID, required String rootPath, required Map<String, dynamic> jsonMap, required Map<String, String> fileUrlMap}) async {
+    final jsonFileID = await _loader.loadJson(sourceFileID, rootPath, jsonMap, (guid, version) async {
       return true;
     });
 

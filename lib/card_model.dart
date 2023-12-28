@@ -38,9 +38,11 @@ class TagPrefix {
 
 class FileExt {
   static const String textFile = "text:";
-  static const textExtList  = <String>['md', 'html', 'json', DjfFileExtension.json];
+  static const txtExtList   = <String>['txt', 'md', 'html'];
+  static const textExtList  = <String>['txt', 'md', 'html', 'json', DjfFileExtension.json];
   static const imageExtList = <String>['apng', 'avif', 'gif', 'jpg', 'jpeg', 'jfif', 'pjpeg', 'pjp', 'png', 'svg', 'webp', 'bmp', 'tif', 'tiff'];
   static const audioExtList = <String>['m4a', 'flac', 'mp3', 'mp4', 'wav', 'wma', 'aac'];
+  static const sourceExtList = <String>[...txtExtList, ...imageExtList, ...audioExtList];
 
   static const contentHtml     = 'html';
   static const contentMarkdown = 'md';
@@ -526,7 +528,7 @@ class PacInfo {
       site         : json[TabJsonFile.kSite],
       email        : json[TabJsonFile.kEmail],
       license      : json[TabJsonFile.kLicense],
-      sourceDir    : json[TabJsonFile.kSourceDir],
+      sourceDir    : json[TabJsonFile.kRootPath],
     );
   }
 }

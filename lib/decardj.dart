@@ -15,6 +15,7 @@
 class DjfFileExtension{
 	static const String json = ".decardj";
 	static const String zip  = ".decardz";
+	static const values = [json, zip];
 }
 
 class DjfFile{ // top json file structure

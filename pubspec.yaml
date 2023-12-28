@@ -34,6 +34,7 @@ dependencies:
   path_provider: ^2.0.14
   flutter_archive: ^5.0.0
   pluto_grid: ^5.4.9
+  file_picker: ^5.2.5
   simple_events:
     path: ../simple_events
   

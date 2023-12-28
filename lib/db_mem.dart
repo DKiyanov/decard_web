@@ -129,7 +129,7 @@ class TabJsonFileMem extends TabJsonFile {
   }
 
   @override
-  Future<int> insertRow(String sourceFileID, Map jsonMap) async {
+  Future<int> insertRow(String sourceFileID, String rootPath, Map jsonMap) async {
     _lastJsonFileID++;
     final jsonFileID = _lastJsonFileID;
 
@@ -143,6 +143,7 @@ class TabJsonFileMem extends TabJsonFile {
       TabJsonFile.kSite         : jsonMap[TabJsonFile.kSite    ],
       TabJsonFile.kEmail        : jsonMap[TabJsonFile.kEmail   ],
       TabJsonFile.kLicense      : jsonMap[TabJsonFile.kLicense ],
+      TabJsonFile.kRootPath     : rootPath,
     };
 
     db.insertRow(jsonFileID, TabJsonFile.tabName, jsonFileID, row);
@@ -435,6 +436,20 @@ class TabFileUrlMapMem extends TabFileUrlMap {
   @override
   Future<void> insertRows({required int jsonFileID, required Map<String, String> fileUrlMap}) async {
     db.insertRow(jsonFileID, TabFileUrlMap.tabName, jsonFileID, fileUrlMap);
+  }
+
+  @override
+  Future<void> deleteRow({required int jsonFileID, required String fileName}) async {
+    final fileUrlMap = db.getRow(jsonFileID, TabFileUrlMap.tabName, jsonFileID);
+    if (fileUrlMap == null) return;
+    fileUrlMap.remove(fileName);
+  }
+
+  @override
+  Future<void> insertRow({required int jsonFileID, required String fileName, required String url}) async {
+    final fileUrlMap = db.getRow(jsonFileID, TabFileUrlMap.tabName, jsonFileID);
+    if (fileUrlMap == null) return;
+    fileUrlMap[fileName] = url;
   }
 }
 

@@ -19,7 +19,7 @@ const Duration _kExpand = Duration(milliseconds: 200);
 /// the [ExpansionTile] to rebuild, so they may not be called from
 /// a build method.
 class DkExpansionTileController {
-  /// Create a controller to be used with [ExpansionTile.controller].
+  /// Create a controller to be used with [ExpansionTile.selectController].
   DkExpansionTileController();
 
   _DkExpansionTileState? _state;
@@ -35,7 +35,7 @@ class DkExpansionTileController {
   ///
   ///  * [expand], which expands the [ExpansionTile].
   ///  * [collapse], which collapses the [ExpansionTile].
-  ///  * [ExpansionTile.controller] to create an ExpansionTile with a controller.
+  ///  * [ExpansionTile.selectController] to create an ExpansionTile with a controller.
   bool get isExpanded {
     assert(_state != null);
     return _state!._isExpanded;
@@ -59,7 +59,7 @@ class DkExpansionTileController {
   ///
   ///  * [collapse], which collapses the tile.
   ///  * [isExpanded] to check whether the tile is expanded.
-  ///  * [ExpansionTile.controller] to create an ExpansionTile with a controller.
+  ///  * [ExpansionTile.selectController] to create an ExpansionTile with a controller.
   void expand() {
     assert(_state != null);
     if (!isExpanded) {
@@ -85,7 +85,7 @@ class DkExpansionTileController {
   ///
   ///  * [expand], which expands the tile.
   ///  * [isExpanded] to check whether the tile is expanded.
-  ///  * [ExpansionTile.controller] to create an ExpansionTile with a controller.
+  ///  * [ExpansionTile.selectController] to create an ExpansionTile with a controller.
   void collapse() {
     assert(_state != null);
     if (isExpanded) {

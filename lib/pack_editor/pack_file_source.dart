@@ -1,17 +1,35 @@
+import 'package:decard_web/db.dart';
 import 'package:decard_web/dk_expansion_tile.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../card_model.dart';
+import '../parse_pack_info.dart';
+import '../simple_dialog.dart';
 import 'pack_file_source_preview.dart';
 import 'pack_file_source_upload.dart';
 
 import 'package:simple_events/simple_events.dart' as event;
 import 'package:path/path.dart' as path_util;
 
+import 'pack_widgets.dart';
+
 class PackFileSource extends StatefulWidget {
+  final int packId;
+  final int jsonFileID;
+  final String rootPath;
+  final DbSource dbSource;
   final Map<String, String> fileUrlMap;
 
-  const PackFileSource({required this.fileUrlMap, Key? key}) : super(key: key);
+  const PackFileSource({
+    required this.packId,
+    required this.jsonFileID,
+    required this.rootPath,
+    required this.dbSource,
+    required this.fileUrlMap,
+
+    Key? key
+  }) : super(key: key);
 
   @override
   State<PackFileSource> createState() => _PackFileSourceState();
@@ -30,18 +48,26 @@ class _PackFileSourceState extends State<PackFileSource> {
 
   final _previewPanelKey = GlobalKey();
 
-  late _FolderController _folderController;
-  late event.Listener folderControllerOnChangeSelectionListener;
+  late PackFileSourceController _selectController;
+  late event.Listener _selectControllerListener;
 
   @override
   void initState() {
     super.initState();
 
-    _folderController = _FolderController(
-      widget.fileUrlMap.keys.toList()
-    );
+    final fileList = <String>[];
 
-    folderControllerOnChangeSelectionListener = _folderController.onChangeSelection.subscribe((listener, data) {
+    for (var file in widget.fileUrlMap.keys) {
+      final fileExt = path_util.extension(file).substring(1).toLowerCase();
+
+      if (FileExt.sourceExtList.contains(fileExt)) {
+        fileList.add(file);
+      }
+    }
+
+    _selectController = PackFileSourceController(fileList);
+
+    _selectControllerListener = _selectController.onChange.subscribe((listener, data) {
       _previewPanelKey.currentState?.setState(() {});
     });
   }
@@ -49,6 +75,7 @@ class _PackFileSourceState extends State<PackFileSource> {
   @override
   void dispose() {
     _scrollbarController.dispose();
+    _selectControllerListener.dispose();
     super.dispose();
   }
 
@@ -73,29 +100,32 @@ class _PackFileSourceState extends State<PackFileSource> {
               message: 'Удалить',
               child: IconButton(
                   onPressed: (){
+                    if (_selectController.isDir) {
+                      _deleteFolder(_selectController.selectedDir);
+                      return;
+                    }
 
+                    _deleteFileFromPack();
                   },
                   icon: const Icon(Icons.delete_outline),
               ),
             ),
 
-            if (kIsWeb) ...[
-              Tooltip(
-                message: 'Загрузить',
-                child: IconButton(
-                    onPressed: (){
-                      if (_mode == _PackFileSourceMode.upload) {
-                        _mode = _PackFileSourceMode.none;
-                      } else {
-                        _mode = _PackFileSourceMode.upload;
-                      }
+            Tooltip(
+              message: 'Загрузить',
+              child: IconButton(
+                  onPressed: (){
+                    if (_mode == _PackFileSourceMode.upload) {
+                      _mode = _PackFileSourceMode.none;
+                    } else {
+                      _mode = _PackFileSourceMode.upload;
+                    }
 
-                      setState(() {});
-                    },
-                    icon: Icon(Icons.upload_outlined, color: _mode == _PackFileSourceMode.upload ? Colors.green : null )
-                ),
+                    setState(() {});
+                  },
+                  icon: Icon(kIsWeb? Icons.upload_outlined : Icons.folder_special_outlined, color: _mode == _PackFileSourceMode.upload ? Colors.green : null )
               ),
-            ],
+            ),
 
             Tooltip(
               message: 'Предварительный просмотр',
@@ -110,6 +140,16 @@ class _PackFileSourceState extends State<PackFileSource> {
                     setState(() {});
                   },
                   icon: Icon(Icons.image_outlined, color: _mode == _PackFileSourceMode.preview ? Colors.green : null)
+              ),
+            ),
+
+            Tooltip(
+              message: 'Создать каталог',
+              child: IconButton(
+                onPressed: (){
+                  _createFolder();
+                },
+                icon: const Icon(Icons.create_new_folder_outlined),
               ),
             ),
 
@@ -134,7 +174,7 @@ class _PackFileSourceState extends State<PackFileSource> {
       child: SingleChildScrollView(
         controller: _scrollbarController,
         child: _Folder(
-          controller: _folderController,
+          controller: _selectController,
           path: '.',
         ),
       ),
@@ -142,47 +182,178 @@ class _PackFileSourceState extends State<PackFileSource> {
   }
 
   Widget _uploadPanel() {
-    return const PackFileSourceUpload();
+    return PackFileSourceUpload(
+      packId: widget.packId,
+      rootPath: widget.rootPath,
+      selectController: _selectController,
+      onCheckFileExists: (filePath){
+        final result = widget.fileUrlMap[filePath] != null;
+        if (result) {
+          _selectController.multiSelPaths.add(filePath);
+          _selectController.onChange.send();
+        }
+        return result;
+      },
+      onFileUpload: (filePath, url){
+        _selectController.multiSelPaths.remove(filePath);
+        if (!_selectController.fileList.contains(filePath)) {
+          _selectController.fileList.add(filePath);
+        }
+        widget.fileUrlMap[filePath] = url;
+        widget.dbSource.tabFileUrlMap.insertRow(jsonFileID: widget.jsonFileID, fileName: filePath, url: url);
+        //_folderController.onChangeSelection.send();
+        JsonWidgetChangeListener.of(context)?.setChanged();
+
+        setState(() {});
+      },
+      onClearFileUploadList: (){
+        _selectController.multiSelPaths.clear();
+        _selectController.onChange.send();
+
+        _mode = _PackFileSourceMode.none;
+        setState(() {});
+      },
+    );
+  }
+
+  Future<void> _deleteFileFromPack() async {
+    if (!_selectController.isFile) return;
+
+    if (! await warningDialog(context, 'Удалить файл "${_selectController.selectedPath}" ?')) return;
+
+    _deleteFileFromPackEx(_selectController.selectedPath);
+
+    JsonWidgetChangeListener.of(context)?.setChanged();
+
+    _selectController.setSelection("", true);
+
+    setState(() {});
+  }
+
+  Future<void> _deleteFileFromPackEx(String filePath) async {
+    _selectController.fileList.remove(filePath);
+
+    final path = path_util.join(widget.rootPath, filePath);
+    deleteFileFromPack(widget.packId, path);
+
+    widget.dbSource.tabFileUrlMap.deleteRow(jsonFileID: widget.jsonFileID, fileName: filePath) ;
+    widget.fileUrlMap.remove(filePath);
   }
 
   Widget _previewPanel() {
     return StatefulBuilder(
       key: _previewPanelKey,
       builder: (context, setState) {
-        if (_folderController.selectedPath.isEmpty) return Container();
-        final url = widget.fileUrlMap[_folderController.selectedPath];
-        if (url == null) return Container();
+        if (!_selectController.isFile) return Container();
+        final url = widget.fileUrlMap[_selectController.selectedPath]!;
 
         return Container(
           decoration: BoxDecoration(border: Border.all(color: Colors.black)),
           child: PackFileSourcePreview(
-            fileName : _folderController.selectedPath,
+            fileName : _selectController.selectedPath,
             url      : url,
           ),
         );
       },
     );
   }
+
+  Future<void> _createFolder() async {
+    String folderName = '';
+
+    final result = await simpleDialog(
+      context: context,
+      title: const Text('Создание каталога'),
+      content: StatefulBuilder(builder: (context, setState) {
+        return TextField(
+          onChanged: (value){
+            folderName = value;
+          },
+        );
+      })
+    );
+
+    if (result == null || !result || folderName.isEmpty) return;
+
+    final path = path_util.join(_selectController.selectedDir, folderName, '.');
+    _selectController.fileList.add(path);
+
+    setState(() {});
+  }
+
+  Future<void> _deleteFolder(String folderPath) async {
+    final delFileList = <String>[];
+
+    for (var filePath in _selectController.fileList) {
+      if (!path_util.isWithin(folderPath, filePath)) continue;
+      delFileList.add(filePath);
+    }
+
+    if (delFileList.isNotEmpty) {
+      if (! await warningDialog(context, 'Каталог "$folderPath" не пустой, хотите удалить каталог вместе с содержимым?')) return;
+    } else {
+      if (! await warningDialog(context, 'Удалить каталог "$folderPath" ?')) return;
+    }
+
+    if (delFileList.isNotEmpty) {
+      for (var filePath in delFileList) {
+        await _deleteFileFromPackEx(filePath);
+      }
+    }
+
+    final specPath = path_util.join(folderPath, '.');
+    _selectController.fileList.remove(specPath);
+
+    if (!mounted) return;
+
+    JsonWidgetChangeListener.of(context)?.setChanged();
+
+    _selectController.setSelection("", false);
+
+    setState(() {});
+  }
 }
 
-class _FolderController {
+class PackFileSourceController {
   final List<String> fileList;
 
-  _FolderController(this.fileList);
+  PackFileSourceController(this.fileList);
 
   String _selectedPath = "";
   String get selectedPath => _selectedPath;
 
-  final onChangeSelection = event.SimpleEvent();
+  String _selectedDir = "";
+  String get selectedDir => _selectedDir;
 
-  void setSelection(String path) {
+  bool _isFile = false;
+  bool get isFile => _isFile  && _selectedPath.isNotEmpty;
+  bool get isDir  => !_isFile && _selectedPath.isNotEmpty;
+
+  final multiSelPaths = <String>[];
+
+  final checkboxPaths = <String>[];
+
+  final onChange = event.SimpleEvent();
+
+  void setSelection(String path, bool isFile) {
     _selectedPath = path;
-    onChangeSelection.send();
+    _isFile = isFile;
+
+    if (isFile) {
+      _selectedDir = path_util.dirname(path);
+    } else {
+      _selectedDir = path;
+    }
+    if (_selectedDir == '.') {
+      _selectedDir = '';
+    }
+
+    onChange.send();
   }
 }
 
 class _Folder extends StatelessWidget {
-  final _FolderController controller;
+  final PackFileSourceController controller;
   final String path;
   const _Folder({required this.controller, required this.path, Key? key}) : super(key: key);
 
@@ -197,20 +368,27 @@ class _Folder extends StatelessWidget {
       final lowFilePath = path_util.dirname(filePath).toLowerCase();
       if (lowFilePath == lowPath) {
 
-        children.add(
-          ListTile(
-            title: _PathWidget(
-              path: filePath,
-              controller: controller, builder: (context, isSelected) {
-                return Text(path_util.basename(filePath), style: TextStyle(color: isSelected? Colors.blue : null));
-              },
-            ),
+        final fileName = path_util.basename(filePath);
 
-            onTap: (){
-              controller.setSelection(filePath);
-            },
-          )
-        );
+        if (fileName != '.') {
+          children.add(
+              ListTile(
+                title: _PathWidget(
+                  path: filePath,
+                  selectController: controller, builder: (context, selColor, selBackgroundColor) {
+                  return Container(
+                      color: selBackgroundColor,
+                      child: Text(path_util.basename(filePath), style: TextStyle(color: selColor))
+                  );
+                },
+                ),
+
+                onTap: (){
+                  controller.setSelection(filePath, true);
+                },
+              )
+          );
+        }
       }
 
       if (lowFilePath != '.') {
@@ -231,18 +409,24 @@ class _Folder extends StatelessWidget {
     }
 
     if (lowPath != '.') {
-      return DkExpansionTile(
-        title: _PathWidget(
-          path: lowPath,
-          controller: controller, builder: (context, isSelected) {
-            return Text(lowPath, style: TextStyle(color: isSelected? Colors.blue : Colors.black));
-          },
-        ),
+      return Padding(
+        padding: const EdgeInsets.only(left: 20),
+        child: DkExpansionTile(
+          title: _PathWidget(
+            path: lowPath,
+            selectController: controller, builder: (context, selColor, selBackgroundColor) {
+              return Container(
+                color: selBackgroundColor,
+                child: Text(lowPath, style: TextStyle(color: selColor??Colors.black))
+              );
+            },
+          ),
 
-        onTap: () {
-          controller.setSelection(lowPath);
-        },
-        children: children,
+          onTap: () {
+            controller.setSelection(lowPath, false);
+          },
+          children: children,
+        ),
       );
     }
 
@@ -253,28 +437,29 @@ class _Folder extends StatelessWidget {
   }
 }
 
-typedef _SelectBuilder = Widget Function(BuildContext context, bool isSelected);
+typedef _SelectBuilder = Widget Function(BuildContext context, Color? selColor, Color? selBackgroudColor);
 
 class _PathWidget extends StatefulWidget {
   final String path;
-  final _FolderController controller;
+  final PackFileSourceController selectController;
   final _SelectBuilder builder;
-  const _PathWidget({required this.path, required this.controller, required this.builder, Key? key}) : super(key: key);
+  const _PathWidget({required this.path, required this.selectController, required this.builder, Key? key}) : super(key: key);
 
   @override
   State<_PathWidget> createState() => _PathWidgetState();
 }
 
 class _PathWidgetState extends State<_PathWidget> {
-  late event.Listener folderControllerOnChangeSelectionListener;
+  late event.Listener _selectControllerListener;
 
-  bool _isSelected = false;
+  Color? color;
+  Color? backgroundColor;
 
   @override
   void initState() {
     super.initState();
 
-    folderControllerOnChangeSelectionListener = widget.controller.onChangeSelection.subscribe((listener, data) {
+    _selectControllerListener = widget.selectController.onChange.subscribe((listener, data) {
       onChangeSelection();
     });
 
@@ -283,15 +468,25 @@ class _PathWidgetState extends State<_PathWidget> {
 
   @override
   void dispose() {
-    folderControllerOnChangeSelectionListener.dispose();
+    _selectControllerListener.dispose();
     super.dispose();
   }
 
   void onChangeSelection() {
-    final isSelected = widget.controller.selectedPath == widget.path;
-    if (_isSelected != isSelected) {
-      _isSelected = isSelected;
+    Color? newColor;
+    Color? newBackgroundColor;
 
+    if (widget.selectController.selectedPath == widget.path) {
+      newColor = Colors.blue;
+    }
+
+    if (widget.selectController.multiSelPaths.contains(widget.path) ) {
+      newBackgroundColor = Colors.deepOrangeAccent;
+    }
+
+    if (color != newColor || backgroundColor != newBackgroundColor) {
+      color = newColor;
+      backgroundColor = newBackgroundColor;
       if (mounted) {
         setState(() {});
       }
@@ -300,7 +495,7 @@ class _PathWidgetState extends State<_PathWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return widget.builder.call(context, _isSelected);
+    return widget.builder.call(context, color, backgroundColor);
   }
 }
 

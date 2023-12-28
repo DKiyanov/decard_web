@@ -5,6 +5,8 @@ import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'common.dart';
 import 'package:path/path.dart' as path_util;
 
+import 'decardj.dart';
+
 class UploadFile extends StatefulWidget {
   const UploadFile({Key? key}) : super(key: key);
 
@@ -39,7 +41,7 @@ class _UploadFileState extends State<UploadFile> {
       final filename = await _dzController.getFilename(file);
       final fileExt = path_util.extension(filename).toLowerCase();
 
-      if (fileExt == '.decardj' || fileExt == '.decardz') {
+      if (DjfFileExtension.values.contains(fileExt)) {
         _fileList.add(
             FileInfo(
                 file,

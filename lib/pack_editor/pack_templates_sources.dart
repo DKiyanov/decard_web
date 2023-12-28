@@ -7,6 +7,7 @@ import 'package:pluto_grid/pluto_grid.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 import '../decardj.dart';
+import '../simple_dialog.dart';
 import 'pack_widgets.dart';
 
 class TemplatesSources extends StatefulWidget {
@@ -346,39 +347,10 @@ class _TemplateParamTabState extends State<TemplateParamTab> {
     _setChanged();
   }
 
-  Future<bool> _warningDialog (String message) async {
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false, // user must tap button!
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(message),
-          actions: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.cancel, color: Colors.redAccent),
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.check, color: Colors.green),
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-            ),
-          ],
-        );
-      },
-    );
-
-    if (result == null || !result) return false;
-    return true;
-  }
-
   _deleteCurrentRow() async {
     if (_stateManager.currentRowIdx == null) return;
 
-    if (! await _warningDialog('Удалить строку?')) return;
+    if (! await warningDialog(context, 'Удалить строку?')) return;
 
     final row = _stateManager.refRows[_stateManager.currentRowIdx!];
     _rowDataMap.remove(row);
@@ -390,7 +362,7 @@ class _TemplateParamTabState extends State<TemplateParamTab> {
   }
 
   _clearTable() async {
-    if (! await _warningDialog('Отчистить таблицу?')) return;
+    if (! await warningDialog(context, 'Отчистить таблицу?')) return;
 
     _sourceList.clear();
     _stateManager.removeAllRows();

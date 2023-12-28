@@ -26,13 +26,11 @@ class DataLoader {
 
   DataLoader(this.dbSource);
 
-  Future<int?> loadJson(String sourceFileID, Map<String, dynamic> jsonMap, CheckCanLoadFile? checkCanLoadFile) async {
+  Future<int?> loadJson(String sourceFileID, String rootPath, Map<String, dynamic> jsonMap, CheckCanLoadFile? checkCanLoadFile) async {
     final jsonFileRow = await dbSource.tabJsonFile.getRowBySourceID(sourceFileID: sourceFileID);
     if (jsonFileRow != null) {
       return jsonFileRow[TabJsonFile.kJsonFileID];
     }
-
-//    final jsonMap = jsonDecode(jsonStr);
 
     final String guid = jsonMap[TabJsonFile.kGuid]??'';
     if (guid.isEmpty) {
@@ -48,7 +46,7 @@ class DataLoader {
       }
     }
 
-    final jsonFileID = await dbSource.tabJsonFile.insertRow(sourceFileID, jsonMap);
+    final jsonFileID = await dbSource.tabJsonFile.insertRow(sourceFileID, rootPath, jsonMap);
 
     final styleList = (jsonMap[DjfFile.cardStyleList]) as List;
     for (Map<String, dynamic> cardStyle in styleList) {
