@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../card_model.dart';
 import '../parse_pack_info.dart';
 import '../simple_dialog.dart';
+import 'pack_editor.dart';
 import 'pack_file_source_preview.dart';
 import 'pack_file_source_upload.dart';
 
@@ -15,6 +16,7 @@ import 'package:path/path.dart' as path_util;
 import 'pack_widgets.dart';
 
 class PackFileSource extends StatefulWidget {
+  final PackEditorState editor;
   final int packId;
   final int jsonFileID;
   final String rootPath;
@@ -22,6 +24,7 @@ class PackFileSource extends StatefulWidget {
   final Map<String, String> fileUrlMap;
 
   const PackFileSource({
+    required this.editor,
     required this.packId,
     required this.jsonFileID,
     required this.rootPath,
@@ -54,6 +57,10 @@ class _PackFileSourceState extends State<PackFileSource> {
   bool _moveButtonVisible = false;
   final _moveButtonKey = GlobalKey();
 
+  late event.Listener _questionDataFocusListener;
+
+  final _resultButtonKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +82,11 @@ class _PackFileSourceState extends State<PackFileSource> {
     _selectControllerListener = _selectController.onChange.subscribe((listener, data) {
       _previewPanelKey.currentState?.setState(() {});
       _calcMoveButtonVisible();
+      _resultButtonKey.currentState?.setState(() {});
+    });
+
+    _questionDataFocusListener = widget.editor.onCardBodyQuestionDataManualInputFocusChanged.subscribe((listener, data) {
+      _resultButtonKey.currentState?.setState(() {});
     });
   }
 
@@ -90,6 +102,7 @@ class _PackFileSourceState extends State<PackFileSource> {
   void dispose() {
     _scrollbarController.dispose();
     _selectControllerListener.dispose();
+    _questionDataFocusListener.dispose();
     super.dispose();
   }
 
@@ -100,14 +113,21 @@ class _PackFileSourceState extends State<PackFileSource> {
       children: [
         Row( mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            Tooltip(
-              message: 'Вставить в тело карточки',
-              child: IconButton(
-                  onPressed: (){
+            StatefulBuilder(
+              key: _resultButtonKey,
+              builder: (context, setState) {
+                if (widget.editor.selectedCardBodyQuestionDataManualInputController == null) return Container();
 
-                  },
-                  icon: const Icon(Icons.arrow_back_sharp)
-              ),
+                return Tooltip(
+                  message: 'Вставить в тело карточки',
+                  child: IconButton(
+                      onPressed: !_selectController.isFile ? null : (){
+                        widget.editor.selectedCardBodyQuestionDataManualInputController!.text = _selectController.selectedPath;
+                      },
+                      icon: Icon(Icons.arrow_back_sharp, color: _selectController.isFile? Colors.blue : Colors.grey)
+                  ),
+                );
+              }
             ),
 
             Tooltip(

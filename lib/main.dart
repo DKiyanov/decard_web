@@ -5,7 +5,6 @@ import 'package:decard_web/home_page.dart';
 import 'package:decard_web/pack_view.dart';
 import 'package:decard_web/page_not_found.dart';
 import 'package:decard_web/showcase_out.dart';
-import 'package:decard_web/upload_file.dart';
 import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
 import 'package:url_strategy/url_strategy.dart';
@@ -106,10 +105,6 @@ RouteMap _buildRouteMapIn(BuildContext context) {
           cardController: appState.cardController,
           packId: int.parse(route.pathParameters['id']!)
       )),
-
-      '/upload_file': (route) => const NoAnimationPage(
-        child: UploadFile(),
-      ),
     },
   );
 }

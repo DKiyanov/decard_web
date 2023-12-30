@@ -198,31 +198,7 @@ const descJsonStr = '''
         },
         
         "questionData" : {
-          "title": "Данные вопроса",
-          "body": {
-            "text" : {
-              "title": "текст вопроса"
-            },
-            "html" : {
-              "title": "файл в формате html"
-            },
-            "markdown" : {
-              "title": "файл в формате markdown"
-            }, 
-            "textConstructor" : {
-              "title": "Конструктор",
-              "help" : ""             
-            }, 
-            "audio" : {
-              "title": "аудио файл"
-            }, 
-            "video" : {
-              "title": "видео файл"
-            }, 
-            "image" : {
-              "title": "картинка"
-            } 
-          }                                                           
+          "title": "Данные вопроса"                                                           
         },
         
         "answerList" : {

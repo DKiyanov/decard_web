@@ -707,6 +707,8 @@ enum ConvertDirection {
 }
 
 typedef InputOutputConverter = dynamic Function(dynamic value, ConvertDirection direction);
+typedef JsonMultiValueFieldItemBuilder = Widget Function(BuildContext context, String value, bool readOnly, VoidCallback onDelete, Function(String newValue) onChange);
+typedef OnTextFiledFocusChangeCallback = Function(TextEditingController controller, bool hasFocus);
 
 class JsonMultiValueField extends StatefulWidget {
   final Map<String, dynamic> json;
@@ -722,7 +724,10 @@ class JsonMultiValueField extends StatefulWidget {
   final FixBuilder? manualInputPrefix;
   final FixBuilder? manualInputSuffix;
   final TextValidate? onManualInputValidate;
-
+  final JsonMultiValueFieldItemBuilder? itemBuilder;
+  final ValueChanged<bool>? onExpansionChanged;
+  final OnTextFiledFocusChangeCallback? onManualInputFocusChange;
+  final bool reorderable;
 
   const JsonMultiValueField({
     required this.json,
@@ -738,6 +743,10 @@ class JsonMultiValueField extends StatefulWidget {
     this.manualInputPrefix,
     this.manualInputSuffix,
     this.onManualInputValidate,
+    this.itemBuilder,
+    this.onExpansionChanged,
+    this.onManualInputFocusChange,
+    this.reorderable = false,
 
     Key? key
   }) : super(key: key);
@@ -752,7 +761,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
   final _scrollControllerCheckBoxList = ScrollController();
   final _scrollControllerWrap = ScrollController();
   bool _checkBoxListOn = false;
-  final _textController = TextEditingController();
+  final _manualInputTextController = TextEditingController();
 
   bool _wrap = false;
   bool _readOnly = false;
@@ -763,6 +772,8 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
 
   String _errorText = '';
 
+  FocusNode? _manualInputFocus;
+
   @override
   void initState() {
     super.initState();
@@ -770,14 +781,24 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
     _readOnly = widget.readOnly;
     _checkBoxListExists = widget.valuesGetter != null;
     _getInitValues();
+
+    if (widget.onManualInputFocusChange != null) {
+      _manualInputFocus = FocusNode();
+      _manualInputFocus!.addListener(_onManualInputFocusChange);
+    }
   }
 
   @override
   void dispose() {
     _scrollControllerCheckBoxList.dispose();
     _scrollControllerWrap.dispose();
-    _textController.dispose();
+    _manualInputTextController.dispose();
+    _manualInputFocus?.removeListener(_onManualInputFocusChange);
     super.dispose();
+  }
+
+  void _onManualInputFocusChange() {
+    widget.onManualInputFocusChange?.call(_manualInputTextController, _manualInputFocus!.hasFocus);
   }
 
   void _getInitValues() {
@@ -904,8 +925,9 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
 
           if (!expanded) {
             _checkBoxListOn = false;
-            _textController.clear();
+            _manualInputTextController.clear();
             _errorText = "";
+            widget.onManualInputFocusChange?.call(_manualInputTextController, false);
 
             setStateNeed = true;
           }
@@ -913,6 +935,8 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
           if (setStateNeed) {
             setState((){});
           }
+
+          widget.onExpansionChanged?.call(expanded);
         },
 
         title: title,
@@ -952,6 +976,10 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
   }
 
   Widget _getChip(String value) {
+    if (widget.itemBuilder != null) {
+      return widget.itemBuilder!.call(context, value, _readOnly, ()=> _onDeleteItem(value), (newValue)=> _onChangeItemValue(value, newValue));
+    }
+
     if (_readOnly) {
       return Chip(
         label: Text(value),
@@ -960,13 +988,26 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
 
     return InputChip(
       label: Text(value),
-      onDeleted: () {
-        setState(() {
-          _valueList.remove(value);
-          _setResult();
-        });
-      },
+      onDeleted: ()=> _onDeleteItem(value),
     );
+  }
+
+  void _onDeleteItem(String value) {
+    setState(() {
+      _valueList.remove(value);
+      _setResult();
+    });
+  }
+
+  void _onChangeItemValue(String oldValue, String newValue) {
+    setState(() {
+      final index = _valueList.indexOf(oldValue);
+      if (index < 0) return;
+      _valueList.removeAt(index);
+      _valueList.insert(index, newValue);
+
+      _setResult();
+    });
   }
 
   Widget _wrapWidget() {
@@ -1039,7 +1080,8 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: TextField(
-        controller: _textController,
+        controller: _manualInputTextController,
+        focusNode: _manualInputFocus,
         decoration: InputDecoration(
           filled: true,
 
@@ -1054,12 +1096,12 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
             borderRadius: BorderRadius.circular(15),
           ),
 
-          prefix: widget.manualInputPrefix == null? null : widget.manualInputPrefix!.call(_textController),
+          prefix: widget.manualInputPrefix == null? null : widget.manualInputPrefix!.call(_manualInputTextController),
 
           suffix: Row(mainAxisSize: MainAxisSize.min,
             children: [
               if (widget.manualInputSuffix != null) ...[
-                widget.manualInputSuffix!.call(_textController),
+                widget.manualInputSuffix!.call(_manualInputTextController),
               ],
 
               InkWell(
@@ -1069,9 +1111,9 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
                 ),
                 onTap: () {
                   setState(() {
-                    _valueList.add(_textController.text);
+                    _valueList.add(_manualInputTextController.text);
                   });
-                  _textController.clear();
+                  _manualInputTextController.clear();
                 }
               ),
             ],
@@ -1141,6 +1183,26 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
   Widget _valueListWidget() {
     final screenHeight = MediaQuery.of(context).size.height;
 
+    final children = <Widget>[];
+
+    for (var index = 0; index < _valueList.length; index ++) {
+      final value = _valueList[index];
+      children.add(Row(
+        key: ValueKey<String>(value),
+        children: [
+          _getChip(value),
+
+          if (widget.reorderable) ...[
+            Expanded(child: Container()),
+            ReorderableDragStartListener(
+              index: index,
+              child: const Icon(Icons.drag_handle, color: Colors.grey),
+            )
+          ],
+        ],
+      ));
+    }
+
     return LimitedBox(
       maxHeight: screenHeight * 2 / 3,
       child: Scrollbar(
@@ -1149,16 +1211,19 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
 
         child: Padding(
           padding: const EdgeInsets.only(right: 10),
-          child: SingleChildScrollView(
-            controller: _scrollControllerCheckBoxList,
-            child: Column(
-              children: _valueList.map((value) {
-                return Container(
-                  alignment: Alignment.centerLeft,
-                  child: _getChip(value),
-                );
-              }).toList()
-            ),
+          child: ReorderableListView(
+            scrollController: _scrollControllerCheckBoxList,
+            shrinkWrap: true,
+            onReorder: (int oldIndex, int newIndex) {
+              setState(() {
+                if (oldIndex < newIndex) {
+                  newIndex -= 1;
+                }
+                final item = _valueList.removeAt(oldIndex);
+                _valueList.insert(newIndex, item);
+              });
+            },
+            children: children
           ),
         ),
       ),

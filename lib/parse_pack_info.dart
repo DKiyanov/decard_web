@@ -68,6 +68,14 @@ class WebPackListResult{
   });
 }
 
+class WebPackUploadFileFields {
+  static const String className = 'UploadWebFile';
+  static const String userID    = 'UserID';
+  static const String fileName  = 'FileName';
+  static const String size      = 'Size';
+  static const String content   = 'Content';
+}
+
 class WebPackFields {
   static const String className    = 'DecardFileHead';
   static const String packId       = 'packID';

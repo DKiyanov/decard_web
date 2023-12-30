@@ -116,7 +116,7 @@ class _PackViewState extends State<PackView> {
               title: title(),
               actions: [
                 widget.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
-                  if (card.body.clue.isEmpty) return Container();
+                  if (card.body.clue == null) return Container();
 
                   return HelpButton(
                     key           : ValueKey(card),
@@ -125,14 +125,14 @@ class _PackViewState extends State<PackView> {
                     color         : Colors.lime,
                     onTap         : () {
                       ViewContent.navigatorPush(
-                          context, card, card.body.clue, TextConst.txtClue
+                          context, card, card.body.clue!, TextConst.txtClue
                       );
                     },
                   );
                 }),
 
                 widget.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
-                  if (card.head.help.isEmpty) return Container();
+                  if (card.head.help == null) return Container();
 
                   return HelpButton(
                     key           : ValueKey(card),
@@ -141,7 +141,7 @@ class _PackViewState extends State<PackView> {
                     color         : Colors.white,
                     onTap         : () {
                       ViewContent.navigatorPush(
-                          context, card, card.head.help, TextConst.txtHelp
+                          context, card, card.head.help!, TextConst.txtHelp
                       );
                     },
                   );

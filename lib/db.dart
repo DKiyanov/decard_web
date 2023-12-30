@@ -244,10 +244,10 @@ abstract class DbSource {
     return jsonFileID;
   }
 
-  String getFileUrl(int jsonFileID, String fileName) {
+  String? getFileUrl(int jsonFileID, String fileName) {
     final result = tabFileUrlMap.getFileUrl(jsonFileID: jsonFileID, fileName: fileName);
     if (result != null) return result;
-    return fileName;
+    return null;
   }
 
   Future<void> deleteJsonFile(int jsonFileID) async {

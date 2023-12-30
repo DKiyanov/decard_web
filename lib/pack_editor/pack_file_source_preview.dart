@@ -34,7 +34,7 @@ class _PackFileSourcePreviewState extends State<PackFileSourcePreview> {
     fileExt = path_util.extension(widget.fileName).toLowerCase().substring(1);
     content = "";
     
-    if (FileExt.textExtList.contains(fileExt)) {
+    if (FileExt.txtExtList.contains(fileExt)) {
       content = (await getTextFromUrl(widget.url))??"";
     }
     

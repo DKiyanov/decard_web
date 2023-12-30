@@ -43,6 +43,12 @@ class ParseConnect {
 
     _user = await ParseUser.currentUser();
 
+    if (_user != null) {
+      if (! await sessionHealthOk()) {
+        _user = null;
+      }
+    }
+
     if (_user == null) {
       final parseUser = ParseUser.forQuery();
       await parseUser.loginAnonymous();

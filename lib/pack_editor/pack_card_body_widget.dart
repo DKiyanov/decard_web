@@ -1,12 +1,12 @@
+import 'package:decard_web/pack_editor/pack_editor.dart';
 import 'package:flutter/material.dart';
 
 import '../decardj.dart';
-import 'pack_card_body_question_data_widget.dart';
 import 'pack_card_widget.dart';
 import 'pack_style_widget.dart';
 import 'pack_widgets.dart';
 
-class PackCardBodyWidget extends StatelessWidget {
+class PackCardBodyWidget extends StatefulWidget {
   final Map<String, dynamic> json;
   final FieldDesc fieldDesc;
   final OwnerDelegate? ownerDelegate;
@@ -14,18 +14,23 @@ class PackCardBodyWidget extends StatelessWidget {
   const PackCardBodyWidget({required this.json, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
 
   @override
+  State<PackCardBodyWidget> createState() => _PackCardBodyWidgetState();
+}
+
+class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
+  @override
   Widget build(BuildContext context) {
     bool initiallyExpanded = false;
-    if (json.isEmpty) {
+    if (widget.json.isEmpty) {
       initiallyExpanded = true;
     }
 
     return JsonExpansionFieldGroup(
-      json             : json,
-      fieldDesc        : fieldDesc,
+      json             : widget.json,
+      fieldDesc        : widget.fieldDesc,
       onJsonFieldBuild : buildSubFiled,
       initiallyExpanded: initiallyExpanded,
-      ownerDelegate    : ownerDelegate,
+      ownerDelegate    : widget.ownerDelegate,
     );
   }
 
@@ -60,13 +65,22 @@ class PackCardBodyWidget extends StatelessWidget {
     }
 
     if (fieldName == DjfCardBody.questionData) {
-      return PackCardBodyQuestionDataWidget(json: json, fieldDesc: fieldDesc);
+      input = JsonMultiValueField(
+        json      : json,
+        fieldName : fieldName,
+        fieldDesc : fieldDesc,
+        wrap      : false,
+        reorderable: true,
+        onManualInputFocusChange: (controller, hasFocus) {
+          PackEditor.of(context)?.setCardBodyQuestionDataManualInputFocus(controller, hasFocus);
+        },
+      );
     }
 
     if (fieldName == DjfCardBody.answerList) {
       final cardWidget = context.findAncestorWidgetOfExactType<PackCardWidget>();
       final cardID = cardWidget!.json[DjfCard.id]??'';
-      final bodyNum = ownerDelegate?.indexInArray??0;
+      final bodyNum = widget.ownerDelegate?.indexInArray??0;
 
 
       input = JsonMultiValueField(

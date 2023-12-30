@@ -62,7 +62,7 @@ class ValueWidget extends StatelessWidget {
     if (str.isEmpty) return Container();
     if (str.indexOf(DjfCardStyle.buttonImagePrefix) == 0) {
       final imagePath = str.substring(DjfCardStyle.buttonImagePrefix.length);
-      final fileUrl = FileExt.getFileUrl(card, imagePath);
+      final fileUrl = FileExt.getFileUrl(card, imagePath)??imagePath;
 
       var maxWidth = double.infinity;
       var maxHeight = double.infinity;
@@ -96,48 +96,52 @@ class CardQuestion extends StatelessWidget {
   Widget build(BuildContext context) {
     final widgetList = <Widget>[];
 
-    if (card.body.questionData.image != null) {
-      final fileUrl = _getFileUrl(card.body.questionData.image!);
-      final maxHeight = context.screenSize.height * card.style.imageMaxHeight / 100;
+    for (var source in card.body.questionData) {
 
-      widgetList.add(
-          LimitedBox(maxHeight: maxHeight, child: imageFromUrl(fileUrl))
-      );
-    }
+      if (source.type == FileExt.contentImage) {
+        final fileUrl = _getFileUrl(source.data);
+        final maxHeight = context.screenSize.height * card.style.imageMaxHeight / 100;
 
-    if (card.body.questionData.audio != null) {
-      final fileUrl = _getFileUrl(card.body.questionData.audio!);
-      widgetList.add(
-        audioPanelFromUrl(fileUrl, ValueKey(card.head.cardKey)),
-      );
-    }
+        widgetList.add(
+            LimitedBox(maxHeight: maxHeight, child: imageFromUrl(fileUrl))
+        );
+      }
 
-    if (card.body.questionData.text != null) {
-      widgetList.add(
-        AutoSizeText(
-          card.body.questionData.text!,
-          style: TextStyle(fontSize: context.textTheme.headlineMedium!.fontSize),
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
+      if (source.type == FileExt.contentAudio) {
+        final fileUrl = _getFileUrl(source.data);
+        widgetList.add(
+          audioPanelFromUrl(fileUrl, ValueKey(card.head.cardKey)),
+        );
+      }
 
-    if (card.body.questionData.html != null) {
-      widgetList.add(
-        _htmlViewer(card.body.questionData.html!),
-      );
-    }
+      if (source.type == FileExt.contentText) {
+        widgetList.add(
+          AutoSizeText(
+            source.data,
+            style: TextStyle(
+                fontSize: context.textTheme.headlineMedium!.fontSize),
+            textAlign: TextAlign.center,
+          ),
+        );
+      }
 
-    if (card.body.questionData.markdown != null) {
-      widgetList.add(
-          _markdownViewer(card.body.questionData.markdown!)
-      );
-    }
+      if (source.type == FileExt.contentHtml) {
+        widgetList.add(
+          _htmlViewer(source.data),
+        );
+      }
 
-    if (card.body.questionData.textConstructor != null) {
-      widgetList.add(
-          _textConstructor(card.body.questionData.textConstructor!)
-      );
+      if (source.type == FileExt.contentMarkdown) {
+        widgetList.add(
+            _markdownViewer(source.data)
+        );
+      }
+
+      if (source.type == FileExt.contentTextConstructor) {
+        widgetList.add(
+            _textConstructor(source.data)
+        );
+      }
     }
 
     return Column(children: widgetList);
@@ -164,7 +168,7 @@ class CardQuestion extends StatelessWidget {
   }
 
   String _getFileUrl(String fileName) {
-    return FileExt.getFileUrl(card, fileName);
+    return FileExt.getFileUrl(card, fileName)??fileName;
   }
 }
 
@@ -251,7 +255,7 @@ class _AnswerInputState extends State<AnswerInput> {
 
   @override
   Widget build(BuildContext context) {
-    if (card.body.questionData.textConstructor != null) {
+    if (card.body.questionData.any((source) => source.type == FileExt.contentTextConstructor)) {
       return Container();
     }
 

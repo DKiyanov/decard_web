@@ -19,16 +19,21 @@ import 'pack_template_widget.dart';
 import 'desc_json.dart';
 import 'pack_templates_sources.dart';
 import 'pack_widgets.dart';
+import 'package:simple_events/simple_events.dart' as event;
 
 class PackEditor extends StatefulWidget {
   final int packId;
   const PackEditor({required this.packId, Key? key}) : super(key: key);
 
   @override
-  State<PackEditor> createState() => _PackEditorState();
+  State<PackEditor> createState() => PackEditorState();
+
+  static PackEditorState? of(BuildContext context){
+    return context.findAncestorStateOfType<PackEditorState>();
+  }
 }
 
-class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
+class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   bool _isStarting = true;
 
   late DbSourceMem  _dbSource;
@@ -394,6 +399,7 @@ class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
   Widget _fileSources(){
     return PackFileSource(
+      editor     : this,
       packId     : widget.packId,
       jsonFileID : _jsonFileID!,
       rootPath   : packRootPath,
@@ -418,6 +424,23 @@ class _PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
     if (_packTitle != newTitle) {
       _packTitle = newTitle;
       _packTitleKey.currentState?.setState(() {});
+    }
+  }
+
+  final onCardBodyQuestionDataManualInputFocusChanged = event.SimpleEvent<TextEditingController>();
+  TextEditingController? selectedCardBodyQuestionDataManualInputController;
+
+  void setCardBodyQuestionDataManualInputFocus(TextEditingController controller, bool hasFocus) {
+    if (selectedCardBodyQuestionDataManualInputController == controller && !hasFocus) {
+      selectedCardBodyQuestionDataManualInputController = null;
+      onCardBodyQuestionDataManualInputFocusChanged.send();
+      return;
+    }
+
+    if (selectedCardBodyQuestionDataManualInputController != controller && hasFocus) {
+      selectedCardBodyQuestionDataManualInputController = controller;
+      onCardBodyQuestionDataManualInputFocusChanged.send(selectedCardBodyQuestionDataManualInputController);
+      return;
     }
   }
 }

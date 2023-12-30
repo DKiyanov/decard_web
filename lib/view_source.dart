@@ -4,12 +4,12 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'card_model.dart';
 
 class ViewContent extends StatefulWidget {
-  static Future<Object?> navigatorPush(BuildContext context, CardData card, String content, String title) async {
+  static Future<Object?> navigatorPush(BuildContext context, CardData card, CardSource content, String title) async {
     return Navigator.push(context, MaterialPageRoute( builder: (_) => ViewContent(card: card, content: content, title: title)));
   }
 
   final CardData card;
-  final String content;
+  final CardSource content;
   final String title;
   const ViewContent({required this.card, required this.content, required this.title, Key? key}) : super(key: key);
 
@@ -18,58 +18,43 @@ class ViewContent extends StatefulWidget {
 }
 
 class _ViewContentState extends State<ViewContent> {
-  late String contentExt;
   late String content;
 
   @override
   void initState() {
     super.initState();
 
-    contentExt = FileExt.getContentExt(widget.content);
-
-    if (contentExt.isEmpty) {
-      content = widget.content;
+    if (widget.content.type == FileExt.contentMarkdown) {
+      content = FileExt.prepareMarkdown(widget.card, widget.content.data);
       return;
     }
 
-    final str = widget.content.substring(contentExt.length + 1);
-
-    if (contentExt == FileExt.contentText) {
-      content = str;
+    if (widget.content.type == FileExt.contentHtml) {
+      content = FileExt.prepareHtml(widget.card, widget.content.data);
       return;
     }
 
-    if (contentExt == FileExt.contentMarkdown) {
-      content = FileExt.prepareMarkdown(widget.card, str);
-      return;
-    }
-
-    if (contentExt == FileExt.contentHtml) {
-      content = FileExt.prepareHtml(widget.card, str);
-      return;
-    }
-
-    content = str;
+    content = widget.content.data;
   }
 
   @override
   Widget build(BuildContext context) {
     Widget? body;
 
-    if (contentExt == FileExt.contentMarkdown) {
+    if (widget.content.type == FileExt.contentMarkdown) {
       body = MarkdownBody(data: content);
     }
 
-    if (contentExt == FileExt.contentHtml) {
+    if (widget.content.type == FileExt.contentHtml) {
       body = htmlView(content, widget.card.pacInfo.sourceDir);
     }
 
-    if (FileExt.imageExtList.contains(contentExt)) {
+    if (widget.content.type == FileExt.contentImage) {
       final fileUrl = getFileUrl(content);
       body = imageFromUrl(fileUrl);
     }
 
-    if (FileExt.audioExtList.contains(contentExt)) {
+    if (widget.content.type == FileExt.contentAudio) {
       final fileUrl = getFileUrl(content);
       body = audioPanelFromUrl(fileUrl, ValueKey(fileUrl));
     }
@@ -89,6 +74,6 @@ class _ViewContentState extends State<ViewContent> {
   }
 
   String getFileUrl(String fileName) {
-    return widget.card.dbSource.getFileUrl(widget.card.pacInfo.jsonFileID, fileName);
+    return widget.card.dbSource.getFileUrl(widget.card.pacInfo.jsonFileID, fileName)??fileName;
   }
 }
