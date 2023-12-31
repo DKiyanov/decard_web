@@ -53,8 +53,6 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   late TabController _rightTabController;
 
   final _headScrollController   = ScrollController();
-  final _stylesScrollController = ScrollController();
-  final _cardsScrollController  = ScrollController();
 
   final _pagePadding = const EdgeInsets.only(left: 10, right: 20);
 
@@ -63,6 +61,8 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
   final _packTitleKey = GlobalKey();
   String _packTitle = '';
+
+  final _fileSourceKey = GlobalKey<PackFileSourceState>();
 
   @override
   void initState() {
@@ -123,8 +123,6 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   void dispose() {
     _headScrollController.dispose();
 
-    _stylesScrollController.dispose();
-    _cardsScrollController.dispose();
     _editorTabController.dispose();
 
     super.dispose();
@@ -236,6 +234,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
       Expanded(
         child: TabBarView(
+          physics: const NeverScrollableScrollPhysics(),
           controller: _editorTabController,
           children: [
             _head(),
@@ -292,14 +291,11 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   Widget _styles() {
     return Padding(
       padding: _pagePadding,
-      child: SingleChildScrollView(
-        controller: _stylesScrollController,
-        child: JsonObjectArray(
-          json: _packJson,
-          fieldName: DjfFile.cardStyleList,
-          fieldDesc: _descMap[DjfFile.cardStyleList]!,
-          objectWidgetCreator: _getStyleWidget,
-        ),
+      child: _PackEditorJsonTab(
+        json: _packJson,
+        fieldName: DjfFile.cardStyleList,
+        fieldDesc: _descMap[DjfFile.cardStyleList]!,
+        objectWidgetCreator: _getStyleWidget,
       ),
     );
   }
@@ -307,14 +303,11 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   Widget _cards() {
     return Padding(
       padding: _pagePadding,
-      child: SingleChildScrollView(
-        controller: _cardsScrollController,
-        child: JsonObjectArray(
-          json: _packJson,
-          fieldName: DjfFile.templateList,
-          fieldDesc: _descMap[DjfFile.templateList]!,
-          objectWidgetCreator: _getTemplateWidget,
-        ),
+      child: _PackEditorJsonTab(
+        json: _packJson,
+        fieldName: DjfFile.templateList,
+        fieldDesc: _descMap[DjfFile.templateList]!,
+        objectWidgetCreator: _getTemplateWidget,
       ),
     );
   }
@@ -399,6 +392,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
   Widget _fileSources(){
     return PackFileSource(
+      key        : _fileSourceKey,
       editor     : this,
       packId     : widget.packId,
       jsonFileID : _jsonFileID!,
@@ -442,5 +436,50 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
       onCardBodyQuestionDataManualInputFocusChanged.send(selectedCardBodyQuestionDataManualInputController);
       return;
     }
+  }
+
+  void setSelectedFileSource(String value) {
+    _fileSourceKey.currentState?.setSelectedFileSource(value);
+  }
+}
+
+class _PackEditorJsonTab extends StatefulWidget {
+  final Map<String, dynamic> json;
+  final String fieldName;
+  final FieldDesc fieldDesc;
+  final JsonObjectBuild objectWidgetCreator;
+
+  const _PackEditorJsonTab({
+    required this.json,
+    required this.fieldName,
+    required this.fieldDesc,
+    required this.objectWidgetCreator,
+
+    Key? key
+  }) : super(key: key);
+
+  @override
+  State<_PackEditorJsonTab> createState() => _PackEditorJsonTabState();
+}
+
+class _PackEditorJsonTabState extends State<_PackEditorJsonTab> with AutomaticKeepAliveClientMixin<_PackEditorJsonTab> {
+  final _cardsScrollController  = ScrollController();
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+
+    return SingleChildScrollView(
+      controller: _cardsScrollController,
+      child: JsonObjectArray(
+        json: widget.json,
+        fieldName: widget.fieldName,
+        fieldDesc: widget.fieldDesc,
+        objectWidgetCreator: widget.objectWidgetCreator,
+      ),
+    );
   }
 }

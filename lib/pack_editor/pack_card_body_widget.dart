@@ -1,7 +1,9 @@
 import 'package:decard_web/pack_editor/pack_editor.dart';
 import 'package:flutter/material.dart';
 
+import '../card_model.dart';
 import '../decardj.dart';
+import '../simple_menu.dart';
 import 'pack_card_widget.dart';
 import 'pack_style_widget.dart';
 import 'pack_widgets.dart';
@@ -18,6 +20,8 @@ class PackCardBodyWidget extends StatefulWidget {
 }
 
 class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
+  bool _questionDataSelectContentTypeVisible = false;
+
   @override
   Widget build(BuildContext context) {
     bool initiallyExpanded = false;
@@ -70,9 +74,45 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
-        reorderable: true,
+        reorderIcon : false,
         onManualInputFocusChange: (controller, hasFocus) {
           PackEditor.of(context)?.setCardBodyQuestionDataManualInputFocus(controller, hasFocus);
+        },
+        onItemPressed: (value){
+          PackEditor.of(context)?.setSelectedFileSource(value);
+        },
+        onManualInputValidate: (value) {
+          if (value.isEmpty) {
+            _questionDataSelectContentTypeVisible = false;
+            return '';
+          }
+
+          final contentType = FileExt.getContentType(value);
+          if (contentType == FileExt.contentUnknown) {
+            _questionDataSelectContentTypeVisible = true;
+            return 'Укажите тип контента';
+          }
+          _questionDataSelectContentTypeVisible = false;
+          return '';
+        },
+        onExpansionChanged: (expanded) {
+          if (!expanded) {
+            _questionDataSelectContentTypeVisible = false;
+          }
+        },
+        manualInputPrefix: (controller) {
+          if (_questionDataSelectContentTypeVisible) {
+            return popupMenu(
+              icon: const Icon(Icons.select_all),
+              menuItemList: FileExt.contentValues.map((contentType) => SimpleMenuItem(
+                  child: Text(contentType),
+                  onPress: () {
+                    controller.text = '$contentType:${controller.text}';
+                  }
+              )).toList()
+            );
+          }
+          return null;
         },
       );
     }
@@ -110,5 +150,7 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
       child        : input,
     );
   }
+
+
 }
 

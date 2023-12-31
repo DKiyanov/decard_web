@@ -87,7 +87,7 @@ class FileExt {
   static const contentTextConstructor = 'decardtc';
   static const contentTxt      = 'txt'; // text file
   static const contentText     = 'text'; // text in field
-  static const contentValues    = <String>[contentUnknown, contentImage, contentAudio, contentVideo, contentHtml, contentMarkdown, contentTxt, contentText];
+  static const contentValues    = <String>[contentImage, contentAudio, contentVideo, contentHtml, contentMarkdown, contentTxt, contentText];
   static const contentTextFiles = <String>[contentHtml, contentMarkdown, contentTxt, contentTextConstructor];
 
   static String getFileExt(String fileName) {
@@ -118,6 +118,36 @@ class FileExt {
     }
 
     return '';
+  }
+
+  static String getContentType(String content) {
+    final contentExt = getContentExt(content);
+    if (contentExt.isNotEmpty) {
+      if (contentValues.contains(contentExt)) {
+        return contentExt;
+      }
+      return contentUnknown;
+    }
+
+    final fileExt = getFileExt(content);
+
+    if (fileExt.isEmpty) return contentUnknown;
+
+
+    if (imageExtList.contains(fileExt)) {
+      return contentImage;
+    }
+    if (audioExtList.contains(fileExt)) {
+      return contentAudio;
+    }
+    if (videoExtList.contains(fileExt)) {
+      return contentVideo;
+    }
+    if (txtExtList.contains(fileExt)) {
+      return fileExt;
+    }
+
+    return contentUnknown;
   }
 
   static String getContentData(String contentExt, String content) {

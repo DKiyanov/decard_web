@@ -577,6 +577,46 @@ class _DkExpansionTileState extends State<DkExpansionTile> with SingleTickerProv
       ),
     );
   }
+  
+  void _updateHeaderColor(ExpansionTileThemeData expansionTileTheme) {
+    _headerColorTween
+      ..begin = widget.collapsedTextColor
+          ?? expansionTileTheme.collapsedTextColor
+      ..end = widget.textColor ?? expansionTileTheme.textColor;
+  }
+
+  void _updateIconColor(ExpansionTileThemeData expansionTileTheme) {
+    _iconColorTween
+      ..begin = widget.collapsedIconColor
+          ?? expansionTileTheme.collapsedIconColor
+      ..end = widget.iconColor ?? expansionTileTheme.iconColor;
+  }
+
+  void _updateBackgroundColor(ExpansionTileThemeData expansionTileTheme) {
+    _backgroundColorTween
+      ..begin = widget.collapsedBackgroundColor ?? expansionTileTheme.collapsedBackgroundColor
+      ..end = widget.backgroundColor ?? expansionTileTheme.backgroundColor;
+  }
+
+  @override
+  void didUpdateWidget(covariant DkExpansionTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final ExpansionTileThemeData expansionTileTheme = ExpansionTileTheme.of(context);
+
+    if (widget.collapsedTextColor != oldWidget.collapsedTextColor
+        || widget.textColor != oldWidget.textColor) {
+      _updateHeaderColor(expansionTileTheme);
+    }
+    if (widget.collapsedIconColor != oldWidget.collapsedIconColor
+        || widget.iconColor != oldWidget.iconColor) {
+      _updateIconColor(expansionTileTheme);
+    }
+    if (widget.backgroundColor != oldWidget.backgroundColor
+        || widget.collapsedBackgroundColor != oldWidget.collapsedBackgroundColor) {
+      _updateBackgroundColor(expansionTileTheme);
+    }
+
+  }  
 
   @override
   void didChangeDependencies() {

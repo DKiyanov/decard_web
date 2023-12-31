@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 import '../db.dart';
 import '../dk_expansion_tile.dart';
@@ -314,7 +315,7 @@ enum FieldType {
 //  dropDown,
 }
 
-typedef FixBuilder = Widget Function(TextEditingController controller);
+typedef FixBuilder = Widget? Function(TextEditingController controller);
 typedef TextValidate = String Function(String value);
 
 class JsonTextField extends StatefulWidget {
@@ -727,7 +728,9 @@ class JsonMultiValueField extends StatefulWidget {
   final JsonMultiValueFieldItemBuilder? itemBuilder;
   final ValueChanged<bool>? onExpansionChanged;
   final OnTextFiledFocusChangeCallback? onManualInputFocusChange;
-  final bool reorderable;
+  final void Function(String value)? onItemPressed;
+  final bool reorderIcon;
+
 
   const JsonMultiValueField({
     required this.json,
@@ -746,7 +749,8 @@ class JsonMultiValueField extends StatefulWidget {
     this.itemBuilder,
     this.onExpansionChanged,
     this.onManualInputFocusChange,
-    this.reorderable = false,
+    this.onItemPressed,
+    this.reorderIcon = false,
 
     Key? key
   }) : super(key: key);
@@ -774,6 +778,8 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
 
   FocusNode? _manualInputFocus;
 
+  String? _editableValue;
+
   @override
   void initState() {
     super.initState();
@@ -786,6 +792,10 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
       _manualInputFocus = FocusNode();
       _manualInputFocus!.addListener(_onManualInputFocusChange);
     }
+
+    _manualInputTextController.addListener(() {
+      _onManualInputChange(_manualInputTextController.text);
+    });
   }
 
   @override
@@ -799,6 +809,14 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
 
   void _onManualInputFocusChange() {
     widget.onManualInputFocusChange?.call(_manualInputTextController, _manualInputFocus!.hasFocus);
+  }
+
+  void _onManualInputChange(value) {
+    final newErrorText = widget.onManualInputValidate ?.call(value)??"";
+    if (_errorText != newErrorText) {
+      _errorText = newErrorText;
+      setState(() {});
+    }
   }
 
   void _getInitValues() {
@@ -907,6 +925,8 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
         collapsedIconColor: _valueList.length > 1 && !_wrap? Colors.red : null,
         collapsedBackgroundColor : color,
 
+        onTap: (){},
+
         onExpansionChanged: (expanded) {
           bool setStateNeed = false;
 
@@ -946,7 +966,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
             _buttonShowCheckBoxList(),
           ],
 
-          if (!_wrap && !_checkBoxListOn && !_readOnly && !_checkBoxListExists) ...[
+          if (!_wrap && !_checkBoxListOn && !_readOnly && !_checkBoxListExists && _editableValue == null) ...[
             _manualInputRow(),
           ],
 
@@ -975,20 +995,28 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
     return result;
   }
 
-  Widget _getChip(String value) {
+  Widget _getChip(String value, {bool readOnly = false}) {
     if (widget.itemBuilder != null) {
       return widget.itemBuilder!.call(context, value, _readOnly, ()=> _onDeleteItem(value), (newValue)=> _onChangeItemValue(value, newValue));
     }
 
-    if (_readOnly) {
-      return Chip(
-        label: Text(value),
+    if (_readOnly || readOnly) {
+      return InkWell(
+        child: Chip(
+          label: Text(value),
+        ),
+        onTap: () {
+          widget.onItemPressed?.call(value);
+        },
       );
     }
 
     return InputChip(
       label: Text(value),
       onDeleted: ()=> _onDeleteItem(value),
+      onPressed: () {
+        widget.onItemPressed?.call(value);
+      },
     );
   }
 
@@ -1038,7 +1066,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
     if (_valueList.isEmpty) return Container();
     return Container(
       alignment: Alignment.centerLeft,
-      child: _getChip(_valueList.first),
+      child: _getChip(_valueList.first, readOnly: true),
     );
   }
 
@@ -1077,6 +1105,8 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
   }
 
   Widget _manualInputRow() {
+    final suffix = widget.manualInputSuffix?.call(_manualInputTextController);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: TextField(
@@ -1100,8 +1130,8 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
 
           suffix: Row(mainAxisSize: MainAxisSize.min,
             children: [
-              if (widget.manualInputSuffix != null) ...[
-                widget.manualInputSuffix!.call(_manualInputTextController),
+              if (suffix != null) ...[
+                suffix,
               ],
 
               InkWell(
@@ -1110,23 +1140,54 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
                   child: Icon(Icons.check, color: Colors.green),
                 ),
                 onTap: () {
-                  setState(() {
-                    _valueList.add(_manualInputTextController.text);
-                  });
+                  final newValue = _manualInputTextController.text;
+                  if (newValue.isEmpty) return;
+
+                  final errorText = widget.onManualInputValidate ?.call(_manualInputTextController.text)??"";
+                  if (errorText.isNotEmpty) {
+                    _errorText = errorText;
+                    setState(() {});
+                    return;
+                  }
+
+                  if (_editableValue != null) {
+                    if (_editableValue == newValue) {
+                      _editableValue = null;
+                      _manualInputTextController.clear();
+                      setState(() {});
+                      return;
+                    }
+
+                    if (_valueList.contains(newValue)) {
+                      _errorText = 'Значение уже присутствует в списке';
+                      setState(() {});
+                      return;
+                    }
+
+                    final index = _valueList.indexOf(_editableValue!);
+                    _valueList.removeAt(index);
+                    _valueList.insert(index,  newValue);
+
+                    _editableValue = null;
+                    _manualInputTextController.clear();
+                    setState(() {});
+                    return;
+                  }
+
+                  if (_valueList.contains(newValue)) {
+                    _errorText = 'Значение уже присутствует в списке';
+                    setState(() {});
+                    return;
+                  }
+
+                  _valueList.add(newValue);
                   _manualInputTextController.clear();
+                  setState(() {});
                 }
               ),
             ],
           )
         ),
-
-        onChanged: (value) {
-          final newErrorText = widget.onManualInputValidate ?.call(value)??"";
-          if (_errorText != newErrorText) {
-            _errorText = newErrorText;
-            setState(() {});
-          }
-        },
       ),
     );
   }
@@ -1187,19 +1248,49 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
 
     for (var index = 0; index < _valueList.length; index ++) {
       final value = _valueList[index];
-      children.add(Row(
-        key: ValueKey<String>(value),
-        children: [
-          _getChip(value),
 
-          if (widget.reorderable) ...[
-            Expanded(child: Container()),
-            ReorderableDragStartListener(
-              index: index,
-              child: const Icon(Icons.drag_handle, color: Colors.grey),
-            )
+      if (_editableValue == value) {
+        _manualInputTextController.text = value;
+        children.add(
+          Container(
+            key: ValueKey<String>(value),
+            child: _manualInputRow()
+          )
+        );
+        continue;
+      }
+
+      children.add(Slidable(
+        key: ValueKey<String>(value),
+
+        endActionPane: ActionPane(
+          motion: const ScrollMotion(),
+          children: [
+            SlidableAction(
+              flex: 2,
+              onPressed: (context) {
+                _editableValue = value;
+                setState(() {});
+              },
+              foregroundColor: Colors.blue,
+              icon: Icons.edit,
+            ),
           ],
-        ],
+        ),
+
+        child: Row(
+          children: [
+            _getChip(value),
+
+            if (widget.reorderIcon) ...[
+              Expanded(child: Container()),
+              ReorderableDragStartListener(
+                index: index,
+                child: const Icon(Icons.drag_handle, color: Colors.grey),
+              )
+            ],
+          ],
+        ),
       ));
     }
 

@@ -35,7 +35,7 @@ class PackFileSource extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<PackFileSource> createState() => _PackFileSourceState();
+  State<PackFileSource> createState() => PackFileSourceState();
 }
 
 enum _PackFileSourceMode{
@@ -44,7 +44,7 @@ enum _PackFileSourceMode{
   preview
 }
 
-class _PackFileSourceState extends State<PackFileSource> {
+class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveClientMixin<PackFileSource> {
   final _scrollbarController = ScrollController();
 
   var _mode = _PackFileSourceMode.none;
@@ -60,6 +60,9 @@ class _PackFileSourceState extends State<PackFileSource> {
   late event.Listener _questionDataFocusListener;
 
   final _resultButtonKey = GlobalKey();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -106,8 +109,13 @@ class _PackFileSourceState extends State<PackFileSource> {
     super.dispose();
   }
 
+  void setSelectedFileSource(String filePath) {
+    _selectController.setSelection(filePath, true);
+  }
+
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
