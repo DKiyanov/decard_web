@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../decardj.dart';
+import 'pack_editor.dart';
 import 'pack_widgets.dart';
 
 class PackCardUpLinkWidget extends StatelessWidget {
@@ -48,7 +49,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
-        valuesGetter: (_)=> JsonOwner.of(context)!.getQualityNameList(),
+        valuesGetterAsync: (context)=> PackEditor.of(context)!.getQualityNameList(),
       );
     }
 
@@ -58,7 +59,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
-        valuesGetter: (_)=> JsonOwner.of(context)!.getTagList(),
+        valuesGetterAsync: (context)=> PackEditor.of(context)!.getTagList(),
       );
     }
 
@@ -68,7 +69,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
-        valuesGetter: (_)=> JsonOwner.of(context)!.getCardIdList(),
+        valuesGetterAsync: (context)=> PackEditor.of(context)!.getCardIdList(),
       );
     }
 
@@ -78,7 +79,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
-        valuesGetter: (_)=> JsonOwner.of(context)!.getCardGroupList(),
+        valuesGetterAsync: (context)=> PackEditor.of(context)!.getCardGroupList(),
       );
     }
 

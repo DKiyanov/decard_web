@@ -206,7 +206,6 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   Widget _body() {
     return JsonOwner(
       json: _packJson,
-      dbSource: _dbSource,
       onDataChanged: () {
         _setDataChanged(true);
         _setEditorTitle();
@@ -440,6 +439,36 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
   void setSelectedFileSource(String value) {
     _fileSourceKey.currentState?.setSelectedFileSource(value);
+  }
+
+
+
+  Future<List<String>> getQualityNameList() async { // Uplink multi
+    return _dbSource.tabQualityLevel.getLevelNameList(jsonFileID: _jsonFileID!);
+  }
+
+  Future<List<String>> getStyleIdList() async { // Card.Body multi
+    return _dbSource.tabCardStyle.getStyleKeyList(jsonFileID: _jsonFileID!);
+  }
+
+  Future<List<String>> getTagList() async { // UpLink multi
+    return ['tag1', 'tag2', 'tag3'];
+  }
+
+  Future<List<String>> getCardIdList() async { // UpLink multi
+    return ['card1', 'card2', 'card3'];
+  }
+
+  Future<List<String>> getCardGroupList() async { // UpLink multi
+    return ['group1', 'group2', 'group3'];
+  }
+
+  Future<List<String>> getBodyAnswerList(String cardID, int bodyNum) async { // Card.Body multi
+    return ['answer1', 'answer2', 'answer3'];
+  }
+
+  Future<List<String>> getNearGroupList(String cardID) async { // Card single
+    return ['group1', 'group2', 'group3'];
   }
 }
 

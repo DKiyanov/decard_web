@@ -64,7 +64,7 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
-        valuesGetter: (_)=> JsonOwner.of(context)!.getStyleIdList(),
+        valuesGetterAsync: (context)=> PackEditor.of(context)!.getStyleIdList(),
       );
     }
 
@@ -128,7 +128,7 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
-        valuesGetter: (_)=> JsonOwner.of(context)!.getBodyAnswerList(cardID, bodyNum),
+        valuesGetterAsync: (context)=> PackEditor.of(context)!.getBodyAnswerList(cardID, bodyNum),
       );
     }
 

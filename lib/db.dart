@@ -53,6 +53,7 @@ abstract class TabCardStyle {
   Future<void> insertRow({ required int jsonFileID, required String cardStyleKey, required String jsonStr });
 
   Future<Map<String, dynamic>?> getRow({ required int jsonFileID, required String cardStyleKey });
+  Future<List<String>> getStyleKeyList({ required int jsonFileID});
 
   /// mast by called from getRow for return result
   Map<String, dynamic>? getRowPrepare(Map<String, dynamic>? row) {
@@ -77,6 +78,7 @@ abstract class TabQualityLevel {
   static const String kAvgQuality    = DjfQualityLevel.avgQuality;
 
   Future<void> insertRow({ required int jsonFileID, required String qualityName, required int minQuality, required int avgQuality });
+  Future<List<String>> getLevelNameList({required int jsonFileID});
 
   Future<void> deleteJsonFile(int jsonFileID);
 }

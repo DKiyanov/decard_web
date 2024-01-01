@@ -111,6 +111,12 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
 
   void setSelectedFileSource(String filePath) {
     _selectController.setSelection(filePath, true);
+
+    Future.delayed(const Duration(milliseconds: 500), (){
+      if (_selectController.selectedWidgetContext != null) {
+        Scrollable.ensureVisible(_selectController.selectedWidgetContext!);
+      }
+    });
   }
 
   @override
@@ -467,6 +473,8 @@ class PackFileSourceController {
   bool get isFile => _isFile  && _selectedPath.isNotEmpty;
   bool get isDir  => !_isFile && _selectedPath.isNotEmpty;
 
+  BuildContext? selectedWidgetContext;
+
   final multiSelPaths = <String>[];
 
   final checkboxPaths = <String>[];
@@ -476,6 +484,7 @@ class PackFileSourceController {
   void setSelection(String path, bool isFile) {
     _selectedPath = path;
     _isFile = isFile;
+    selectedWidgetContext = null;
 
     if (isFile) {
       _selectedDir = path_util.dirname(path);
@@ -509,21 +518,46 @@ class PackFileSourceController {
   }
 }
 
-class _Folder extends StatelessWidget {
+class _Folder extends StatefulWidget {
   final PackFileSourceController controller;
   final String path;
   const _Folder({required this.controller, required this.path, Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final lowPath = path.toLowerCase();
+  State<_Folder> createState() => _FolderState();
+}
 
+class _FolderState extends State<_Folder> {
+  late event.Listener _selectControllerListener;
+  final _expansionController =  DkExpansionTileController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    _selectControllerListener = widget.controller.onChange.subscribe((listener, data) {
+      if (path_util.isWithin(widget.path, widget.controller.selectedPath)) {
+        if (_expansionController.isAssigned) {
+          _expansionController.expand();
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _selectControllerListener.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final children = <Widget>[];
     final subFolders = <String>[];
 
-    for (var filePath in controller.fileList) {
-      final lowFilePath = path_util.dirname(filePath).toLowerCase();
-      if (lowFilePath == lowPath) {
+    for (var filePath in widget.controller.fileList) {
+      final fileDirPath = path_util.dirname(filePath);
+      if (fileDirPath == widget.path) {
 
         final fileName = path_util.basename(filePath);
 
@@ -533,13 +567,13 @@ class _Folder extends StatelessWidget {
               path: filePath,
               isFile: true,
 
-              selectController: controller,
+              selectController: widget.controller,
               builder: (context, selColor, selBackgroundColor, setCheckbox) {
                 Widget? leading;
 
                 if (setCheckbox != null) {
                   leading = Checkbox(
-                    value: controller.checkboxPaths.contains(filePath),
+                    value: widget.controller.checkboxPaths.contains(filePath),
                     onChanged: (value) {
                       if (value == null) return;
                       setCheckbox.call(value);
@@ -552,10 +586,10 @@ class _Folder extends StatelessWidget {
                   title: Text(path_util.basename(filePath), style: TextStyle(color: selColor)),
                   tileColor: selBackgroundColor,
                   onTap: (){
-                    controller.setSelection(filePath, true);
+                    widget.controller.setSelection(filePath, true);
                   },
                   onLongPress: (){
-                    controller.setCheckbox(filePath, true);
+                    widget.controller.setCheckbox(filePath, true);
                   },
                 );
               }
@@ -564,10 +598,10 @@ class _Folder extends StatelessWidget {
         }
       }
 
-      if (lowFilePath != '.') {
-        final prevPath = path_util.dirname(lowFilePath);
-        if (prevPath == lowPath && !subFolders.contains(lowFilePath)) {
-          subFolders.add(lowFilePath);
+      if (fileDirPath != '.') {
+        final prevPath = path_util.dirname(fileDirPath);
+        if (prevPath == widget.path && !subFolders.contains(fileDirPath)) {
+          subFolders.add(fileDirPath);
         }
       }
     }
@@ -575,29 +609,30 @@ class _Folder extends StatelessWidget {
     for (var subFolder in subFolders) {
       children.add(
         _Folder(
-          controller : controller,
+          controller : widget.controller,
           path       : subFolder,
         )
       );
     }
 
-    if (lowPath != '.') {
+    if (widget.path != '.') {
       return Padding(
         padding: const EdgeInsets.only(left: 20),
         child: DkExpansionTile(
+          controller: _expansionController,
           title: _PathWidget(
-            path: lowPath,
+            path: widget.path,
             isFile: false,
-            selectController: controller, builder: (context, selColor, selBackgroundColor, showCheckBox) {
+            selectController: widget.controller, builder: (context, selColor, selBackgroundColor, showCheckBox) {
               return Container(
                 color: selBackgroundColor,
-                child: Text(lowPath, style: TextStyle(color: selColor??Colors.black))
+                child: Text(widget.path, style: TextStyle(color: selColor??Colors.black))
               );
             },
           ),
 
           onTap: () {
-            controller.setSelection(lowPath, false);
+            widget.controller.setSelection(widget.path, false);
           },
           children: children,
         ),
@@ -677,6 +712,10 @@ class _PathWidgetState extends State<_PathWidget> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isFile && widget.selectController.selectedPath == widget.path) {
+      widget.selectController.selectedWidgetContext = context;
+    }
+
     return widget.builder.call(context, color, backgroundColor, !showCheckbox ? null : _setCheckbox);
   }
 

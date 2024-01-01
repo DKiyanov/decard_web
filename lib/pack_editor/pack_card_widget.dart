@@ -1,3 +1,4 @@
+import 'pack_editor.dart';
 import 'values_json.dart';
 import 'package:flutter/material.dart';
 
@@ -71,8 +72,8 @@ class PackCardWidget extends StatelessWidget {
           json              : json,
           fieldName         : fieldName,
           fieldDesc         : fieldDesc,
-          valuesGetter      : (_) {
-            return JsonOwner.of(context)!.getNearGroupList(cardID);
+          valuesGetterAsync : (context) {
+            return PackEditor.of(context)!.getNearGroupList(cardID);
           }
       );
     }

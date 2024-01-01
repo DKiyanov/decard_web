@@ -170,6 +170,20 @@ class TabCardStyleMem extends TabCardStyle {
   }
 
   @override
+  Future<List<String>> getStyleKeyList({ required int jsonFileID}) async {
+    final rows = db.getRows(jsonFileID, TabCardStyle.tabName);
+    final result = <String>[];
+
+    for (var row in rows) {
+      final styleKey = row[TabCardStyle.kCardStyleKey];
+      if (styleKey == null) continue;
+      result.add(styleKey);
+    }
+
+    return result;
+  }
+
+  @override
   Future<void> insertRow({required int jsonFileID, required String cardStyleKey, required String jsonStr}) async {
     _lastId++;
     final id = _lastId;
@@ -210,6 +224,20 @@ class TabQualityLevelMem extends TabQualityLevel {
     };
 
     db.insertRow(jsonFileID, TabQualityLevel.tabName, qualityName, row);
+  }
+
+  @override
+  Future<List<String>> getLevelNameList({required int jsonFileID}) async {
+    final rows = db.getRows(jsonFileID, TabQualityLevel.tabName);
+    final result = <String>[];
+
+    for (var row in rows) {
+      final levelName = row[TabQualityLevel.kQualityName];
+      if (levelName == null) continue;
+      result.add(levelName);
+    }
+
+    return result;
   }
 }
 

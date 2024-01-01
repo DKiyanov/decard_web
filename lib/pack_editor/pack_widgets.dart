@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-
-import '../db.dart';
 import '../dk_expansion_tile.dart';
 import '../simple_menu.dart';
 
@@ -722,6 +720,7 @@ class JsonMultiValueField extends StatefulWidget {
   final InputOutputConverter? converter;
   final bool wrap;
   final StringValueListGetter? valuesGetter;
+  final StringValueListGetterAsync? valuesGetterAsync;
   final FixBuilder? manualInputPrefix;
   final FixBuilder? manualInputSuffix;
   final TextValidate? onManualInputValidate;
@@ -743,6 +742,7 @@ class JsonMultiValueField extends StatefulWidget {
     this.converter,
     this.wrap = true,
     this.valuesGetter,
+    this.valuesGetterAsync,
     this.manualInputPrefix,
     this.manualInputSuffix,
     this.onManualInputValidate,
@@ -770,6 +770,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
   bool _wrap = false;
   bool _readOnly = false;
   bool _checkBoxListExists = false;
+  final _checkBoxValueList = <String>[];
   bool _expanded = false;
 
   InputOutputConverter? _converter;
@@ -785,7 +786,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
     super.initState();
     _wrap = widget.wrap;
     _readOnly = widget.readOnly;
-    _checkBoxListExists = widget.valuesGetter != null;
+    _checkBoxListExists = widget.valuesGetter != null || widget.valuesGetterAsync != null;
     _getInitValues();
 
     if (widget.onManualInputFocusChange != null) {
@@ -927,7 +928,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
 
         onTap: (){},
 
-        onExpansionChanged: (expanded) {
+        onExpansionChanged: (expanded) async {
           bool setStateNeed = false;
 
           _expanded = expanded;
@@ -939,6 +940,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
           if (expanded) {
             if (_valueList.isEmpty && _checkBoxListExists){
               _checkBoxListOn = true;
+              await _getCheckBoxValueList();
               setStateNeed = true;
             }
           }
@@ -1075,10 +1077,10 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
       children: [
         Expanded(
           child: ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _checkBoxListOn = true;
-              });
+            onPressed: () async {
+              await _getCheckBoxValueList();
+              _checkBoxListOn = true;
+              setState(() {});
             },
             child: const Text('показать возможные значения'),
           ),
@@ -1087,15 +1089,24 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
     );
   }
 
+  Future<void> _getCheckBoxValueList() async {
+    _checkBoxValueList.clear();
+    if (widget.valuesGetter != null) {
+      _checkBoxValueList.addAll(widget.valuesGetter!.call(context));
+    }
+    if (widget.valuesGetterAsync != null) {
+      _checkBoxValueList.addAll(await widget.valuesGetterAsync!.call(context));
+    }
+  }
+
   Widget _buttonShowSelectedValues() {
     return Row(
       children: [
         Expanded(
           child: ElevatedButton(
             onPressed: () {
-              setState(() {
-                _checkBoxListOn = false;
-              });
+              _checkBoxListOn = false;
+              setState(() {});
             },
             child: const Text('показать выбранные значения'),
           ),
@@ -1206,7 +1217,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
           child: SingleChildScrollView(
             controller: _scrollControllerCheckBoxList,
             child: Column(
-                children: widget.valuesGetter!.call(context).map((value) {
+                children: _checkBoxValueList.map((value) {
                   return Row(children: [
 
                     Checkbox(
@@ -1488,10 +1499,9 @@ Widget suffixDropdown(TextEditingController controller, List<String> values) {
 class JsonOwner extends StatefulWidget {
   final Map<String, dynamic> json;
   final Widget child;
-  final DbSource dbSource;
   final VoidCallback onDataChanged;
 
-  const JsonOwner({required this.json, required this.child, required this.dbSource, required this.onDataChanged, Key? key}) : super(key: key);
+  const JsonOwner({required this.json, required this.child, required this.onDataChanged, Key? key}) : super(key: key);
 
   @override
   State<JsonOwner> createState() => JsonOwnerState();
@@ -1510,40 +1520,13 @@ class JsonOwnerState extends State<JsonOwner> {
     );
   }
 
-  List<String> getQualityNameList() { // Uplink multi
-    return ['level1', 'level2', 'level3'];
-  }
-
-  List<String> getStyleIdList() { // Card.Body multi
-    return ['style1', 'style2', 'style3'];
-  }
-
-  List<String> getTagList() { // UpLink multi
-    return ['tag1', 'tag2', 'tag3'];
-  }
-
-  List<String> getCardIdList() { // UpLink multi
-    return ['card1', 'card2', 'card3'];
-  }
-
-  List<String> getCardGroupList() { // UpLink multi
-    return ['group1', 'group2', 'group3'];
-  }
-
-  List<String> getBodyAnswerList(String cardID, int bodyNum) { // Card.Body multi
-    return ['answer1', 'answer2', 'answer3'];
-  }
-
-  List<String> getNearGroupList(String cardID) { // Card single
-    return ['group1', 'group2', 'group3'];
-  }
-
   void onChange() {
     widget.onDataChanged.call();
   }
 }
 
 typedef StringValueListGetter = List<String> Function(BuildContext context);
+typedef StringValueListGetterAsync = Future<List<String>> Function(BuildContext context);
 
 class JsonDropdownAsync extends StatefulWidget {
   final Map<String, dynamic> json;
@@ -1555,13 +1538,15 @@ class JsonDropdownAsync extends StatefulWidget {
   final Color? color;
   final Color? colorIfEmpty;
 
-  final StringValueListGetter valuesGetter;
+  final StringValueListGetter? valuesGetter;
+  final StringValueListGetterAsync? valuesGetterAsync;
 
   const JsonDropdownAsync({
     required this.json,
     required this.fieldName,
     required this.fieldDesc,
-    required this.valuesGetter,
+    this.valuesGetter,
+    this.valuesGetterAsync,
     this.fieldType = FieldType.text,
     this.align = TextAlign.left,
     this.readOnly = false,
@@ -1618,8 +1603,19 @@ class _JsonDropdownAsyncState extends State<JsonDropdownAsync> {
   }
 
   void _selectValue() async {
-    final valueList = widget.valuesGetter(context);
-    if (valueList.isEmpty) return;
+    if (!mounted) return;
+
+    List<String>? valueList;
+    if (widget.valuesGetter != null) {
+      valueList = widget.valuesGetter!.call(context);
+    }
+    if (widget.valuesGetterAsync != null) {
+      valueList = await widget.valuesGetterAsync!.call(context);
+    }
+
+    if (valueList == null || valueList.isEmpty) return;
+
+    if (!mounted) return;
 
     final render = context.findRenderObject() as RenderBox;
     final pos = render.localToGlobal(Offset.zero);
@@ -1635,7 +1631,7 @@ class _JsonDropdownAsyncState extends State<JsonDropdownAsync> {
           insetPadding: EdgeInsets.only(left: pos.dx, top: pos.dy + size.height),
           content: SingleChildScrollView(
             child: ListBody(
-              children: valueList.map((value) => SizedBox(
+              children: valueList!.map((value) => SizedBox(
                 width: size.width - 100,
                 child: ListTile(
                   title: Text(value),
