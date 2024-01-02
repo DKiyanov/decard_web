@@ -1,4 +1,3 @@
-import 'package:decard_web/app_state.dart';
 import 'package:flutter/material.dart';
 import 'package:decard_web/parse_pack_info.dart';
 import 'package:routemaster/routemaster.dart';
@@ -136,7 +135,7 @@ class _WebPackListState extends State<WebPackList> {
     }
 
     if (_sortMode == _SortMode.publicationMoment) {
-      _packGuidList.sort((a, b) => b.value.first.publicationMoment.compareTo(a.value.first.publicationMoment));
+      _packGuidList.sort((a, b) => b.value.first.publicationMoment!.compareTo(a.value.first.publicationMoment!));
     }
   }
 
@@ -199,19 +198,7 @@ class _WebPackListState extends State<WebPackList> {
 
           Widget? title;
 
-          if (appState.serverConnect.isLoggedIn) {
-            title = Row(children: [
-              Expanded(child: Text(packInfo.title)),
-              InkWell(
-                  child: const Icon(Icons.view_column_outlined),
-                  onTap: (){
-                    Routemaster.of(context).push('/pack_editor/${packInfo.packId}');
-                  }
-              )
-            ]);
-          } else {
-            title = Text(packInfo.title);
-          }
+          title = Text(packInfo.title);
 
           if (guidPack.value.length == 1) {
             return ListTile(
@@ -234,8 +221,6 @@ class _WebPackListState extends State<WebPackList> {
               },
             ));
           }
-
-
 
           return DkExpansionTile(
             title: title,

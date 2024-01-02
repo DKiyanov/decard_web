@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+
 Future<bool?> simpleDialog ({
   required BuildContext context,
   Widget? title,
   Widget? content,
   bool okButton = true,
+  bool Function()? onPressOk,
   bool cancelButton = true,
   bool barrierDismissible = false
 }) async {
@@ -29,6 +31,9 @@ Future<bool?> simpleDialog ({
             IconButton(
               icon: const Icon(Icons.check, color: Colors.green),
               onPressed: () {
+                if (onPressOk != null) {
+                  if (!onPressOk.call()) return;
+                }
                 Navigator.of(context).pop(true);
               },
             ),

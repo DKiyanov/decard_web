@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:decard_web/db.dart';
 import 'package:flutter/foundation.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
@@ -24,10 +25,13 @@ class WebPackInfo {
   final String license       ;
   final int    targetAgeLow  ;
   final int    targetAgeHigh ;
-  final DateTime publicationMoment;
+  final DateTime? publicationMoment;
   final int    starsCount    ;
+  final String userID        ;
 
   final tagList = <String>[];
+
+  bool get published => publicationMoment != null;
 
   WebPackInfo({
     required this.packId       ,
@@ -43,12 +47,32 @@ class WebPackInfo {
     required this.targetAgeHigh,
     required this.publicationMoment ,
     required this.starsCount   ,
+    required this.userID,
   }) {
     final prevTagList = tags.split(',');
 
     for (var tag in prevTagList) {
       tagList.add(tag.trim().toLowerCase());
     }
+  }
+
+  factory WebPackInfo.fromParse(ParseObject parseObject) {
+    return WebPackInfo(
+      packId        : parseObject.get<int>(WebPackFields.packId  )!,
+      title         : parseObject.get<String>(DjfFile.title      )!,
+      guid          : parseObject.get<String>(DjfFile.guid       )!,
+      version       : parseObject.get<int>(DjfFile.version       )!,
+      author        : parseObject.get<String>(DjfFile.author     )!.toLowerCase(),
+      site          : parseObject.get<String>(DjfFile.site       )!,
+      email         : parseObject.get<String>(DjfFile.email      )!,
+      tags          : parseObject.get<String>(DjfFile.tags       )??'',
+      license       : parseObject.get<String>(DjfFile.license    )??'',
+      targetAgeLow  : parseObject.get<int>(DjfFile.targetAgeLow  )??0,
+      targetAgeHigh : parseObject.get<int>(DjfFile.targetAgeHigh )??100,
+      publicationMoment: parseObject.get<DateTime>(WebPackFields.publicationMoment),
+      starsCount    : parseObject.get<int>(WebPackFields.starsCount)??0,
+      userID        : parseObject.get<String>(WebPackFields.userID)!,
+    );
   }
 }
 
@@ -84,6 +108,7 @@ class WebPackFields {
   static const String createdAt    = 'createdAt';
   static const String publicationMoment = 'PublicationMoment';
   static const String starsCount   = 'StarsCount';
+  static const String userID       = 'UserID';
 }
 
 class WebPackSubFileFields {
@@ -93,32 +118,67 @@ class WebPackSubFileFields {
   static const String path         = 'path';
 }
 
+class WebPackUserFilesFields {
+  static const String className    = 'DecardUserFiles';
+  static const String userID       = 'UserID';
+  static const String packId       = 'packID';
+}
+
 class WebPackListManager {
   final _webPackInfoList = <WebPackInfo>[];
+  bool _initialized = false;
 
   WebPackListManager();
 
   Future<void> init() async {
+    if (_initialized) return;
+
     final query = QueryBuilder<ParseObject>(ParseObject(WebPackFields.className));
+    query.whereGreaterThan(WebPackFields.publicationMoment, DateTime(2000));
     final parsePackList = await query.find();
 
     for (var parsePack in parsePackList) {
-      _webPackInfoList.add(WebPackInfo(
-        packId        : parsePack.get<int>(WebPackFields.packId  )!,
-        title         : parsePack.get<String>(DjfFile.title      )!,
-        guid          : parsePack.get<String>(DjfFile.guid       )!,
-        version       : parsePack.get<int>(DjfFile.version       )!,
-        author        : parsePack.get<String>(DjfFile.author     )!.toLowerCase(),
-        site          : parsePack.get<String>(DjfFile.site       )!,
-        email         : parsePack.get<String>(DjfFile.email      )!,
-        tags          : parsePack.get<String>(DjfFile.tags       )??'',
-        license       : parsePack.get<String>(DjfFile.license    )??'',
-        targetAgeLow  : parsePack.get<int>(DjfFile.targetAgeLow  )??0,
-        targetAgeHigh : parsePack.get<int>(DjfFile.targetAgeHigh )??100,
-        publicationMoment: parsePack.get<DateTime>(WebPackFields.publicationMoment)??parsePack.get<DateTime>(WebPackFields.createdAt)!,
-        starsCount    : parsePack.get<int>(WebPackFields.starsCount)??0,
-      ));
+      _webPackInfoList.add(WebPackInfo.fromParse(parsePack));
     }
+
+    _initialized = true;
+  }
+
+  Future<List<WebPackInfo>> getUserPackList(String userID) async {
+    final result = <WebPackInfo>[];
+
+    // other people's used packages
+    {
+      final query = QueryBuilder<ParseObject>(ParseObject(WebPackUserFilesFields.className));
+      query.whereEqualTo(WebPackFields.userID, userID);
+      final userPackList = await query.find();
+
+      for (var userPack in userPackList) {
+        final packId = userPack.get<int>(WebPackFields.packId)!;
+        final webPackInfo = _webPackInfoList.firstWhereOrNull((webPackInfo) => webPackInfo.packId == packId);
+        if (webPackInfo == null) continue;
+
+        result.add(webPackInfo);
+      }
+    }
+
+    // own user packages
+    final query = QueryBuilder<ParseObject>(ParseObject(WebPackFields.className));
+    query.whereEqualTo(WebPackFields.userID, userID);
+    final parsePackList = await query.find();
+
+    for (var parsePack in parsePackList) {
+      final packId = parsePack.get<int>(WebPackFields.packId)!;
+      final webPackInfo = _webPackInfoList.firstWhereOrNull((webPackInfo) => webPackInfo.packId == packId);
+      if (webPackInfo != null) {
+        result.add(webPackInfo);
+        continue;
+      }
+
+      result.add(WebPackInfo.fromParse(parsePack));
+    }
+
+    return result;
   }
 
   Future<WebPackListResult> getPackList({String? title, List<String>? authorList, List<String>? tagList, int? targetAge}) async {
@@ -190,6 +250,38 @@ class WebPackListManager {
         targetAgeLow  : targetAgeLow,
         targetAgeHigh : targetAgeHigh
     );
+  }
+  
+  Future<void> createNewPackage(String userID, String fileName, Map<String, dynamic> newJsonMap) async {
+    final query = QueryBuilder<ParseObject>(ParseObject(WebPackUploadFileFields.className));
+    query.whereEqualTo(WebPackUploadFileFields.fileName, 'CreateNewPackageTemplate.decardj');
+    query.keysToReturn([WebPackUploadFileFields.content]);
+    final row = await query.first();
+    if (row == null) return;
+
+    final url = row.get<ParseWebFile>(WebPackUploadFileFields.content)!.url!;
+    final jsonStr = await getTextFromUrl(url);
+    if (jsonStr == null) return;
+
+    final jsonMap = jsonDecode(jsonStr);
+
+    jsonMap.addEntries(newJsonMap.entries);
+
+    final newJsonStr = jsonEncode(jsonMap);
+
+    final fileContent  = Uint8List.fromList(newJsonStr.codeUnits);
+    final fileSize     = newJsonStr.length;
+    final techFileName = '${DateTime.now().millisecondsSinceEpoch}.data';
+
+    final serverFileContent = ParseWebFile(fileContent, name : techFileName);
+    await serverFileContent.save();
+
+    final serverFile = ParseObject(WebPackUploadFileFields.className);
+    serverFile.set<String>(WebPackUploadFileFields.userID  , userID);
+    serverFile.set<String>(WebPackUploadFileFields.fileName, fileName);
+    serverFile.set<int>(WebPackUploadFileFields.size, fileSize);
+    serverFile.set<ParseWebFile>(WebPackUploadFileFields.content, serverFileContent);
+    await serverFile.save();
   }
 }
 

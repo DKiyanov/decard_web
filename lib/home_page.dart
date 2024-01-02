@@ -68,7 +68,7 @@ class HomePageTabView extends StatelessWidget {
       return ChildList(actions: [homePageState!.tabBar!]);
     }
     if (tabKey == HomePage.tabPossessions) {
-      return OwnPackList(actions: [homePageState!.tabBar!]);
+      return OwnPackList(packInfoManager: appState.packInfoManager, userID: appState.serverConnect.user!.objectId!, actions: [homePageState!.tabBar!]);
     }
 
     return Container();
