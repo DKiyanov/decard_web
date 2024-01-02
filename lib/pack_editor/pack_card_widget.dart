@@ -68,13 +68,14 @@ class PackCardWidget extends StatelessWidget {
     if (fieldName == DjfCard.group) {
       final String cardID = json[DjfCard.id]??'';
 
-      input = JsonDropdownAsync(
-          json              : json,
-          fieldName         : fieldName,
-          fieldDesc         : fieldDesc,
-          valuesGetterAsync : (context) {
-            return PackEditor.of(context)!.getNearGroupList(cardID);
-          }
+      input = JsonMultiValueField(
+        json      : json,
+        fieldName : fieldName,
+        fieldDesc : fieldDesc,
+        wrap      : false,
+        valuesGetterAsync: (context)=> PackEditor.of(context)!.getNearGroupList(cardID),
+        singleValueSelect: true,
+        manualInput: true,
       );
     }
 

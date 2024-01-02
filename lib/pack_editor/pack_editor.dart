@@ -1,3 +1,4 @@
+import 'package:decard_web/db.dart';
 import 'package:flutter/material.dart';
 
 import 'dart:convert';
@@ -452,23 +453,50 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Future<List<String>> getTagList() async { // UpLink multi
-    return ['tag1', 'tag2', 'tag3'];
+    return _dbSource.tabCardTag.getPackCardTagList(jsonFileID: _jsonFileID!);
   }
 
   Future<List<String>> getCardIdList() async { // UpLink multi
-    return ['card1', 'card2', 'card3'];
+    return _dbSource.tabCardHead.getPackCardIdList(jsonFileID: _jsonFileID!);
   }
 
   Future<List<String>> getCardGroupList() async { // UpLink multi
-    return ['group1', 'group2', 'group3'];
+    return _dbSource.tabCardHead.getPackCardGroupList(jsonFileID: _jsonFileID!);
   }
 
-  Future<List<String>> getBodyAnswerList(String cardID, int bodyNum) async { // Card.Body multi
-    return ['answer1', 'answer2', 'answer3'];
+  Future<List<String>?> getStyleAnswerVariantList(String cardStyleKey) async { // for Card.Body multi
+    final style = await _dbSource.tabCardStyle.getRow(jsonFileID: _jsonFileID!, cardStyleKey: cardStyleKey);
+    if (style == null) return null;
+
+    final answerVariantList = style[DjfCardStyle.answerVariantList];
+    if (answerVariantList == null) return null;
+
+    return (answerVariantList as List).map((value) => value as String).toList();
   }
 
   Future<List<String>> getNearGroupList(String cardID) async { // Card single
-    return ['group1', 'group2', 'group3'];
+    final rows = await _dbSource.tabCardHead.getPackRows(jsonFileID: _jsonFileID!);
+    final index = rows.indexWhere((row) => row[TabCardHead.kCardID] == cardID);
+
+    final result = <String>[];
+
+    if (index < 0) return result;
+
+    if (index > 0) {
+      final group = (rows[index - 1][TabCardHead.kGroup]??'') as String;
+      if (group.isNotEmpty) {
+        result.add(group);
+      }
+    }
+
+    if (index + 1 < rows.length) {
+      final group = (rows[index + 1][TabCardHead.kGroup]??'') as String;
+      if (group.isNotEmpty && !result.contains(group)) {
+        result.add(group);
+      }
+    }
+
+    return result;
   }
 }
 

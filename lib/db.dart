@@ -113,7 +113,12 @@ abstract class TabCardHead {
 
   Future<Map<String, dynamic>?> getRow({required int jsonFileID, required int cardID});
 
+  Future<List<String>> getPackCardIdList({ required int jsonFileID});
+  Future<List<String>> getPackCardGroupList({ required int jsonFileID});
+  Future<int?> getCardId({ required int jsonFileID, required String cardKey});
+
   Future<List<Map<String, Object?>>> getAllRows();
+  Future<List<Map<String, Object?>>> getPackRows({ required int jsonFileID});
 }
 
 abstract class TabCardTag {
@@ -127,6 +132,7 @@ abstract class TabCardTag {
   Future<void> deleteJsonFile(int jsonFileID);
 
   Future<void> insertRow({ required int jsonFileID, required int cardID, required String tag});
+  Future<List<String>> getPackCardTagList({ required int jsonFileID});
 
   Future<List<String>> getCardTags({required int jsonFileID, required int cardID});
 }

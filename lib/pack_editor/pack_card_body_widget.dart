@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../card_model.dart';
 import '../decardj.dart';
 import '../simple_menu.dart';
-import 'pack_card_widget.dart';
 import 'pack_style_widget.dart';
 import 'pack_widgets.dart';
 
@@ -64,6 +63,7 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
+        manualInput: true,
         valuesGetterAsync: (context)=> PackEditor.of(context)!.getStyleIdList(),
       );
     }
@@ -118,17 +118,13 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
     }
 
     if (fieldName == DjfCardBody.answerList) {
-      final cardWidget = context.findAncestorWidgetOfExactType<PackCardWidget>();
-      final cardID = cardWidget!.json[DjfCard.id]??'';
-      final bodyNum = widget.ownerDelegate?.indexInArray??0;
-
-
       input = JsonMultiValueField(
         json      : json,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
-        valuesGetterAsync: (context)=> PackEditor.of(context)!.getBodyAnswerList(cardID, bodyNum),
+        manualInput: true,
+        valuesGetterAsync: (context)=> _getAnswerVariantList(context),
       );
     }
 
@@ -151,6 +147,27 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
     );
   }
 
+  Future<List<String>> _getAnswerVariantList(BuildContext context) async {
+    final answerVariantList = widget.json[DjfCardBody.style]?[DjfCardStyle.answerVariantList];
+
+    if (answerVariantList != null) {
+      return (answerVariantList as List).map((value) => value as String).toList();
+    }
+
+    final styleList = (widget.json[DjfCardBody.styleIdList]) as List?;
+
+    if (styleList == null) return [];
+
+    final packEditor =  PackEditor.of(context)!;
+
+    for (var index = styleList.length - 1; index >= 0; index --) {
+      final style = styleList[index];
+      final answerVariantList = await packEditor.getStyleAnswerVariantList(style);
+      if (answerVariantList != null) return answerVariantList;
+    }
+
+    return [];
+  }
 
 }
 

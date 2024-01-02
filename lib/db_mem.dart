@@ -258,8 +258,49 @@ class TabCardHeadMem extends TabCardHead{
   }
 
   @override
+  Future<List<Map<String, Object?>>> getPackRows({ required int jsonFileID}) async {
+    return db.getRows(jsonFileID, TabCardHead.tabName);
+  }
+
+  @override
   Future<Map<String, dynamic>?> getRow({required int jsonFileID, required int cardID}) async {
     return db.getRow(jsonFileID, TabCardHead.tabName, cardID);
+  }
+
+  @override
+  Future<List<String>> getPackCardIdList({ required int jsonFileID}) async {
+    final rows = db.getRows(jsonFileID, TabCardHead.tabName);
+    final result = <String>[];
+
+    for (var row in rows) {
+      final cardKey = row[TabCardHead.kCardKey];
+      if (cardKey == null) continue;
+      result.add(cardKey);
+    }
+
+    return result;
+  }
+
+  @override
+  Future<List<String>> getPackCardGroupList({ required int jsonFileID}) async {
+    final rows = db.getRows(jsonFileID, TabCardHead.tabName);
+    final result = <String>[];
+
+    for (var row in rows) {
+      final group = row[TabCardHead.kGroup];
+      if (group == null) continue;
+      if (result.contains(group)) continue;
+      result.add(group);
+    }
+
+    return result;
+  }
+
+  @override
+  Future<int?> getCardId({ required int jsonFileID, required String cardKey}) async {
+    final rows = db.getRows(jsonFileID, TabCardHead.tabName, filter: {TabCardHead.kCardKey : cardKey});
+    if (rows.length != 1) return null;
+    return rows[0][TabCardHead.kCardID] as int;
   }
 
   @override
@@ -311,6 +352,22 @@ class TabCardTagMem extends TabCardTag {
   Future<List<String>> getCardTags({required int jsonFileID, required int cardID}) async {
     final rows = db.getRows(jsonFileID, TabCardTag.tabName, key: cardID);
     return rows.map((row) => row[TabCardTag.kTag] as String).toList();
+  }
+
+  @override
+  Future<List<String>> getPackCardTagList({ required int jsonFileID}) async {
+    final rows = db.getRows(jsonFileID, TabCardTag.tabName);
+
+    final result = <String>[];
+
+    for (var row in rows) {
+      final tag = row[TabCardTag.kTag];
+      if (tag == null) continue;
+      if (result.contains(tag)) continue;
+      result.add(tag);
+    }
+
+    return result;
   }
 
   @override

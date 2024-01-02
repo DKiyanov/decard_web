@@ -721,6 +721,8 @@ class JsonMultiValueField extends StatefulWidget {
   final bool wrap;
   final StringValueListGetter? valuesGetter;
   final StringValueListGetterAsync? valuesGetterAsync;
+  final bool valuesGetOnce;
+  final bool? manualInput;
   final FixBuilder? manualInputPrefix;
   final FixBuilder? manualInputSuffix;
   final TextValidate? onManualInputValidate;
@@ -729,6 +731,7 @@ class JsonMultiValueField extends StatefulWidget {
   final OnTextFiledFocusChangeCallback? onManualInputFocusChange;
   final void Function(String value)? onItemPressed;
   final bool reorderIcon;
+  final bool singleValueSelect;
 
 
   const JsonMultiValueField({
@@ -743,6 +746,9 @@ class JsonMultiValueField extends StatefulWidget {
     this.wrap = true,
     this.valuesGetter,
     this.valuesGetterAsync,
+    this.valuesGetOnce = true,
+    this.manualInput,
+
     this.manualInputPrefix,
     this.manualInputSuffix,
     this.onManualInputValidate,
@@ -751,6 +757,7 @@ class JsonMultiValueField extends StatefulWidget {
     this.onManualInputFocusChange,
     this.onItemPressed,
     this.reorderIcon = false,
+    this.singleValueSelect = false,
 
     Key? key
   }) : super(key: key);
@@ -769,7 +776,8 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
 
   bool _wrap = false;
   bool _readOnly = false;
-  bool _checkBoxListExists = false;
+  bool _checkBoxListGetterOn = false;
+  bool _checkBoxValuesReceived = false;
   final _checkBoxValueList = <String>[];
   bool _expanded = false;
 
@@ -786,7 +794,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
     super.initState();
     _wrap = widget.wrap;
     _readOnly = widget.readOnly;
-    _checkBoxListExists = widget.valuesGetter != null || widget.valuesGetterAsync != null;
+    _checkBoxListGetterOn = widget.valuesGetter != null || widget.valuesGetterAsync != null;
     _getInitValues();
 
     if (widget.onManualInputFocusChange != null) {
@@ -834,6 +842,11 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
       _converter = widget.converter;
     }
 
+    if (widget.singleValueSelect) {
+      _valueIsString = true;
+      _converter = _singleValueConverter;
+    }
+
     final values = widget.json[widget.fieldName];
     if (values == null) return;
 
@@ -868,6 +881,18 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
     widget.json[widget.fieldName] = _valueList;
 
     JsonWidgetChangeListener.of(context)?.setChanged();
+  }
+
+  dynamic _singleValueConverter(dynamic value, ConvertDirection direction) {
+    assert(value != null);
+
+    if (direction == ConvertDirection.output) {
+      return [value as String];
+    }
+
+    final strList = value as List<String>;
+    if (strList.isEmpty) return '';
+    return strList.first;
   }
 
   dynamic _separatorConverter(dynamic value, ConvertDirection direction) {
@@ -938,7 +963,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
           }
 
           if (expanded) {
-            if (_valueList.isEmpty && _checkBoxListExists){
+            if (_valueList.isEmpty && _checkBoxListGetterOn){
               _checkBoxListOn = true;
               await _getCheckBoxValueList();
               setStateNeed = true;
@@ -964,15 +989,17 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
         title: title,
 
         children: [
-          if (!_wrap && !_checkBoxListOn && !_readOnly && _checkBoxListExists) ...[
+          if (!_wrap && !_checkBoxListOn && !_readOnly && _checkBoxListGetterOn) ...[
             _buttonShowCheckBoxList(),
           ],
 
-          if (!_wrap && !_checkBoxListOn && !_readOnly && !_checkBoxListExists && _editableValue == null) ...[
-            _manualInputRow(),
+          if (!_wrap && !_checkBoxListOn && !_readOnly && _editableValue == null && widget.manualInput != false) ...[
+            if (widget.manualInput == true || (!_checkBoxListGetterOn && widget.manualInput == null)) ...[
+              _manualInputRow(),
+            ]
           ],
 
-          if (_checkBoxListExists && _wrap) ...[
+          if (_checkBoxListGetterOn && _wrap) ...[
             _checkBoxListWidget(),
           ],
 
@@ -980,8 +1007,10 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
             _buttonShowSelectedValues(),
           ],
 
-          if (_wrap && !_checkBoxListExists && !_readOnly) ...[
-            _manualInputRow(),
+          if (_wrap && !_readOnly && widget.manualInput != false) ...[
+            if (widget.manualInput == true || (!_checkBoxListGetterOn && widget.manualInput == null)) ...[
+              _manualInputRow(),
+            ]
           ]
         ],
       ),
@@ -1073,7 +1102,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
   }
 
   Widget _buttonShowCheckBoxList() {
-    return             Row(
+    return Row(
       children: [
         Expanded(
           child: ElevatedButton(
@@ -1090,6 +1119,10 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
   }
 
   Future<void> _getCheckBoxValueList() async {
+    if (_checkBoxValuesReceived && widget.valuesGetOnce) {
+      return;
+    }
+
     _checkBoxValueList.clear();
     if (widget.valuesGetter != null) {
       _checkBoxValueList.addAll(widget.valuesGetter!.call(context));
@@ -1097,6 +1130,8 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
     if (widget.valuesGetterAsync != null) {
       _checkBoxValueList.addAll(await widget.valuesGetterAsync!.call(context));
     }
+
+    _checkBoxValuesReceived = true;
   }
 
   Widget _buttonShowSelectedValues() {
@@ -1204,6 +1239,10 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
   }
 
   Widget _checkBoxListWidget() {
+    if (_checkBoxValueList.isEmpty) {
+      return const Text('Возможные значения не найдены', style: TextStyle(color: Colors.deepOrangeAccent),);
+    }
+
     final screenHeight = MediaQuery.of(context).size.height;
 
     final result = LimitedBox(
@@ -1220,18 +1259,33 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
                 children: _checkBoxValueList.map((value) {
                   return Row(children: [
 
-                    Checkbox(
-                        value: _valueList.contains(value),
-                        onChanged: (bool? newMarkValue) {
-                          if (newMarkValue == null) return;
-                          if (!newMarkValue) {
-                            _valueList.remove(value);
-                          } else {
-                            _valueList.add(value);
+                    if (!widget.singleValueSelect) ...[
+                      Checkbox(
+                          value: _valueList.contains(value),
+                          onChanged: (bool? newMarkValue) {
+                            if (newMarkValue == null) return;
+                            if (!newMarkValue) {
+                              _valueList.remove(value);
+                            } else {
+                              _valueList.add(value);
+                            }
+                            setState(() {});
                           }
+                      ),
+                    ],
+
+                    if (widget.singleValueSelect) ...[
+                      Radio<String>(
+                        value: value,
+                        groupValue: _valueList.isEmpty? null : _valueList.first,
+                        onChanged: (value) {
+                          if (value == null) return;
+                          _valueList.clear();
+                          _valueList.add(value);
                           setState(() {});
                         }
-                    ),
+                      )
+                    ],
 
                     Text(value),
                   ]);
