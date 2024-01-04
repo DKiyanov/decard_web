@@ -4,6 +4,7 @@ import 'package:decard_web/simple_menu.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'package:routemaster/routemaster.dart';
 import 'common.dart';
@@ -102,18 +103,50 @@ class _OwnPackListState extends State<OwnPackList> {
   Widget _mainPanel() {
     return ListView(
       children: _webPackList.map((packInfo) {
-        return ListTile(
-          title: Text(packInfo.title),
-          subtitle: _getSubtitle(packInfo),
-          trailing: packInfo.published? null : InkWell(
-              child: const Icon(Icons.edit),
-              onTap: (){
-                Routemaster.of(context).push('/pack_editor/${packInfo.packId}');
-              }
+        return Slidable(
+          endActionPane: ActionPane(
+            motion: const ScrollMotion(),
+            children: [
+              SlidableAction(
+                flex: 2,
+                onPressed: (context) {
+                  _copyPackage(packInfo.packId, newVersion : true);
+                },
+                foregroundColor: Colors.blue,
+                icon: Icons.copy,
+                label: 'Создать новую версию',
+              ),
+            ],
           ),
-          onTap: (){
-            Routemaster.of(context).push('/pack/${packInfo.packId}');
-          },
+
+          startActionPane: ActionPane(
+            motion: const ScrollMotion(),
+            children: [
+              SlidableAction(
+                flex: 2,
+                onPressed: (context) {
+                  _deletePackage(packInfo.packId);
+                },
+                foregroundColor: Colors.red,
+                icon: Icons.delete,
+                label: 'Удалит пакет',
+              ),
+            ],
+          ),
+
+          child: ListTile(
+            title: Text(packInfo.title),
+            subtitle: _getSubtitle(packInfo),
+            trailing: packInfo.published? null : InkWell(
+                child: const Icon(Icons.edit),
+                onTap: (){
+                  Routemaster.of(context).push('/pack_editor/${packInfo.packId}');
+                }
+            ),
+            onTap: (){
+              Routemaster.of(context).push('/pack/${packInfo.packId}');
+            },
+          ),
         );
       }).toList(),
     );
@@ -152,6 +185,7 @@ class _OwnPackListState extends State<OwnPackList> {
     }
 
     if (!mounted) return;
+
     Routemaster.of(context).push('/pack_editor/$packId').result.then((value) async {
       await _refresh();
       setState(() {});
@@ -302,5 +336,50 @@ class _OwnPackListState extends State<OwnPackList> {
       DjfFile.targetAgeLow  : ageFrom!,
       DjfFile.targetAgeHigh : ageTo!,
     };
+  }
+
+  Future<void> _deletePackage(int packId) async {
+    final result = await simpleDialog(
+      context: context,
+      title: const Text('Удалить пакет?')
+    );
+
+    if (result == null || !result) return;
+
+    final deletePackFunction = ParseCloudFunction('deletePackage');
+    final response = await deletePackFunction.execute(parameters: {WebPackFields.packId : packId});
+
+    if (!response.success) {
+
+      return;
+    }
+
+    await _refresh();
+    setState(() {});
+  }
+
+  Future<void> _copyPackage(int packId, {required bool newVersion}) async {
+    final result = await simpleDialog(
+        context: context,
+        title: const Text('Создать новую версию пакета')
+    );
+
+    if (result == null || !result) return;
+
+    final copyPackFunction = ParseCloudFunction('copyPackage');
+    final response = await copyPackFunction.execute(parameters: {WebPackFields.packId : packId, 'newVersion' : newVersion});
+
+    final newPackId = response.result?[WebPackFields.packId];
+
+    if (!response.success || newPackId == null) {
+      return;
+    }
+
+    if (!mounted) return;
+
+    Routemaster.of(context).push('/pack_editor/$newPackId').result.then((value) async {
+      await _refresh();
+      setState(() {});
+    });
   }
 }
