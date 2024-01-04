@@ -14,6 +14,10 @@ import 'login_page.dart';
 import 'pack_list.dart';
 import 'package:simple_events/simple_events.dart' as event;
 
+// for access to http sources was configured:
+// android\app\src\main\res\xml\network_security_config.xml
+// it for debug only needs
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setPathUrlStrategy();

@@ -4,6 +4,7 @@ import 'package:decard_web/simple_menu.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'package:routemaster/routemaster.dart';
 import 'common.dart';
 import 'pack_upload_file.dart';
@@ -12,8 +13,8 @@ import 'decardj.dart';
 class OwnPackList extends StatefulWidget {
   final List<Widget>? actions;
   final WebPackListManager packInfoManager;
-  final String userID;
-  const OwnPackList({required this.packInfoManager, required this.userID, this.actions, Key? key}) : super(key: key);
+  final ParseUser user;
+  const OwnPackList({required this.packInfoManager, required this.user, this.actions, Key? key}) : super(key: key);
 
   @override
   State<OwnPackList> createState() => _OwnPackListState();
@@ -46,7 +47,7 @@ class _OwnPackListState extends State<OwnPackList> {
 
   Future<void> _refresh() async {
     _webPackList.clear();
-    _webPackList.addAll(await widget.packInfoManager.getUserPackList(widget.userID));
+    _webPackList.addAll(await widget.packInfoManager.getUserPackList(widget.user.objectId!));
   }
 
   @override
@@ -68,7 +69,7 @@ class _OwnPackListState extends State<OwnPackList> {
         leading: popupMenu(icon: const Icon(Icons.menu), menuItemList: [
           SimpleMenuItem(
               child: const Text('Создать новый пакет'),
-              onPress: _startCreateNewPackage,
+              onPress: _createNewPackage,
           ),
 
           if (kIsWeb) ...[
@@ -137,7 +138,27 @@ class _OwnPackListState extends State<OwnPackList> {
     return Text(subtitle);
   }
 
-  Future<void> _startCreateNewPackage() async {
+  Future<void> _createNewPackage() async {
+    final parameters = await _createNewPackageDialog();
+    if (parameters == null) return;
+
+    final createPackFunction = ParseCloudFunction('createNewPackage');
+    final response = await createPackFunction.execute(parameters: parameters);
+
+    final packId = response.result?[WebPackFields.packId];
+
+    if (!response.success || packId == null) {
+      return;
+    }
+
+    if (!mounted) return;
+    Routemaster.of(context).push('/pack_editor/$packId').result.then((value) async {
+      await _refresh();
+      setState(() {});
+    });
+  }
+
+  Future<Map<String, dynamic>?> _createNewPackageDialog() async {
     void Function(void Function())? dialogState;
 
     final titleController = TextEditingController();
@@ -145,9 +166,11 @@ class _OwnPackListState extends State<OwnPackList> {
 
     final ageFromController = TextEditingController();
     String ageFromError = '';
+    int? ageFrom;
 
     final ageToController = TextEditingController();
     String ageToError = '';
+    int? ageTo;
 
     final result = await simpleDialog(
       context: context,
@@ -240,19 +263,24 @@ class _OwnPackListState extends State<OwnPackList> {
           err = true;
         }
 
-        final ageFrom = int.tryParse(ageFromController.text);
+        if (_webPackList.any((packInfo) => packInfo.title == titleController.text)) {
+          titleError = 'есть пакет с таким же наименованием';
+          err = true;
+        }
+
+        ageFrom = int.tryParse(ageFromController.text);
         if (ageFrom == null) {
           ageFromError = 'не корректное значение';
           err = true;
         }
 
-        final ageTo = int.tryParse(ageToController.text);
+        ageTo = int.tryParse(ageToController.text);
         if (ageTo == null) {
           ageToError = 'не корректное значение';
           err = true;
         }
 
-        if (ageFrom != null && ageTo != null && ageFrom > ageTo) {
+        if (ageFrom != null && ageTo != null && ageFrom! > ageTo!) {
           ageFromError = '> $ageTo';
           ageToError = '< $ageFrom';
           err = true;
@@ -267,19 +295,12 @@ class _OwnPackListState extends State<OwnPackList> {
       }
     );
 
-    if (result == null || !result) return;
-    if (!mounted) return;
+    if (result == null || !result) return null;
 
-    await _createNewPackage({
+    return {
       DjfFile.title         : titleController.text,
-      DjfFile.targetAgeLow  : ageFromController.text,
-      DjfFile.targetAgeHigh : ageToController.text,
-    });
-
-    //Routemaster.of(context).push('/pack_editor');
-  }
-
-  Future<void> _createNewPackage(Map<String, dynamic> json) async {
-
+      DjfFile.targetAgeLow  : ageFrom!,
+      DjfFile.targetAgeHigh : ageTo!,
+    };
   }
 }

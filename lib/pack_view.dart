@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:decard_web/app_state.dart';
 import 'package:decard_web/card_sub_widgets.dart';
 import 'package:decard_web/parse_pack_info.dart';
@@ -51,9 +52,11 @@ class _PackViewState extends State<PackView> {
     _cardNavigatorData = CardNavigatorData(appState.dbSource);
     await _cardNavigatorData.setData();
 
-    final card = _cardNavigatorData.cardList.firstWhere((card) => card.jsonFileID == _jsonFileID);
+    final card = _cardNavigatorData.cardList.firstWhereOrNull((card) => card.jsonFileID == _jsonFileID);
 
-    widget.cardController.setCard(_jsonFileID!, card.cardID, bodyNum: 0);
+    if (card != null) {
+      widget.cardController.setCard(_jsonFileID!, card.cardID, bodyNum: 0);
+    }
 
     setState(() {
       _isStarting = false;

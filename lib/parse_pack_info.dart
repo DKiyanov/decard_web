@@ -116,6 +116,8 @@ class WebPackSubFileFields {
   static const String packId       = 'packID';
   static const String file         = 'file';
   static const String path         = 'path';
+  static const String isText       = 'isText';
+  static const String textContent  = 'textContent';
 }
 
 class WebPackUserFilesFields {
@@ -251,49 +253,17 @@ class WebPackListManager {
         targetAgeHigh : targetAgeHigh
     );
   }
-  
-  Future<void> createNewPackage(String userID, String fileName, Map<String, dynamic> newJsonMap) async {
-    final query = QueryBuilder<ParseObject>(ParseObject(WebPackUploadFileFields.className));
-    query.whereEqualTo(WebPackUploadFileFields.fileName, 'CreateNewPackageTemplate.decardj');
-    query.keysToReturn([WebPackUploadFileFields.content]);
-    final row = await query.first();
-    if (row == null) return;
-
-    final url = row.get<ParseWebFile>(WebPackUploadFileFields.content)!.url!;
-    final jsonStr = await getTextFromUrl(url);
-    if (jsonStr == null) return;
-
-    final jsonMap = jsonDecode(jsonStr);
-
-    jsonMap.addEntries(newJsonMap.entries);
-
-    final newJsonStr = jsonEncode(jsonMap);
-
-    final fileContent  = Uint8List.fromList(newJsonStr.codeUnits);
-    final fileSize     = newJsonStr.length;
-    final techFileName = '${DateTime.now().millisecondsSinceEpoch}.data';
-
-    final serverFileContent = ParseWebFile(fileContent, name : techFileName);
-    await serverFileContent.save();
-
-    final serverFile = ParseObject(WebPackUploadFileFields.className);
-    serverFile.set<String>(WebPackUploadFileFields.userID  , userID);
-    serverFile.set<String>(WebPackUploadFileFields.fileName, fileName);
-    serverFile.set<int>(WebPackUploadFileFields.size, fileSize);
-    serverFile.set<ParseWebFile>(WebPackUploadFileFields.content, serverFileContent);
-    await serverFile.save();
-  }
 }
 
-typedef LoadPackAddInfoCallback = Function(String jsonStr, String jsonUrl, String rootPath, Map<String, String> fileUrlMap);
+typedef LoadPackAddInfoCallback = Function(String jsonStr, String jsonPath, String rootPath, Map<String, String> fileUrlMap);
 
-Future<int?> loadPack(DbSource dbSource, int packId, {LoadPackAddInfoCallback? addInfoCallback}) async {
+Future<int?> loadPack(DbSource dbSource, int packId, {LoadPackAddInfoCallback? addInfoCallback, bool putFilesIntoLocalStore = false}) async {
   Map<String, String>? fileUrlMap;
 
-  if (kIsWeb) {
-    fileUrlMap = await _getPackSourceWeb(dbSource, packId);
-  } else {
+  if (putFilesIntoLocalStore) {
     fileUrlMap = await _getPackSourceApp(dbSource, packId);
+  } else {
+    fileUrlMap = await _getPackSourceWeb(dbSource, packId);
   }
 
   if (fileUrlMap == null) return null;
@@ -332,7 +302,7 @@ Future<int?> loadPack(DbSource dbSource, int packId, {LoadPackAddInfoCallback? a
   if (jsonFileID == null) return null;
 
   if (addInfoCallback != null) {
-    addInfoCallback.call(jsonStr, jsonUrl, rootPath, fileUrlMapOk);
+    addInfoCallback.call(jsonStr, jsonPath, rootPath, fileUrlMapOk);
   }
 
   return jsonFileID;
@@ -340,24 +310,89 @@ Future<int?> loadPack(DbSource dbSource, int packId, {LoadPackAddInfoCallback? a
 
 Future<Map<String, String>?> _getPackSourceWeb(DbSource dbSource, int packId) async {
   final query = QueryBuilder<ParseObject>(ParseObject(WebPackSubFileFields.className));
-  query.whereEqualTo(WebPackFields.packId, packId);
+  query.whereEqualTo(WebPackSubFileFields.packId, packId);
+  query.keysToReturn([WebPackSubFileFields.path, WebPackSubFileFields.file, WebPackSubFileFields.isText]);
   final sourceList = await query.find();
 
   final Map<String, String> fileUrlMap = {};
 
   for (var source in sourceList) {
     final path = source.get<String>(WebPackSubFileFields.path)!;
-    final url  = source.get<ParseWebFile>(WebPackSubFileFields.file)!.url!;
+    final isText = source.get<bool>(WebPackSubFileFields.isText)??false;
+
+    String url;
+
+    if (isText) {
+      url = 'text:$packId|$path';
+    } else {
+      if (kIsWeb) {
+        url = source.get<ParseWebFile>(WebPackSubFileFields.file)!.url!;
+      } else {
+        url = source.get<ParseFile>(WebPackSubFileFields.file)!.url!;
+      }
+    }
+
     fileUrlMap[path] = url;
   }
 
   return fileUrlMap;
 }
 
-Future<String> getPackAppBasePath(int packId) async {
-  Directory appDocDir = await getApplicationDocumentsDirectory();
-  final path = path_util.join(appDocDir.path, 'pack_$packId' );
-  return path;
+Future<String?> getTextFromParseTextUrl(String fileUrl) async {
+  if (!fileUrl.startsWith('text:')) return null;
+  final url = fileUrl.substring(5);
+  final parts = url.split('|');
+
+  final packId = int.parse(parts.first);
+  final path = parts.last;
+
+  final query = QueryBuilder<ParseObject>(ParseObject(WebPackSubFileFields.className));
+  query.whereEqualTo(WebPackSubFileFields.packId, packId);
+  query.whereEqualTo(WebPackSubFileFields.path  , path);
+  query.whereEqualTo(WebPackSubFileFields.isText, true);
+  query.keysToReturn([WebPackSubFileFields.textContent]);
+  final row = await query.first();
+
+  if (row == null) return '';
+
+  final text = row.get<String>(WebPackSubFileFields.textContent)??'';
+  return text;
+}
+
+class WebPackTextFile {
+  final int packId;
+  final String path;
+  WebPackTextFile({required this.packId,required this.path});
+
+  ParseObject? _parseObject;
+
+  Future<void> _initParseObject() async {
+    if (_parseObject != null) return;
+    final query = QueryBuilder<ParseObject>(ParseObject(WebPackSubFileFields.className));
+    query.whereEqualTo(WebPackSubFileFields.packId, packId);
+    query.whereEqualTo(WebPackSubFileFields.path  , path);
+    query.whereEqualTo(WebPackSubFileFields.isText, true);
+    query.keysToReturn([WebPackSubFileFields.textContent]);
+    _parseObject = await query.first();
+  }
+
+  Future<String> getText() async {
+    if (_parseObject == null) {
+      await _initParseObject();
+    }
+
+    final result = _parseObject!.get<String>(WebPackSubFileFields.textContent)??'';
+    return result;
+  }
+
+  Future<void> setText(String newText) async {
+    if (_parseObject == null) {
+      await _initParseObject();
+    }
+
+    _parseObject!.set(WebPackSubFileFields.textContent, newText);
+    await _parseObject!.save();
+  }
 }
 
 Future<Map<String, String>?> _getPackSourceApp(DbSource dbSource, int packId) async {
@@ -370,12 +405,14 @@ Future<Map<String, String>?> _getPackSourceApp(DbSource dbSource, int packId) as
 
   final packFileName = packInfo.get<String>(WebPackFields.fileName)!;
   final fileExt = path_util.extension(packFileName).toLowerCase();
-  if (fileExt != DjfFileExtension.zip && fileExt != DjfFileExtension.json) {
+  if (!DjfFileExtension.values.contains(fileExt)) {
     return null;
   }
 
-  final packPath = await getPackAppBasePath(packId);
+  Directory appDocDir = await getApplicationDocumentsDirectory();
+  final packPath = path_util.join(appDocDir.path, 'pack_$packId' );
   final dir = Directory(packPath);
+
   if (!dir.existsSync()) {
     final content = packInfo.get<ParseFile>(WebPackFields.content)!;
     await content.loadStorage();
@@ -434,27 +471,7 @@ Future<String> addFileToPack(int packId, String filePath, Uint8List fileContent)
   serverFile.set<int>(WebPackSubFileFields.packId, packId);
   await serverFile.save();
 
-  if (!kIsWeb) {
-    final url = await _addFileToAppPack(packId, filePath, fileContent);
-    return url;
-  }
-
   return serverFileContent.url!;
-}
-
-Future<String> _addFileToAppPack(int packId, String filePath, Uint8List fileContent) async {
-  final packPath = await getPackAppBasePath(packId);
-  final path = path_util.join(packPath, filePath);
-
-  final dirPath = path_util.dirname(path);
-  final dir = Directory(dirPath);
-  if (! await dir.exists()) {
-    await dir.create(recursive: true);
-  }
-
-  final file = File(path);
-  file.writeAsBytes(fileContent);
-  return path;
 }
 
 Future<void> deleteFileFromPack(int packId, String filePath) async {
@@ -466,30 +483,6 @@ Future<void> deleteFileFromPack(int packId, String filePath) async {
   if (serverFile != null) {
     await serverFile.delete();
   }
-
-  if (!kIsWeb) {
-    await _deleteFileFromAppPack(packId, filePath);
-  }
-}
-
-Future<void> _deleteFileFromAppPack(int packId, String filePath) async {
-  final packPath = await getPackAppBasePath(packId);
-  final path = path_util.join(packPath, filePath);
-  final file = File(path);
-  await file.delete();
-
-  final dirPath = path_util.dirname(path);
-  final dir = Directory(dirPath);
-
-  final dirList = dir.listSync(recursive: true);
-
-  for (var fileSystemObject in dirList) {
-    if (fileSystemObject is File) {
-      return;
-    }
-  }
-
-  dir.delete(recursive: true);
 }
 
 Future<String?> moveFileInsidePack(int packId, String oldFilePath, String newFilePath, String oldUrl) async {
@@ -502,40 +495,6 @@ Future<String?> moveFileInsidePack(int packId, String oldFilePath, String newFil
 
   serverFile.set<String>(WebPackSubFileFields.path, newFilePath);
   await serverFile.save();
-
-  if (!kIsWeb) {
-    final packPath = await getPackAppBasePath(packId);
-    final newUrl = path_util.join(packPath, newFilePath);
-    final file = File(oldUrl);
-    if (!file.existsSync()) return null;
-
-    final newDirPath = path_util.dirname(newUrl);
-    final newDir = Directory(newDirPath);
-    if (!newDir.existsSync()) {
-      await newDir.create(recursive: true);
-    }
-
-    await file.rename(newUrl);
-
-    final oldDirPath = path_util.dirname(oldUrl);
-    final oldDir = Directory(oldDirPath);
-
-    final oldDirList = oldDir.listSync(recursive: true);
-
-    bool fileExists = false;
-    for (var fileSystemObject in oldDirList) {
-      if (fileSystemObject is File) {
-        fileExists = true;
-        break;
-      }
-    }
-
-    if (!fileExists) {
-      oldDir.delete(recursive: true);
-    }
-
-    return newUrl;
-  }
 
   return oldUrl;
 }

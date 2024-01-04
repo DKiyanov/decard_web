@@ -1472,6 +1472,23 @@ class _JsonObjectArrayState extends State<JsonObjectArray> {
       subTitle = Text(widget.fieldDesc.helperText!, style: const TextStyle(color: Colors.grey));
     }
 
+    if (children.isEmpty) {
+      return ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Row(
+          children: [
+            Expanded(child: JsonTitle(widget.fieldDesc)),
+            IconButton(
+                onPressed: _addSubObject,
+                icon: const Icon(Icons.add)
+            ),
+            Container(width: 40),
+          ],
+        ),
+        subtitle: subTitle,
+      );
+    }
+
     return DkExpansionTile(
       tilePadding: EdgeInsets.zero,
       childrenPadding: EdgeInsets.zero,

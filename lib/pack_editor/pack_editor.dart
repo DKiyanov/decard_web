@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
+import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 
 import '../card_controller.dart';
 import '../card_navigator.dart';
@@ -43,10 +44,11 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
   late CardNavigatorData _cardNavigatorData;
 
-  late String packJsonUrl;
   late String packRootPath;
   late Map<String, dynamic> _packJson;
   late Map<String, String> _fileUrlMap;
+
+  late WebPackTextFile _jsonFile;
 
   late Map<String, FieldDesc> _descMap;
 
@@ -92,8 +94,11 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
     _dbSource = DbSourceMem.create();
     _cardController = CardController(dbSource: _dbSource);
-    _jsonFileID = await loadPack(_dbSource, widget.packId, addInfoCallback: (jsonStr, jsonUrl, rootPath, fileUrlMap){
-      packJsonUrl  = jsonUrl;
+
+    String? packJsonPath;
+
+    _jsonFileID = await loadPack(_dbSource, widget.packId, addInfoCallback: (jsonStr, jsonPath, rootPath, fileUrlMap) {
+      packJsonPath = jsonPath;
       packRootPath = rootPath;
       _packJson    = jsonDecode(jsonStr);
       _fileUrlMap  = fileUrlMap;
@@ -103,6 +108,8 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
       // TODO нужно вывести соощение что пакет не удалось загрузить
       return;
     }
+
+    _jsonFile = WebPackTextFile(packId: widget.packId, path: packJsonPath!);
 
     _setEditorTitle();
 
@@ -122,6 +129,8 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _saveJson();
+
     _headScrollController.dispose();
 
     _editorTabController.dispose();
@@ -176,31 +185,38 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
+    return WillPopScope(
+      onWillPop: () async {
+        _saveJson();
+        return true;
+      },
 
-        title: StatefulBuilder(
-          key: _packTitleKey,
-          builder: (context, setState) {
-            return Text('Редактирование пакета: $_packTitle');
-          }
-        ),
+      child: Scaffold(
+        appBar: AppBar(
 
-        actions: [
-          StatefulBuilder(
-            key: _dataChangedButtonKey,
+          title: StatefulBuilder(
+            key: _packTitleKey,
             builder: (context, setState) {
-              return IconButton(
-                onPressed: !_dataChanged? null : (){
-                  _refresh();
-                },
-                icon: Icon(Icons.refresh, color: _dataChanged? Colors.red : Colors.grey),
-              );
+              return Text('Редактирование пакета: $_packTitle');
             }
           ),
-        ],
+
+          actions: [
+            StatefulBuilder(
+              key: _dataChangedButtonKey,
+              builder: (context, setState) {
+                return IconButton(
+                  onPressed: !_dataChanged? null : (){
+                    _refresh();
+                  },
+                  icon: Icon(Icons.refresh, color: _dataChanged? Colors.red : Colors.grey),
+                );
+              }
+            ),
+          ],
+        ),
+        body:  _body(),
       ),
-      body:  _body(),
     );
   }
 
@@ -210,6 +226,9 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
       onDataChanged: () {
         _setDataChanged(true);
         _setEditorTitle();
+        Future.delayed(const Duration(seconds: 20), (){
+          _saveJson();
+        });
       },
 
       child: Row(children: [
@@ -497,6 +516,12 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
     }
 
     return result;
+  }
+
+  void _saveJson() {
+    if (!_dataChanged) return;
+    final jsonStr = jsonEncode(_packJson);
+    _jsonFile.setText(jsonStr);
   }
 }
 

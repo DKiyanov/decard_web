@@ -29,7 +29,6 @@ const descJsonStr = '''
       },
       "targetAge": {
         "title": "Целевой возраст",
-        "helperText" : "это helperText",
         "body" : {
           "targetAgeLow" : {
             "title" : "c"

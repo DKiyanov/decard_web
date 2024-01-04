@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:decard_web/parse_pack_info.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'audio_button.dart';
@@ -13,10 +14,14 @@ import 'html_widget_web.dart';
 
 enum UrlType {
   httpUrl,
+  parseTextUrl,
   localPath
 }
 
 UrlType getUrlType(String url) {
+  if (url.startsWith('text:')) {
+    return UrlType.parseTextUrl;
+  }
   final prefix = url.split('://').first.toLowerCase();
   if (["http", "https"].contains(prefix)) return UrlType.httpUrl;
   return UrlType.localPath;
@@ -94,6 +99,11 @@ Widget htmlView(String html, [String? sourceDir]) {
 
 Future<String?> getTextFromUrl(String fileUrl) async {
   final urlType = getUrlType(fileUrl);
+
+  if ( urlType == UrlType.parseTextUrl ) {
+    final text = await getTextFromParseTextUrl(fileUrl);
+    return text;
+  }
 
   if ( urlType == UrlType.httpUrl ) {
     final response = await http.get(Uri.parse(fileUrl));
