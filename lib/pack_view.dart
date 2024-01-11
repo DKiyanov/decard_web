@@ -47,7 +47,7 @@ class _PackViewState extends State<PackView> {
   }
 
   void _starting() async {
-    _jsonFileID = await loadPack(appState.dbSource, widget.packId);
+    _jsonFileID = await loadWebPack(appState.dbSource, widget.packId);
 
     _cardNavigatorData = CardNavigatorData(appState.dbSource);
     await _cardNavigatorData.setData();

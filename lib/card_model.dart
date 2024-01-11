@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'dart:ui';
-import 'package:decard_web/regulator.dart';
+import 'regulator.dart';
 import 'package:path/path.dart' as path_util;
 
 import 'db.dart';
@@ -8,13 +8,18 @@ import 'decardj.dart';
 import 'media_widgets.dart';
 
 class CardParam {
+  final RegDifficulty difficulty;
+  final int quality;
+
   late int cost;
   late int penalty;
   late int tryCount;
   late int duration;
   late int lowCost;
 
-  CardParam(RegDifficulty difficulty, int quality) {
+  bool noSaveResult = false;
+
+  CardParam(this.difficulty, this.quality) {
     cost     = _getValueForQuality(difficulty.maxCost,     difficulty.minCost,     quality);
     penalty  = _getValueForQuality(difficulty.minPenalty,  difficulty.maxPenalty,  quality); // penalty moves in the opposite direction to all others
     tryCount = _getValueForQuality(difficulty.maxTryCount, difficulty.minTryCount, quality);
@@ -188,7 +193,7 @@ class FileExt {
   }
 
   static Future<String?> prepareFieldContent(DbSource dbSource, int jsonFileID, String? source, Map<String, dynamic>? convertMap) async {
-    if (source == null || source.isEmpty) return source;
+    if (source == null || source.isEmpty) return null;
 
     final fileExt     = FileExt.getFileExt(source);
     var   contentExt  = FileExt.getContentExt(source);
@@ -261,20 +266,29 @@ class CardData {
   final CardHead  head;
   final CardBody  body;
   final CardStyle style;
+  final CardStat  stat;
+
+  final RegDifficulty difficulty;
+
+  final RegCardSet?  regSet;
 
   List<String>? _tagList;
   List<String> get tagList => _tagList??[];
-  
+
   CardData({
     required this.dbSource,
     required this.head,
     required this.style,
     required this.body,
     required this.pacInfo,
+    required this.stat,
+    required this.difficulty,
+    this.regSet,
   });
 
   static Future<CardData> create(
     DbSource dbSource,
+    Regulator regulator,
     int jsonFileID,
     int cardID,
     {
@@ -283,7 +297,7 @@ class CardData {
     }
   ) async {
 
-    final card = await _CardGenerator.createCard(dbSource, jsonFileID, cardID, bodyNum: bodyNum, setBody: setBody);
+    final card = await _CardGenerator.createCard(dbSource, regulator, jsonFileID, cardID, bodyNum: bodyNum, setBody: setBody);
     return card;
   }
 
@@ -314,12 +328,15 @@ class _CardGenerator {
   static CardBody?  _cardBody;
   static CardStyle? _cardStyle;
 
+  static RegCardSet? _regSet;
+
   static Map<String, dynamic>? _convertMap;
 
   static final _random = Random();
 
   static Future<CardData> createCard(
       DbSource dbSource,
+      Regulator regulator,
       int jsonFileID,
       int cardID,
       {
@@ -332,12 +349,13 @@ class _CardGenerator {
     _cardHead   = null;
     _cardBody   = null;
     _cardStyle  = null;
+    _regSet     = null;
     _convertMap = null;
 
     final pacData = await dbSource.tabJsonFile.getRow(jsonFileID: jsonFileID);
     _pacInfo = PacInfo.fromMap(pacData!);
 
-    final headData = (await dbSource.tabCardHead.getRow(jsonFileID: jsonFileID, cardID : cardID))!;
+    final headData = (await dbSource.tabCardHead.getRow(jsonFileID: jsonFileID, cardID: cardID))!;
 
 
     final templateSourceRowId = headData[TabCardHead.kSourceRowId];
@@ -365,6 +383,19 @@ class _CardGenerator {
           break;
       }
     }
+
+    final statData = await dbSource.tabCardStat.getRow(jsonFileID: jsonFileID, cardID: cardID);
+    final cardStat = CardStat.fromMap(statData!);
+
+    if (_cardHead!.regulatorSetIndex != null) {
+      _regSet = regulator.cardSetList[_cardHead!.regulatorSetIndex!];
+    }
+    RegDifficulty? difficulty;
+    if (_regSet != null && _regSet!.difficultyLevel != null) {
+      difficulty = regulator.getDifficulty(_regSet!.difficultyLevel!);
+    } else {
+      difficulty = regulator.getDifficulty(_cardHead!.difficulty);
+    }
     
     final card = CardData(
         dbSource   : dbSource,
@@ -372,6 +403,9 @@ class _CardGenerator {
         body       : _cardBody!,
         style      : _cardStyle!,
         pacInfo    : _pacInfo!,
+        stat       : cardStat,
+        difficulty : difficulty,
+        regSet     : _regSet,
     );
 
     return card;
@@ -389,6 +423,10 @@ class _CardGenerator {
     }
 
     styleMap.addEntries(_cardBody!.styleMap.entries.where((element) => element.value != null));
+
+    if (_regSet != null && _regSet!.style != null) {
+      styleMap.addEntries(_regSet!.style!.entries.where((element) => element.value != null));
+    }
 
     _cardStyle = CardStyle.fromMap(styleMap);
   }
@@ -567,6 +605,50 @@ class CardBody {
       styleMap          : json[DjfCardBody.style]??{},
       answerList        : json[DjfCardBody.answerList] != null ? List<String>.from(json[ DjfCardBody.answerList].map((x) => x)) : [],
       clue              : json[DjfCardBody.clue] != null ? CardSource(json[DjfCardBody.clue]!) : null,
+    );
+  }
+}
+
+class CardStat {
+  final int    id;                // integer, stat identifier in the database
+  final int    jsonFileID;        // integer, file identifier in the database
+  final int    cardID;            // integer, card identifier in the database
+  final String cardKey;           // string, card identifier in the file
+  final String cardGroupKey;      // string, card group identifier
+  final int    quality;           // studying quality, 100 - card is completely studied; 0 - minimum studying quality
+  final int    qualityFromDate;   // the first date taken into account when calculating quality
+  final int    startDate;         // date of studying beginning
+  final int    lastTestDate;      // date of last test
+  final int    testsCount;        // number of tests
+  final String json;              // card statistics data are stored as json, when needed they are unpacked and used for quality calculation and updated
+
+  CardStat({
+    required this.id,
+    required this.jsonFileID,
+    required this.cardID,
+    required this.cardKey,
+    required this.cardGroupKey,
+    required this.quality,
+    required this.qualityFromDate,
+    required this.startDate,
+    required this.lastTestDate,
+    required this.testsCount,
+    required this.json
+  });
+
+  factory CardStat.fromMap(Map<String, dynamic> json){
+    return CardStat(
+      id                : json[TabCardStat.kID],
+      jsonFileID        : json[TabCardStat.kJsonFileID],
+      cardID            : json[TabCardStat.kCardID],
+      cardKey           : json[TabCardStat.kCardKey],
+      cardGroupKey      : json[TabCardStat.kCardGroupKey],
+      quality           : json[TabCardStat.kQuality],
+      qualityFromDate   : json[TabCardStat.kQualityFromDate],
+      startDate         : json[TabCardStat.kStartDate],
+      lastTestDate      : json[TabCardStat.kLastTestDate]??0,
+      testsCount        : json[TabCardStat.kTestsCount],
+      json              : json[TabCardStat.kJson],
     );
   }
 }

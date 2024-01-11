@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
-import 'package:decard_web/db.dart';
 import 'package:flutter/foundation.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 
@@ -10,8 +8,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path_util;
 import 'package:flutter_archive/flutter_archive.dart';
 
+import 'db.dart';
 import 'decardj.dart';
-import 'media_widgets.dart';
+import 'loader.dart';
+import 'local_pack_load.dart';
 
 class WebPackInfo {
   final int    packId        ;
@@ -255,60 +255,29 @@ class WebPackListManager {
   }
 }
 
-typedef LoadPackAddInfoCallback = Function(String jsonStr, String jsonPath, String rootPath, Map<String, String> fileUrlMap);
-
-Future<int?> loadPack(DbSource dbSource, int packId, {LoadPackAddInfoCallback? addInfoCallback, bool putFilesIntoLocalStore = false}) async {
+Future<int?> loadWebPack(DbSource dbSource, int packId, {LoadPackAddInfoCallback? addInfoCallback, bool putFilesIntoLocalStore = false}) async {
   Map<String, String>? fileUrlMap;
 
   if (putFilesIntoLocalStore) {
-    fileUrlMap = await _getPackSourceApp(dbSource, packId);
+    fileUrlMap = await _getPackSourceApp(packId);
   } else {
-    fileUrlMap = await _getPackSourceWeb(dbSource, packId);
+    fileUrlMap = await _getPackSourceWeb(packId);
   }
 
   if (fileUrlMap == null) return null;
 
-  String? jsonUrl;
-  late String jsonPath;
-
-  for (var fileUrlMapEntry in fileUrlMap.entries) {
-    if (fileUrlMapEntry.key.toLowerCase().endsWith(DjfFileExtension.json)) {
-      jsonPath = fileUrlMapEntry.key;
-      jsonUrl  = fileUrlMapEntry.value;
-      break;
-    }
-  }
-
-  if (jsonUrl == null) return null;
-
-  fileUrlMap.remove(jsonPath);
-  final rootPath = path_util.dirname(jsonPath);
-
-  final fileUrlMapOk = <String, String>{};
-
-  for (var fileUrlMapEntry in fileUrlMap.entries) {
-    final newPath = path_util.relative(fileUrlMapEntry.key, from: rootPath);
-    fileUrlMapOk[newPath] = fileUrlMapEntry.value;
-  }
-
-  final jsonStr = await getTextFromUrl(jsonUrl);
-
-  if (jsonStr == null) return null;
-
-  final jsonMap = jsonDecode(jsonStr);
-
-  final jsonFileID = await dbSource.loadJson(sourceFileID: '$packId', rootPath: rootPath, jsonMap: jsonMap, fileUrlMap: fileUrlMapOk);
-
-  if (jsonFileID == null) return null;
-
-  if (addInfoCallback != null) {
-    addInfoCallback.call(jsonStr, jsonPath, rootPath, fileUrlMapOk);
-  }
-
-  return jsonFileID;
+  return await loadPack(dbSource, 'WebPack:$packId', fileUrlMap, addInfoCallback : addInfoCallback);
 }
 
-Future<Map<String, String>?> _getPackSourceWeb(DbSource dbSource, int packId) async {
+Future<Map<String, String>?> getPackSource(int packId, {bool putFilesIntoLocalStore = false}) async {
+  if (putFilesIntoLocalStore) {
+    return await _getPackSourceApp(packId);
+  } else {
+    return await _getPackSourceWeb(packId);
+  }
+}
+
+Future<Map<String, String>?> _getPackSourceWeb(int packId) async {
   final query = QueryBuilder<ParseObject>(ParseObject(WebPackSubFileFields.className));
   query.whereEqualTo(WebPackSubFileFields.packId, packId);
   query.keysToReturn([WebPackSubFileFields.path, WebPackSubFileFields.file, WebPackSubFileFields.isText]);
@@ -395,7 +364,7 @@ class WebPackTextFile {
   }
 }
 
-Future<Map<String, String>?> _getPackSourceApp(DbSource dbSource, int packId) async {
+Future<Map<String, String>?> _getPackSourceApp(int packId) async {
   final query = QueryBuilder<ParseObject>(ParseObject(WebPackFields.className));
   query.whereEqualTo(WebPackFields.packId, packId);
   query.keysToReturn([WebPackFields.fileName, WebPackFields.content]);
@@ -410,20 +379,22 @@ Future<Map<String, String>?> _getPackSourceApp(DbSource dbSource, int packId) as
   }
 
   Directory appDocDir = await getApplicationDocumentsDirectory();
-  final packPath = path_util.join(appDocDir.path, 'pack_$packId' );
+  final packPath = path_util.join(appDocDir.path, 'pack_$packId');
+
   final dir = Directory(packPath);
 
   if (!dir.existsSync()) {
     final content = packInfo.get<ParseFile>(WebPackFields.content)!;
     await content.loadStorage();
-    if ( content.file == null){
+    if (content.file == null) {
       await content.download();
     }
 
     await dir.create();
 
     if (fileExt == DjfFileExtension.zip) {
-      await ZipFile.extractToDirectory(zipFile: content.file!, destinationDir: dir);
+      await ZipFile.extractToDirectory(
+          zipFile: content.file!, destinationDir: dir);
     }
     if (fileExt == DjfFileExtension.json) {
       await content.file!.copy(path_util.join(dir.path, packFileName));
@@ -432,20 +403,8 @@ Future<Map<String, String>?> _getPackSourceApp(DbSource dbSource, int packId) as
     content.file!.delete();
   }
 
-  final Map<String, String> fileUrlMap = {};
-
-  final fileList = dir.listSync( recursive: true);
-
-  for (var object in fileList) {
-    if (object is File){
-      final File file = object;
-
-      final relPath = path_util.relative(file.path, from: packPath);
-      fileUrlMap[relPath] = file.path;
-    }
-  }
-
-  return fileUrlMap;
+  final dirSource = await getDirSource(packPath);
+  return dirSource;
 }
 
 Future<String> addFileToPack(int packId, String filePath, Uint8List fileContent) async {

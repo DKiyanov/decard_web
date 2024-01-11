@@ -1,5 +1,5 @@
 import 'package:collection/collection.dart';
-import 'package:decard_web/db.dart';
+import 'db.dart';
 import 'package:flutter/material.dart';
 
 import 'card_controller.dart';
@@ -171,7 +171,7 @@ class _CardNavigatorState extends State<CardNavigator> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.cardController.card == null) {
+    if (_selCard == null) {
       return Container();
     }
 

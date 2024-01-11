@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:decard_web/parse_pack_info.dart';
+import 'parse_pack_info.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'audio_button.dart';

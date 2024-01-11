@@ -3,6 +3,7 @@ import 'package:path/path.dart' as path_util;
 
 import 'db.dart';
 import 'decardj.dart';
+import 'media_widgets.dart';
 
 enum DecardFileType {
   json,
@@ -17,7 +18,48 @@ DecardFileType getDecardFileType(String fileName){
   return DecardFileType.notDecardFile;
 }
 
-typedef CheckCanLoadFile = Future<bool> Function(String guid, int version);
+typedef LoadPackAddInfoCallback = Function(String jsonStr, String jsonPath, String rootPath, Map<String, String> fileUrlMap);
+
+Future<int?> loadPack(DbSource dbSource, String sourceFileID, Map<String, String> fileUrlMap, {bool onlyLastVersion = false, bool reInitDB = true, LoadPackAddInfoCallback? addInfoCallback}) async {
+  String? jsonUrl;
+  late String jsonPath;
+
+  for (var fileUrlMapEntry in fileUrlMap.entries) {
+    if (fileUrlMapEntry.key.toLowerCase().endsWith(DjfFileExtension.json)) {
+      jsonPath = fileUrlMapEntry.key;
+      jsonUrl  = fileUrlMapEntry.value;
+      break;
+    }
+  }
+
+  if (jsonUrl == null) return null;
+
+  fileUrlMap.remove(jsonPath);
+  final rootPath = path_util.dirname(jsonPath);
+
+  final fileUrlMapOk = <String, String>{};
+
+  for (var fileUrlMapEntry in fileUrlMap.entries) {
+    final newPath = path_util.relative(fileUrlMapEntry.key, from: rootPath);
+    fileUrlMapOk[newPath] = fileUrlMapEntry.value;
+  }
+
+  final jsonStr = await getTextFromUrl(jsonUrl);
+
+  if (jsonStr == null) return null;
+
+  final jsonMap = jsonDecode(jsonStr);
+
+  final jsonFileID = await dbSource.loadJson(sourceFileID: sourceFileID, rootPath: rootPath, jsonMap: jsonMap, fileUrlMap: fileUrlMapOk);
+
+  if (jsonFileID == null) return null;
+
+  if (addInfoCallback != null) {
+    addInfoCallback.call(jsonStr, jsonPath, rootPath, fileUrlMapOk);
+  }
+
+  return jsonFileID;
+}
 
 class DataLoader {
   final errorList = <String>[];
@@ -26,7 +68,8 @@ class DataLoader {
 
   DataLoader(this.dbSource);
 
-  Future<int?> loadJson(String sourceFileID, String rootPath, Map<String, dynamic> jsonMap, CheckCanLoadFile? checkCanLoadFile) async {
+  Future<int?> loadJson(String sourceFileID, String rootPath, Map<String, dynamic> jsonMap, [bool onlyLastVersion = false]) async {
+
     final jsonFileRow = await dbSource.tabJsonFile.getRowBySourceID(sourceFileID: sourceFileID);
     if (jsonFileRow != null) {
       return jsonFileRow[TabJsonFile.kJsonFileID];
@@ -40,9 +83,19 @@ class DataLoader {
 
     final int fileVersion = jsonMap[TabJsonFile.kVersion]??0;
 
-    if (checkCanLoadFile != null) {
-      if (! await checkCanLoadFile.call(guid, fileVersion)) {
-        return null;
+    bool isNew = true;
+
+    if (onlyLastVersion) {
+      final rows = await dbSource.tabJsonFile.getRowByGuid(guid);
+
+      for (var row in rows) {
+        final rowVersion = (row[TabJsonFile.kVersion]??0) as int;
+        if (fileVersion <= rowVersion) return null;
+
+        isNew = false;
+
+        final rowJsonFileID = row[TabJsonFile.kJsonFileID] as int;
+        clearJsonFileID(rowJsonFileID);
       }
     }
 
@@ -78,6 +131,10 @@ class DataLoader {
     final cardList = (jsonMap[DjfFile.cardList]??[]) as List?;
     if (cardList != null) {
       await _processCardList(jsonFileID: jsonFileID, cardList : cardList, cardKeyList : cardKeyList);
+    }
+
+    if (!isNew){
+      await dbSource.tabCardStat.removeOldCard(jsonFileID, cardKeyList);
     }
 
     return jsonFileID;
@@ -150,6 +207,13 @@ class DataLoader {
         cardID     : cardID,
         linkList   : card[DjfCard.upLinks] as List?,
       );
+
+      await _intCardStat(
+        jsonFileID : jsonFileID,
+        cardID     : cardID,
+        cardKey    : cardKey,
+        groupKey   : groupKey,
+      );
     }
   }
 
@@ -216,6 +280,15 @@ class DataLoader {
     }
   }
 
+  Future<void> _intCardStat({required int jsonFileID, required int cardID, required String cardKey, required String groupKey}) async {
+    await dbSource.tabCardStat.insertRow(
+      jsonFileID   : jsonFileID,
+      cardID       : cardID,
+      cardKey      : cardKey,
+      cardGroupKey : groupKey,
+    );
+  }
+
   Future<void> clearJsonFileID(int jsonFileID) async {
     await dbSource.tabCardStyle.deleteJsonFile(jsonFileID);
     await dbSource.tabCardHead.deleteJsonFile(jsonFileID);
@@ -224,5 +297,7 @@ class DataLoader {
     await dbSource.tabCardLink.deleteJsonFile(jsonFileID);
     await dbSource.tabCardLinkTag.deleteJsonFile(jsonFileID);
     await dbSource.tabQualityLevel.deleteJsonFile(jsonFileID);
+    await dbSource.tabTemplateSource.deleteJsonFile(jsonFileID);
+    await dbSource.tabFileUrlMap.deleteJsonFile(jsonFileID);
   }
 }

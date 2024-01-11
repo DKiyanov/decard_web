@@ -3,6 +3,8 @@ import 'common.dart';
 import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
 
+import 'login_google.dart';
+
 class LoginPage extends StatefulWidget {
   final String? redirectTo;
 
@@ -37,7 +39,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               ElevatedButton(
                   onPressed: (){
-                    appState.serverConnect.loginWithGoogle();
+                    loginWithGoogle(appState.serverConnect);
                   },
                   child: Text('Google')
               ),

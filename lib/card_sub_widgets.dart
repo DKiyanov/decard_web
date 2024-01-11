@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:auto_size_text/auto_size_text.dart';
-import 'package:decard_web/simple_menu.dart';
-import 'package:decard_web/text_constructor/text_constructor.dart';
-import 'package:decard_web/text_constructor/word_panel_model.dart';
+import 'simple_menu.dart';
+import 'text_constructor/text_constructor.dart';
+import 'text_constructor/word_panel_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -20,15 +20,23 @@ import 'package:simple_events/simple_events.dart' as event;
 class CardViewController {
   final CardData card;
   final CardParam cardParam;
-  final OnCardResult onResult;
+  final OnCardResult? onResult;
 
-  CardViewController(this.card, this.cardParam, this.onResult) {
-    startTime = DateTime.now().millisecondsSinceEpoch;
+  CardViewController(this.card, this.cardParam, [this.onResult, int? startTime]) {
+    if (startTime != null) {
+      this.startTime = startTime;
+    } else {
+      this.startTime = DateTime.now().millisecondsSinceEpoch;
+    }
   }
 
   double costValue = 0; // заработанное
-  int    costMinusPercent = 0; // уменьшение заработаного
   late int startTime = 0;
+
+  int    _costMinusPercent = 0; // уменьшение заработаного
+  int get costMinusPercent => _costMinusPercent;
+  final _onCostMinusPercent = event.PrivateEvent();
+  event.EventBase get onCostMinusPercent => _onCostMinusPercent.event;
 
   bool? _result;
   bool? get result => _result;
@@ -48,7 +56,14 @@ class CardViewController {
 
     double earned = result? costValue : - cardParam.penalty.toDouble();
 
-    onResult.call(card, cardParam, result, tryCount, solveTime, earned);
+    onResult?.call(card, cardParam, result, tryCount, solveTime, earned);
+  }
+
+  void setCostMinusPercent(int percent) {
+    if (_costMinusPercent < percent) {
+      _costMinusPercent = percent;
+      _onCostMinusPercent.send();
+    }
   }
 }
 

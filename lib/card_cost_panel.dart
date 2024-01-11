@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:decard_web/regulator.dart';
+import 'regulator.dart';
 import 'package:flutter/material.dart';
 
 import 'card_model.dart';
@@ -132,6 +132,7 @@ class _CostPanelWithTimerState extends State<_CostPanelWithTimer> {
   DateTime? _startTime;
 
   event.Listener? onAnswerListener;
+  event.Listener? onCostMinusPercent;
 
   CardParam get cardParam => widget.controller.cardParam;
 
@@ -149,6 +150,13 @@ class _CostPanelWithTimerState extends State<_CostPanelWithTimer> {
       _stopCostTimer();
     });
 
+    onCostMinusPercent = widget.controller.onCostMinusPercent.subscribe((listener, data) {
+      if (!mounted) return;
+      setState(() {
+        _calcCostValue();
+      });
+    });
+
     widget.controller.costValue = cardParam.cost.toDouble();
     _costDuration = cardParam.duration * 1000;
     _initCostTimer();
@@ -157,6 +165,7 @@ class _CostPanelWithTimerState extends State<_CostPanelWithTimer> {
   @override
   void dispose() {
     onAnswerListener?.dispose();
+    onCostMinusPercent?.dispose();
     super.dispose();
   }
 

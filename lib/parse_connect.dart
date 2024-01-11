@@ -1,4 +1,3 @@
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -93,34 +92,17 @@ class ParseConnect {
     }
   }
 
-  Future<bool> loginWithGoogle() async {
-    final googleSignIn = GoogleSignIn( scopes: ['email', 'https://www.googleapis.com/auth/contacts.readonly'] );
-
-    final account = await googleSignIn.signIn();
-    if (account == null) {
-      _lastError = TextConst.errFailedLogin;
-      return false;
-    }
-
-    final authentication = await account.authentication;
-    if (authentication.accessToken == null || googleSignIn.currentUser == null || authentication.idToken == null) {
-      _lastError = TextConst.errFailedLogin;
-      return false;
-    }
-
-    final authData = google(authentication.accessToken!, googleSignIn.currentUser!.id, authentication.idToken!);
-
-    final response = await ParseUser.loginWith('google', authData);
+  Future<String> loginWith(String provider, Object authData) async {
+    final response = await ParseUser.loginWith(provider, authData);
 
     if (response.success) {
       _user = await ParseUser.currentUser();
       await _user!.fetch();
       _loginId = _user?.username??'';
       onLoggedInChange.send();
-      return true;
+      return '';
     } else {
-      _lastError = TextConst.errFailedLogin;
-      return false;
+      return TextConst.errFailedLogin;
     }
   }
 

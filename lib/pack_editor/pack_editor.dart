@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 
 import '../card_controller.dart';
 import '../card_navigator.dart';
@@ -97,7 +96,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
     String? packJsonPath;
 
-    _jsonFileID = await loadPack(_dbSource, widget.packId, addInfoCallback: (jsonStr, jsonPath, rootPath, fileUrlMap) {
+    _jsonFileID = await loadWebPack(_dbSource, widget.packId, addInfoCallback: (jsonStr, jsonPath, rootPath, fileUrlMap) {
       packJsonPath = jsonPath;
       packRootPath = rootPath;
       _packJson    = jsonDecode(jsonStr);
@@ -472,15 +471,15 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Future<List<String>> getTagList() async { // UpLink multi
-    return _dbSource.tabCardTag.getPackCardTagList(jsonFileID: _jsonFileID!);
+    return _dbSource.tabCardTag.getFileTagList(jsonFileID: _jsonFileID!);
   }
 
   Future<List<String>> getCardIdList() async { // UpLink multi
-    return _dbSource.tabCardHead.getPackCardIdList(jsonFileID: _jsonFileID!);
+    return _dbSource.tabCardHead.getFileCardKeyList(jsonFileID: _jsonFileID!);
   }
 
   Future<List<String>> getCardGroupList() async { // UpLink multi
-    return _dbSource.tabCardHead.getPackCardGroupList(jsonFileID: _jsonFileID!);
+    return _dbSource.tabCardHead.getFileGroupList(jsonFileID: _jsonFileID!);
   }
 
   Future<List<String>?> getStyleAnswerVariantList(String cardStyleKey) async { // for Card.Body multi
@@ -494,7 +493,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Future<List<String>> getNearGroupList(String cardID) async { // Card single
-    final rows = await _dbSource.tabCardHead.getPackRows(jsonFileID: _jsonFileID!);
+    final rows = await _dbSource.tabCardHead.getFileRows(jsonFileID: _jsonFileID!);
     final index = rows.indexWhere((row) => row[TabCardHead.kCardID] == cardID);
 
     final result = <String>[];

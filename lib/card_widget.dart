@@ -1,4 +1,4 @@
-import 'package:decard_web/card_cost_panel.dart';
+import 'card_cost_panel.dart';
 
 import 'card_sub_widgets.dart';
 

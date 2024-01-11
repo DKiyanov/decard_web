@@ -1,4 +1,4 @@
-import 'package:decard_web/media_widgets.dart';
+import 'media_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'card_model.dart';

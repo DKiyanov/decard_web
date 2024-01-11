@@ -1,8 +1,10 @@
-import 'package:decard_web/regulator.dart';
-import 'package:simple_events/simple_events.dart' as event;
-import 'card_sub_widgets.dart';
+import 'package:collection/collection.dart';
+
 import 'db.dart';
 import 'card_model.dart';
+import 'regulator.dart';
+import 'package:simple_events/simple_events.dart' as event;
+import 'card_sub_widgets.dart';
 import 'package:flutter/material.dart';
 
 typedef CardWidgetBuilder = Widget Function(CardData card, CardParam cardParam, CardViewController cardViewController);
@@ -11,10 +13,17 @@ typedef OnCardResult = Function(CardData card, CardParam cardParam, bool result,
 class CardController {
   final DbSource dbSource;
   late Regulator regulator;
+  final Future<CardPointer?>? Function()? onSelectNextCard;
+  final void Function(int cardID)? onSetCard;
+  final OnCardResult? onCardResult;
 
-  CardController({required this.dbSource}) {
-    regulator = Regulator(options: RegOptions(), cardSetList: [], difficultyList: []);
-    regulator.fillDifficultyLevels();
+  CardController({required this.dbSource, Regulator? regulator, this.onSelectNextCard, this.onSetCard, this.onCardResult}) {
+    if (regulator != null) {
+      this.regulator = regulator;
+    } else {
+      this.regulator = Regulator(options: RegOptions(), cardSetList: [], difficultyList: []);
+      this.regulator.fillDifficultyLevels();
+    }
   }
 
   CardData? _card;
@@ -37,37 +46,79 @@ class CardController {
   }
 
   /// Sets the current card data
-  Future<void> setCard(int jsonFileID, int cardID, {int? bodyNum, CardSetBody setBody = CardSetBody.random}) async {
-    _card = await CardData.create(dbSource, jsonFileID, cardID, bodyNum: bodyNum, setBody: setBody);
+  Future<void> setCard(int jsonFileID, int cardID, {int? bodyNum, CardSetBody setBody = CardSetBody.random, int? startTime}) async {
+    _card = await CardData.create(dbSource, regulator, jsonFileID, cardID, bodyNum: bodyNum, setBody: setBody);
 
-    _cardParam   = CardParam(regulator.difficultyList[0], 0);
+    _cardParam   = CardParam(_card!.difficulty, _card!.stat.quality);
 
-    _cardViewController = CardViewController(_card!, _cardParam!, _onCardResult);
+    _cardViewController = CardViewController(_card!, _cardParam!, _onCardResult, startTime);
+
+    onSetCard?.call(_card!.head.cardID);
 
     onChange.send();
   }
 
-  Future<void> setNextCard() async {
-    Map<String, dynamic> row;
+  Future<bool> setNextCard() async {
+    final cardPointer =  (await onSelectNextCard?.call()) ?? (await _selectNextCard());
+    if (cardPointer == null) return false;
 
-    final rows = await dbSource.tabCardHead.getAllRows();
-    if (rows.isEmpty) return;
+    setCard(cardPointer.jsonFileID, cardPointer.cardID);
+    return true;
+  }
 
-    if (_card == null) {
-      row = rows[0];
-    } else {
-      final index = rows.indexWhere((cardHead) => cardHead[TabCardHead.kCardID] == _card!.head.cardID) + 1;
-      if (index < rows.length) {
-        row = rows[index];
-      } else {
-        row = rows[0];
+  Future<bool> setFirstCard([int? jsonFileID]) async {
+    _card = null;
+
+    final cardPointer = await _selectNextCard(jsonFileID);
+    if (cardPointer == null) return false;
+
+    await setCard(cardPointer.jsonFileID, cardPointer.cardID);
+    return true;
+  }
+
+  List<CardPointer>? _cardPointerList; // for _selectNextCard only
+
+  Future<CardPointer?> _selectNextCard([int? jsonFileID]) async {
+    if (_cardPointerList == null) {
+      _cardPointerList = <CardPointer>[];
+
+      final cardHeadRows = await dbSource.tabCardHead.getAllRows();
+      for (var cardHead in cardHeadRows) {
+        final jsonFileID = cardHead[TabCardHead.kJsonFileID] as int;
+        final cardID     = cardHead[TabCardHead.kCardID] as int;
+        _cardPointerList!.add(CardPointer(jsonFileID, cardID));
       }
+
+      _cardPointerList!.sort((a,b) => a.cardID.compareTo(b.cardID));
     }
 
-    final jsonFileID = row[TabCardHead.kJsonFileID] as int;
-    final cardID     = row[TabCardHead.kCardID] as int;
+    if (_card != null) {
+      final curCardIndex = _cardPointerList!.indexWhere((cardPointer) => cardPointer.cardID == _card!.head.cardID);
+      final curCardPointer = _cardPointerList![curCardIndex];
 
-    setCard(jsonFileID, cardID);
+      if (jsonFileID != null && curCardPointer.jsonFileID != jsonFileID) {
+        final cardPointer = _cardPointerList!.firstWhereOrNull((cardPointer) => cardPointer.jsonFileID == jsonFileID);
+        return cardPointer;
+      }
+
+      final nextCardIndex = curCardIndex + 1;
+      if (nextCardIndex >= _cardPointerList!.length) return curCardPointer;
+
+      final nextCardPointer = _cardPointerList![nextCardIndex];
+
+      if (jsonFileID != null && nextCardPointer.jsonFileID != jsonFileID) {
+        return curCardPointer;
+      }
+
+      return nextCardPointer;
+    }
+
+    if (jsonFileID != null) {
+      final cardPointer = _cardPointerList!.firstWhereOrNull((cardPointer) => cardPointer.jsonFileID == jsonFileID);
+      return cardPointer;
+    }
+
+    return _cardPointerList!.first;
   }
 
   Widget cardListenWidgetBuilder(CardWidgetBuilder builder) {
@@ -82,6 +133,9 @@ class CardController {
   }
 
   Future<void> _onCardResult(CardData card, CardParam cardParam, bool result, int tryCount, int solveTime, double earned) async {
+    if (cardParam.noSaveResult) return;
+
     onAddEarn.send(earned);
+    onCardResult?.call(card, cardParam, result, tryCount, solveTime, earned);
   }
 }

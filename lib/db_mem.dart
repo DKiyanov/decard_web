@@ -78,13 +78,72 @@ class MemDB{
     return null;
   }
 
-  void deleteRows(int jsonFileID, String tabName){
-    _rowList.removeWhere((dbRow) => dbRow.jsonFileID == jsonFileID && dbRow.tabName == tabName);
+  void deleteRows(int jsonFileID, String tabName, {dynamic key, Map<String, dynamic>? filter}){
+    final toDelRowList = <MemDbRow>[];
+
+    for (var dbRow in _rowList) {
+      if (dbRow.jsonFileID == jsonFileID && dbRow.tabName == tabName) {
+        if (key != null && dbRow.key != key) continue;
+
+        if (filter != null) {
+          bool skip = false;
+          for (var filterElement in filter.entries) {
+            final value = dbRow.row[filterElement.key];
+            if (value != filterElement.value) {
+              skip = true;
+              break;
+            }
+          }
+          if (skip) continue;
+        }
+
+        toDelRowList.add(dbRow);
+      }
+    }
+
+    for (var row in toDelRowList) {
+      _rowList.remove(row);
+    }
   }
 
   void clearDb() {
     _rowList.clear();
   }
+}
+
+class TabSourceFileMem extends TabSourceFile {
+  final MemDB db;
+  TabSourceFileMem(this.db);
+
+  int _lastSourceFileID = 0;
+
+  @override
+  Future<bool> checkFileRegistered(String path, DateTime changeDateTime, int size) async {
+    final row = db.getRow(0, TabSourceFile.tabName, '$path|${changeDateTime.millisecondsSinceEpoch}|$size');
+    return row != null;
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getRow({required int sourceFileID}) async {
+    final rows = db.getRows(0, TabSourceFile.tabName, filter: {TabSourceFile.kSourceFileID : _lastSourceFileID});
+    if (rows.isEmpty) return null;
+    return rows.first;
+  }
+
+  @override
+  Future<int> registerFile(String path, DateTime changeDateTime, int size) async {
+    _lastSourceFileID ++;
+
+    db.insertRow(0, TabSourceFile.tabName, '$path|${changeDateTime.millisecondsSinceEpoch}|$size', {
+      TabSourceFile.kSourceFileID : _lastSourceFileID,
+      TabSourceFile.kFilePath : path,
+      TabSourceFile.kChangeDateTime : changeDateTime.millisecondsSinceEpoch,
+      TabSourceFile.kSize : size,
+    });
+
+    return _lastSourceFileID;
+  }
+
 }
 
 class TabJsonFileMem extends TabJsonFile {
@@ -149,6 +208,23 @@ class TabJsonFileMem extends TabJsonFile {
     db.insertRow(jsonFileID, TabJsonFile.tabName, jsonFileID, row);
 
     return jsonFileID;
+  }
+
+  @override
+  int? fileGuidToJsonFileId(String guid) {
+    final rows = db.getTabRows(TabJsonFile.tabName, filter: {TabJsonFile.kGuid : guid});
+    if (rows.isEmpty) return null;
+
+    final jsonFileID = rows.first[TabJsonFile.kJsonFileID];
+    return jsonFileID;
+  }
+
+  @override
+  FileKey jsonFileIdToFileKey(int jsonFileId) {
+    final row = db.getRow(jsonFileId, TabJsonFile.tabName, jsonFileId)!;
+    final guid = row[TabJsonFile.kGuid];
+    final version = row[TabJsonFile.kVersion];
+    return FileKey(guid, version, jsonFileId);
   }
 }
 
@@ -258,7 +334,7 @@ class TabCardHeadMem extends TabCardHead{
   }
 
   @override
-  Future<List<Map<String, Object?>>> getPackRows({ required int jsonFileID}) async {
+  Future<List<Map<String, Object?>>> getFileRows({ required int jsonFileID}) async {
     return db.getRows(jsonFileID, TabCardHead.tabName);
   }
 
@@ -268,7 +344,7 @@ class TabCardHeadMem extends TabCardHead{
   }
 
   @override
-  Future<List<String>> getPackCardIdList({ required int jsonFileID}) async {
+  Future<List<String>> getFileCardKeyList({ required int jsonFileID}) async {
     final rows = db.getRows(jsonFileID, TabCardHead.tabName);
     final result = <String>[];
 
@@ -282,7 +358,7 @@ class TabCardHeadMem extends TabCardHead{
   }
 
   @override
-  Future<List<String>> getPackCardGroupList({ required int jsonFileID}) async {
+  Future<List<String>> getFileGroupList({ required int jsonFileID}) async {
     final rows = db.getRows(jsonFileID, TabCardHead.tabName);
     final result = <String>[];
 
@@ -297,7 +373,7 @@ class TabCardHeadMem extends TabCardHead{
   }
 
   @override
-  Future<int?> getCardId({ required int jsonFileID, required String cardKey}) async {
+  Future<int?> getCardIdFromKey({ required int jsonFileID, required String cardKey}) async {
     final rows = db.getRows(jsonFileID, TabCardHead.tabName, filter: {TabCardHead.kCardKey : cardKey});
     if (rows.length != 1) return null;
     return rows[0][TabCardHead.kCardID] as int;
@@ -335,6 +411,26 @@ class TabCardHeadMem extends TabCardHead{
     return cardID;
   }
 
+  @override
+  Future<void> clearRegulatorPatchOnAllRow() async {
+    final rows = db.getTabRows(TabCardHead.tabName);
+    for (var row in rows) {
+      row[TabCardHead.kExclude] = false;
+    }
+  }
+
+  @override
+  Future<int> getGroupCardCount({required int jsonFileID, required cardGroupKey}) async {
+     final rows = db.getRows(jsonFileID, TabCardHead.tabName, filter: { TabCardHead.kGroup : cardGroupKey });
+     return rows.length;
+  }
+
+  @override
+  Future<void> setRegulatorPatchOnCard({required int jsonFileID, required int cardID, required int regulatorSetIndex, required bool exclude}) async {
+    final row = db.getRow(jsonFileID, TabCardHead.tabName, cardID)!;
+    row[TabCardHead.kExclude] = exclude;
+  }
+
 }
 
 class TabCardTagMem extends TabCardTag {
@@ -355,7 +451,7 @@ class TabCardTagMem extends TabCardTag {
   }
 
   @override
-  Future<List<String>> getPackCardTagList({ required int jsonFileID}) async {
+  Future<List<String>> getFileTagList({ required int jsonFileID}) async {
     final rows = db.getRows(jsonFileID, TabCardTag.tabName);
 
     final result = <String>[];
@@ -538,6 +634,188 @@ class TabFileUrlMapMem extends TabFileUrlMap {
   }
 }
 
+class TabCardStatMem extends TabCardStat {
+  final MemDB db;
+  TabCardStatMem(this.db);
+
+  int _lastId = 0;
+
+  @override
+  Future<void> clear() async {
+    db.deleteRows(0, TabCardStat.tabName);
+  }
+
+  @override
+  Future<List<Map<String, Object?>>> getAllRows() async {
+    final rows = db.getTabRows(TabCardStat.tabName);
+    return rows;
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getRow({required int jsonFileID, required int cardID}) async {
+    final row = db.getRow(jsonFileID, TabCardStat.tabName, cardID);
+    return row;
+  }
+
+  @override
+  Future<int> insertRow({
+    required int    jsonFileID,
+    required int    cardID,
+    required String cardKey,
+    required String cardGroupKey
+  }) async {
+    _lastId ++;
+
+    Map<String, Object> row = {
+      TabCardStat.kID              : _lastId,
+      TabCardStat.kJsonFileID      : jsonFileID,
+      TabCardStat.kCardID          : cardID,
+      TabCardStat.kCardKey         : cardKey,
+      TabCardStat.kCardGroupKey    : cardGroupKey,
+      TabCardStat.kQuality         : 0,
+      TabCardStat.kLastResult      : false,
+      TabCardStat.kQualityFromDate : 0,
+      TabCardStat.kStartDate       : 0,
+      TabCardStat.kTestsCount      : 0,
+      TabCardStat.kJson            : '',
+    };
+
+    db.insertRow(jsonFileID, TabCardStat.tabName, cardID, row);
+
+    return _lastId;
+  }
+
+  @override
+  Future<int> insertRowFromMap(Map<String, dynamic> rowMap) async {
+    final jsonFileID = rowMap[TabCardStat.kJsonFileID] as int;
+    final cardID     = rowMap[TabCardStat.kCardID    ] as int;
+
+    _lastId ++;
+
+    final cloneMap = {
+      TabCardStat.kID : _lastId,
+      ...rowMap
+    };
+
+    db.insertRow(jsonFileID, TabCardStat.tabName, cardID, cloneMap);
+
+    return _lastId;
+  }
+
+  @override
+  Future<void> removeOldCard(int jsonFileID, List<String> cardKeyList) async {
+    final rows = db.getRows(jsonFileID, TabCardStat.tabName);
+
+    for (var row in rows) {
+      final cardKey = row[TabCardStat.kCardKey];
+      if (cardKeyList.contains(cardKey)) continue;
+      final cardID = row[TabCardStat.kCardID];
+      db.deleteRows(jsonFileID, TabCardStat.tabName, filter: {TabCardStat.kCardID: cardID});
+    }
+
+  }
+
+  @override
+  Future<bool> updateRow(int jsonFileID, int cardID, Map<String, Object?> map) async {
+    final row = db.getRow(jsonFileID, TabCardStat.tabName, cardID);
+    if (row == null) return false;
+
+    for (var mapEntry in map.entries) {
+      row[mapEntry.key] = mapEntry.value;
+    }
+
+    return true;
+  }
+  
+}
+
+class TabTestResultMem extends TabTestResult  {
+  final MemDB db;
+  TabTestResultMem(this.db);
+
+  int _lastId = 0;
+
+  @override
+  Future<int> getFirstTime() async {
+    final rows = db.getTabRows(TabTestResult.tabName);
+
+    int result = 0;
+
+    for (var row in rows) {
+      final dateTime = row[TabTestResult.kDateTime] as int;
+      if (result == 0) {
+        result = dateTime;
+        continue;
+      }
+
+      if (result > dateTime) {
+        result = dateTime;
+      }
+    }
+
+    return result;
+  }
+
+  @override
+  Future<int> getLastTime() async {
+    final rows = db.getTabRows(TabTestResult.tabName);
+
+    int result = 0;
+
+    for (var row in rows) {
+      final dateTime = row[TabTestResult.kDateTime] as int;
+
+      if (result < dateTime) {
+        result = dateTime;
+      }
+    }
+
+    return result;
+  }
+
+  @override
+  Future<List<TestResult>> getForPeriod(int fromDate, int toDate) async {
+    final rows = db.getTabRows(TabTestResult.tabName);
+
+    final result = <TestResult>[];
+
+    for (var row in rows) {
+      final dateTime = row[TabTestResult.kDateTime] as int;
+
+      if (dateTime < fromDate || dateTime > toDate) continue;
+
+      result.add(TestResult.fromMap(row));
+    }
+    
+    return result;
+  }
+
+  @override
+  Future<int> insertRow(TestResult testResult) async {
+    _lastId ++;
+
+    Map<String, Object> row = {
+      TabTestResult.kFileGuid      : testResult.fileGuid,
+      TabTestResult.kFileVersion   : testResult.fileVersion,
+      TabTestResult.kCardID        : testResult.cardID,
+      TabTestResult.kBodyNum       : testResult.bodyNum,
+      TabTestResult.kResult        : testResult.result,
+      TabTestResult.kEarned        : testResult.earned,
+      TabTestResult.kTryCount      : testResult.tryCount,
+      TabTestResult.kSolveTime     : testResult.solveTime,
+      TabTestResult.kDateTime      : testResult.dateTime,
+      TabTestResult.kQualityBefore : testResult.qualityBefore,
+      TabTestResult.kQualityAfter  : testResult.qualityAfter,
+      TabTestResult.kDifficulty    : testResult.difficulty,
+    };
+
+    db.insertRow(0, TabTestResult.tabName, _lastId, row);
+
+    return _lastId;
+  }
+
+}
+
 class DbSourceMem extends DbSource{
   final MemDB db;
   DbSourceMem(this.db);
@@ -547,6 +825,7 @@ class DbSourceMem extends DbSource{
 
     final dbSource = DbSourceMem(db);
 
+    dbSource.tabSourceFile     = TabSourceFileMem(db);
     dbSource.tabJsonFile       = TabJsonFileMem(db);
     dbSource.tabCardHead       = TabCardHeadMem(db);
     dbSource.tabCardTag        = TabCardTagMem(db);
@@ -557,7 +836,12 @@ class DbSourceMem extends DbSource{
     dbSource.tabQualityLevel   = TabQualityLevelMem(db);
     dbSource.tabTemplateSource = TabTemplateSourceMem(db);
     dbSource.tabFileUrlMap     = TabFileUrlMapMem(db);
+    dbSource.tabCardStat       = TabCardStatMem(db);
+    dbSource.tabTestResult     = TabTestResultMem(db);
 
     return dbSource;
   }
+
+  @override
+  Future<void> init() async {}
 }

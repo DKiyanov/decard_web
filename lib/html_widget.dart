@@ -17,7 +17,6 @@ class _HtmlViewWidgetState extends State<HtmlViewWidget> {
   Widget build(BuildContext context) {
     // for correct operation, the html must contain the line:
     // <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     return SizedBox(
       height: htmlWidgetHeight,
 
@@ -36,10 +35,10 @@ class _HtmlViewWidgetState extends State<HtmlViewWidget> {
           setState(() {});
         },
 
-        initialData: InAppWebViewInitialData(
-          data: widget.html,
-          baseUrl: Uri(scheme: 'file', path: widget.filesDir)
-        ),
+         initialData: InAppWebViewInitialData(
+             data: widget.html,
+             baseUrl:  Uri(scheme: 'file', path: widget.filesDir)
+         ),
       ),
     );
   }
