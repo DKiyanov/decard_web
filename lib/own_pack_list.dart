@@ -1,21 +1,25 @@
 import 'package:decard_web/parse_pack_info.dart';
 import 'package:decard_web/simple_dialog.dart';
 import 'package:decard_web/simple_menu.dart';
+import 'package:decard_web/web_child.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'package:routemaster/routemaster.dart';
 import 'common.dart';
 import 'pack_upload_file.dart';
 import 'decardj.dart';
+import 'parse_class_info.dart';
 
 class OwnPackList extends StatefulWidget {
   final List<Widget>? actions;
   final WebPackListManager packInfoManager;
+  final WebChildListManager childManager;
   final ParseUser user;
-  const OwnPackList({required this.packInfoManager, required this.user, this.actions, Key? key}) : super(key: key);
+  const OwnPackList({required this.packInfoManager, required this.childManager,  required this.user, this.actions, Key? key}) : super(key: key);
 
   @override
   State<OwnPackList> createState() => _OwnPackListState();
@@ -104,21 +108,6 @@ class _OwnPackListState extends State<OwnPackList> {
     return ListView(
       children: _webPackList.map((packInfo) {
         return Slidable(
-          endActionPane: ActionPane(
-            motion: const ScrollMotion(),
-            children: [
-              SlidableAction(
-                flex: 2,
-                onPressed: (context) {
-                  _copyPackage(packInfo.packId, newVersion : true);
-                },
-                foregroundColor: Colors.blue,
-                icon: Icons.copy,
-                label: 'Создать новую версию',
-              ),
-            ],
-          ),
-
           startActionPane: ActionPane(
             motion: const ScrollMotion(),
             children: [
@@ -134,18 +123,44 @@ class _OwnPackListState extends State<OwnPackList> {
             ],
           ),
 
-          child: ListTile(
-            title: Text(packInfo.title),
-            subtitle: _getSubtitle(packInfo),
-            trailing: packInfo.published? null : InkWell(
-                child: const Icon(Icons.edit),
-                onTap: (){
-                  Routemaster.of(context).push('/pack_editor/${packInfo.packId}');
-                }
-            ),
-            onTap: (){
-              Routemaster.of(context).push('/pack/${packInfo.packId}');
-            },
+          child: packInfo.getListTile(context,
+              trailing: popupMenu(
+                  icon: const Icon(Icons.menu),
+                  menuItemList: [
+                    if (!packInfo.published) ...[
+                      SimpleMenuItem(
+                          child: const Text('Изменить'),
+                          onPress: () {
+                            Routemaster.of(context).push('/pack_editor/${packInfo.packId}');
+                          }
+                      )
+                    ],
+
+                    if (packInfo.userID == widget.user.objectId) ...[
+                      SimpleMenuItem(
+                          child: const Text('Создать новую версию'),
+                          onPress: () {
+                            _copyPackage(packInfo.packId, newVersion : true);
+                          }
+                      ),
+                    ],
+
+                    SimpleMenuItem(
+                        child: const Text('Создать копию'),
+                        onPress: () {
+                          _copyPackage(packInfo.packId, newVersion : false);
+                        }
+                    ),
+
+                    SimpleMenuItem(
+                        child: const Text('Назначит пакет детям'),
+                        onPress: () {
+                          _addPackForChildDialog(packInfo);
+                        }
+                    ),
+                  ]
+
+              ),
           ),
         );
       }).toList(),
@@ -166,11 +181,6 @@ class _OwnPackListState extends State<OwnPackList> {
     );
   }
 
-  Widget _getSubtitle(WebPackInfo packInfo) {
-    final subtitle = 'возраст: ${packInfo.targetAgeLow}-${packInfo.targetAgeHigh}; теги: ${packInfo.tags}';
-    return Text(subtitle);
-  }
-
   Future<void> _createNewPackage() async {
     final parameters = await _createNewPackageDialog();
     if (parameters == null) return;
@@ -178,7 +188,7 @@ class _OwnPackListState extends State<OwnPackList> {
     final createPackFunction = ParseCloudFunction('createNewPackage');
     final response = await createPackFunction.execute(parameters: parameters);
 
-    final packId = response.result?[WebPackFields.packId];
+    final packId = response.result?[ParseWebPackHead.packId];
 
     if (!response.success || packId == null) {
       return;
@@ -347,7 +357,7 @@ class _OwnPackListState extends State<OwnPackList> {
     if (result == null || !result) return;
 
     final deletePackFunction = ParseCloudFunction('deletePackage');
-    final response = await deletePackFunction.execute(parameters: {WebPackFields.packId : packId});
+    final response = await deletePackFunction.execute(parameters: {ParseWebPackHead.packId : packId});
 
     if (!response.success) {
 
@@ -367,9 +377,9 @@ class _OwnPackListState extends State<OwnPackList> {
     if (result == null || !result) return;
 
     final copyPackFunction = ParseCloudFunction('copyPackage');
-    final response = await copyPackFunction.execute(parameters: {WebPackFields.packId : packId, 'newVersion' : newVersion});
+    final response = await copyPackFunction.execute(parameters: {ParseWebPackHead.packId : packId, 'newVersion' : newVersion});
 
-    final newPackId = response.result?[WebPackFields.packId];
+    final newPackId = response.result?[ParseWebPackHead.packId];
 
     if (!response.success || newPackId == null) {
       return;
@@ -381,5 +391,57 @@ class _OwnPackListState extends State<OwnPackList> {
       await _refresh();
       setState(() {});
     });
+  }
+
+  Future<void> _addPackForChildDialog(WebPackInfo packInfo) async {
+    if (widget.childManager.webChildList.isEmpty) {
+      await widget.childManager.refreshChildList();
+    }
+    if (widget.childManager.webChildList.isEmpty) {
+      Fluttertoast.showToast(msg: 'Ещё нет ни одного ребёнка');
+      return;
+    }
+
+    final selectedChild = <WebChild>[];
+
+    final result = await simpleDialog(
+      context: context,
+      title: Text('Назначить пакет детям\n${packInfo.title}'),
+      content: StatefulBuilder(builder: (context, setState) {
+        return SingleChildScrollView(
+          child: ListBody(
+            children: widget.childManager.webChildList.map((child) {
+              final added = child.packInfoList.any((testPackInfo) => testPackInfo.packId == packInfo.packId);
+
+              return ListTile(
+                leading: Checkbox(
+                  value: added || selectedChild.contains(child),
+                  onChanged: added? null : (bool? value) {
+                    if (value == null) return;
+                    if (value) {
+                      selectedChild.add(child);
+                    } else {
+                      selectedChild.remove(child);
+                    }
+                    setState((){});
+                  },
+                ),
+                title: Text('${child.name} ${child.deviceName}'),
+              );
+            }).toList(),
+          ),
+        );
+      })
+    )?? false;
+
+    if (!result) return;
+
+    for (var child in selectedChild) {
+      await _addPackForChild(packInfo, child);
+    }
+  }
+
+  Future<void> _addPackForChild(WebPackInfo packInfo, WebChild child) async {
+    await widget.childManager.addPack(packInfo, child);
   }
 }

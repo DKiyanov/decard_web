@@ -1,9 +1,9 @@
 import 'package:decard_web/app_state.dart';
-import 'package:decard_web/parse_pack_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dropzone/flutter_dropzone.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'package:path/path.dart' as path_util;
+import 'parse_class_info.dart';
 
 import 'decardj.dart';
 
@@ -157,9 +157,9 @@ class _PackUploadFileState extends State<PackUploadFile> {
     final userID = appState.serverConnect.user!.objectId!;
     final fileName = await _dzController.getFilename(htmlFile);
 
-    final query =  QueryBuilder<ParseObject>(ParseObject(WebPackUploadFileFields.className));
-    query.whereEqualTo(WebPackUploadFileFields.userID, userID);
-    query.whereEqualTo(WebPackUploadFileFields.fileName, fileName);
+    final query =  QueryBuilder<ParseObject>(ParseObject(ParseWebPackUpload.className));
+    query.whereEqualTo(ParseWebPackUpload.userID, userID);
+    query.whereEqualTo(ParseWebPackUpload.fileName, fileName);
 
     {
       final serverFile = await query.first();
@@ -175,11 +175,11 @@ class _PackUploadFileState extends State<PackUploadFile> {
     final serverFileContent = ParseWebFile(fileContent, name : techFileName);
     await serverFileContent.save();
 
-    final serverFile = ParseObject(WebPackUploadFileFields.className);
-    serverFile.set<String>(WebPackUploadFileFields.userID  , userID);
-    serverFile.set<String>(WebPackUploadFileFields.fileName, fileName);
-    serverFile.set<int>(WebPackUploadFileFields.size, fileSize);
-    serverFile.set<ParseWebFile>(WebPackUploadFileFields.content, serverFileContent);
+    final serverFile = ParseObject(ParseWebPackUpload.className);
+    serverFile.set<String>(ParseWebPackUpload.userID  , userID);
+    serverFile.set<String>(ParseWebPackUpload.fileName, fileName);
+    serverFile.set<int>(ParseWebPackUpload.size, fileSize);
+    serverFile.set<ParseWebFile>(ParseWebPackUpload.content, serverFileContent);
     await serverFile.save();
   }
 }

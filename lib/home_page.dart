@@ -65,10 +65,10 @@ class HomePageTabView extends StatelessWidget {
       return WebPackList(actions: [homePageState!.tabBar!], packInfoManager: appState.packInfoManager);
     }
     if (tabKey == HomePage.tabChildren) {
-      return ChildList(actions: [homePageState!.tabBar!]);
+      return ChildList(childManager: appState.childManager!, actions: [homePageState!.tabBar!]);
     }
     if (tabKey == HomePage.tabPossessions) {
-      return OwnPackList(packInfoManager: appState.packInfoManager, user: appState.serverConnect.user!, actions: [homePageState!.tabBar!]);
+      return OwnPackList(packInfoManager: appState.packInfoManager, childManager: appState.childManager!, user: appState.serverConnect.user!, actions: [homePageState!.tabBar!]);
     }
 
     return Container();

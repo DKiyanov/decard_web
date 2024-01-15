@@ -89,7 +89,8 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   void _starting() async {
-    _descMap = loadDescFromMap(jsonDecode(descJsonStr));
+//    _descMap = loadDescFromMap(jsonDecode(descJsonStr));
+    _descMap = loadDescFromMap(descJson);
 
     _dbSource = DbSourceMem.create();
     _cardController = CardController(dbSource: _dbSource);

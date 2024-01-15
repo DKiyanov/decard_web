@@ -45,6 +45,9 @@ class ParseConnect {
     if (_user != null) {
       if (! await sessionHealthOk()) {
         _user = null;
+      } else {
+        _loginId = _user?.username??'';
+        onLoggedInChange.send();
       }
     }
 
@@ -66,9 +69,6 @@ class ParseConnect {
     if (_serverURL.isEmpty) return;
 
     await _init();
-
-    //_user = await ParseUser.currentUser();
-    _loginId = _user?.username??'';
   }
 
   Future<bool> loginWithPassword(String serverURL, String loginID, String password, bool signUp) async {

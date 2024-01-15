@@ -196,48 +196,26 @@ class _WebPackListState extends State<WebPackList> {
         children: _packGuidList.map((guidPack) {
           final packInfo = guidPack.value.first;
 
-          Widget? title;
-
-          title = Text(packInfo.title);
-
           if (guidPack.value.length == 1) {
-            return ListTile(
-              title: title,
-              subtitle: _getSubtitle(packInfo),
-              onTap: (){
-                Routemaster.of(context).push('/pack/${packInfo.packId}');
-              },
-            );
+            return packInfo.getListTile(context);
           }
 
           final children = <Widget>[];
           for (var i = 1; i < guidPack.value.length; i++) {
             final packInfo = guidPack.value[i];
-            children.add(ListTile(
-              title: Text(packInfo.title),
-              subtitle: _getSubtitle(packInfo),
-              onTap: (){
-                Routemaster.of(context).push('/pack/${packInfo.packId}');
-              },
-            ));
+            children.add(packInfo.getListTile(context));
           }
 
           return DkExpansionTile(
-            title: title,
-            subtitle: Text(packInfo.tags),
-            onTap: (){
-              Routemaster.of(context).push('/pack/${packInfo.packId}');
-            },
-            children: children,
+            title    : packInfo.getTitle(context),
+            subtitle : packInfo.getSubtitle(context),
+            onTap    : ()=> packInfo.onTap(context),
+            children : children,
           );
         }).toList()
     );
   }
 
-  Widget _getSubtitle(WebPackInfo packInfo) {
-    final subtitle = 'возраст: ${packInfo.targetAgeLow}-${packInfo.targetAgeHigh}; теги: ${packInfo.tags}';
-    return Text(subtitle);
-  }
 
   Widget _getFilterPanel([double? width]) {
     return Container(
