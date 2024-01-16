@@ -5,7 +5,6 @@ import 'package:decard_web/web_child.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'package:routemaster/routemaster.dart';
@@ -107,61 +106,64 @@ class _OwnPackListState extends State<OwnPackList> {
   Widget _mainPanel() {
     return ListView(
       children: _webPackList.map((packInfo) {
-        return Slidable(
-          startActionPane: ActionPane(
-            motion: const ScrollMotion(),
-            children: [
-              SlidableAction(
-                flex: 2,
-                onPressed: (context) {
-                  _deletePackage(packInfo.packId);
-                },
-                foregroundColor: Colors.red,
-                icon: Icons.delete,
-                label: 'Удалит пакет',
-              ),
-            ],
-          ),
-
-          child: packInfo.getListTile(context,
-              trailing: popupMenu(
-                  icon: const Icon(Icons.menu),
-                  menuItemList: [
-                    if (!packInfo.published) ...[
-                      SimpleMenuItem(
-                          child: const Text('Изменить'),
-                          onPress: () {
-                            Routemaster.of(context).push('/pack_editor/${packInfo.packId}');
-                          }
-                      )
-                    ],
-
-                    if (packInfo.userID == widget.user.objectId) ...[
-                      SimpleMenuItem(
-                          child: const Text('Создать новую версию'),
-                          onPress: () {
-                            _copyPackage(packInfo.packId, newVersion : true);
-                          }
-                      ),
-                    ],
-
+        return packInfo.getListTile(context,
+            trailing: popupMenu(
+                icon: const Icon(Icons.menu),
+                menuItemList: [
+                  if (!packInfo.published) ...[
                     SimpleMenuItem(
-                        child: const Text('Создать копию'),
+                        child: const Text('Изменить'),
                         onPress: () {
-                          _copyPackage(packInfo.packId, newVersion : false);
+                          Routemaster.of(context).push('/pack_editor/${packInfo.packId}').result.then((value) async {
+                            if (!mounted) return;
+                            await _refresh();
+                            setState(() {});
+                          });
+
+                        }
+                    )
+                  ],
+
+                  if (packInfo.userID == widget.user.objectId) ...[
+                    SimpleMenuItem(
+                        child: const Text('Создать новую версию'),
+                        onPress: () {
+                          _copyPackage(packInfo.packId, newVersion : true);
                         }
                     ),
+                  ],
 
-                    SimpleMenuItem(
-                        child: const Text('Назначит пакет детям'),
-                        onPress: () {
-                          _addPackForChildDialog(packInfo);
-                        }
-                    ),
-                  ]
+                  SimpleMenuItem(
+                      child: const Text('Создать копию'),
+                      onPress: () {
+                        _copyPackage(packInfo.packId, newVersion : false);
+                      }
+                  ),
 
-              ),
-          ),
+                  SimpleMenuItem(
+                      child: const Text('Назначит пакет детям'),
+                      onPress: () {
+                        _addPackForChildDialog(packInfo);
+                      }
+                  ),
+
+                  SimpleMenuItem(
+                      child: const Text('Удалить пакет'),
+                      onPress: () {
+                        _deletePackage(packInfo.packId);
+                      }
+                  ),
+
+                  SimpleMenuItem(
+                      child: const Text('Опубликовать пакет'),
+                      onPress: () {
+                        _publishPackage(packInfo.packId);
+                      }
+                  ),
+
+                ]
+
+            ),
         );
       }).toList(),
     );
@@ -352,9 +354,9 @@ class _OwnPackListState extends State<OwnPackList> {
     final result = await simpleDialog(
       context: context,
       title: const Text('Удалить пакет?')
-    );
+    )??false;
 
-    if (result == null || !result) return;
+    if (!result) return;
 
     final deletePackFunction = ParseCloudFunction('deletePackage');
     final response = await deletePackFunction.execute(parameters: {ParseWebPackHead.packId : packId});
@@ -368,10 +370,31 @@ class _OwnPackListState extends State<OwnPackList> {
     setState(() {});
   }
 
+  Future<void> _publishPackage(int packId) async {
+    final result = await simpleDialog(
+        context: context,
+        title: const Text('Опубликовать пакет?')
+    )??false;
+
+    if (!result) return;
+
+    // TODO нужно реализовать функционал на сервере
+    final publishPackFunction = ParseCloudFunction('publishPackage');
+    final response = await publishPackFunction.execute(parameters: {ParseWebPackHead.packId : packId});
+
+    if (!response.success) {
+
+      return;
+    }
+
+    await _refresh();
+    setState(() {});
+  }
+
   Future<void> _copyPackage(int packId, {required bool newVersion}) async {
     final result = await simpleDialog(
         context: context,
-        title: const Text('Создать новую версию пакета')
+        title: Text(newVersion ? 'Создать новую версию пакета' : 'Создать копию пакет')
     );
 
     if (result == null || !result) return;
@@ -382,6 +405,8 @@ class _OwnPackListState extends State<OwnPackList> {
     final newPackId = response.result?[ParseWebPackHead.packId];
 
     if (!response.success || newPackId == null) {
+      final errCode = response.result?["errCode"];
+      Fluttertoast.showToast(msg: errCode);
       return;
     }
 

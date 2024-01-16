@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
+import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 
 import '../card_controller.dart';
 import '../card_navigator.dart';
@@ -11,6 +12,7 @@ import '../card_widget.dart';
 import '../common.dart';
 import '../db_mem.dart';
 import '../decardj.dart';
+import '../parse_class_info.dart';
 import '../parse_pack_info.dart';
 import 'pack_file_source.dart';
 import 'pack_head_widget.dart';
@@ -48,6 +50,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   late Map<String, String> _fileUrlMap;
 
   late WebPackTextFile _jsonFile;
+  late ParseObject _packHead;
 
   late Map<String, FieldDesc> _descMap;
 
@@ -110,6 +113,10 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
     }
 
     _jsonFile = WebPackTextFile(packId: widget.packId, path: packJsonPath!);
+
+    final packHeadQuery = QueryBuilder<ParseObject>(ParseObject(ParseWebPackHead.className));
+    packHeadQuery.whereEqualTo(ParseWebPackHead.packId, widget.packId);
+    _packHead = (await packHeadQuery.first())!;
 
     _setEditorTitle();
 
@@ -187,7 +194,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
     return WillPopScope(
       onWillPop: () async {
-        _saveJson();
+        await _saveJson();
         return true;
       },
 
@@ -518,10 +525,19 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
     return result;
   }
 
-  void _saveJson() {
+  Future<void> _saveJson() async {
     if (!_dataChanged) return;
     final jsonStr = jsonEncode(_packJson);
-    _jsonFile.setText(jsonStr);
+    await _jsonFile.setText(jsonStr);
+
+    _packHead.set<String?>(DjfFile.title      , _packJson[DjfFile.title]);
+    _packHead.set<String?>(DjfFile.site       , _packJson[DjfFile.site   ]);
+    _packHead.set<String?>(DjfFile.email      , _packJson[DjfFile.email  ]);
+    _packHead.set<String?>(DjfFile.tags       , _packJson[DjfFile.tags   ]);
+    _packHead.set<String?>(DjfFile.license    , _packJson[DjfFile.license]);
+    _packHead.set<int?>(DjfFile.targetAgeLow  , _packJson[DjfFile.targetAgeLow ]);
+    _packHead.set<int?>(DjfFile.targetAgeHigh , _packJson[DjfFile.targetAgeHigh]);
+    await _packHead.save();
   }
 }
 
