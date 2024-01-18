@@ -73,8 +73,25 @@ class _ChildListState extends State<ChildList> {
     return ListView(
       children: widget.childManager.webChildList.map((child) {
         return DkExpansionTile(
-          title: Text('${child.name} ${child.deviceName}'),
-          children: child.packInfoList.map((packInfo) => packInfo.getListTile(context)).toList(),
+          title: Row(
+            children: [
+              Expanded(child: Text('${child.name} ${child.deviceName}')),
+              InkWell(
+                child: const Icon(Icons.tune),
+                onTap: () {
+
+                }
+              ),
+            ],
+          ),
+          children: child.packInfoList.map((packInfo) => packInfo.getListTile(context,
+              trailing: InkWell(
+                child: Icon(Icons.tune),
+                onTap: () {
+
+                },
+              )
+          )).toList(),
         );
       }).toList(),
     );
