@@ -5,10 +5,11 @@ import 'pack_widgets.dart';
 
 class PackQualityLevelWidget extends StatelessWidget {
   final Map<String, dynamic> json;
+  final String path;
   final FieldDesc fieldDesc;
   final OwnerDelegate? ownerDelegate;
 
-  const PackQualityLevelWidget({required this.json, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
+  const PackQualityLevelWidget({required this.json, required this.path, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +21,9 @@ class PackQualityLevelWidget extends StatelessWidget {
 
     return JsonExpansionFieldGroup(
       json             : json,
+      path             : path,
       fieldDesc        : fieldDesc,
+      fieldName        : '',
       onJsonFieldBuild : buildSubFiled,
       initiallyExpanded: initiallyExpanded,
       ownerDelegate    : ownerDelegate,
@@ -30,6 +33,7 @@ class PackQualityLevelWidget extends StatelessWidget {
   Widget buildSubFiled(
       BuildContext         context,
       Map<String, dynamic> json,
+      String               path,
       String               fieldName,
       FieldDesc            fieldDesc,
   ) {
@@ -53,6 +57,7 @@ class PackQualityLevelWidget extends StatelessWidget {
 
     input ??= JsonTextField(
       json         : json,
+      path         : path,
       fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       fieldType    : fieldType,
@@ -63,6 +68,8 @@ class PackQualityLevelWidget extends StatelessWidget {
     );
 
     return JsonTitleRow(
+      path         : path,
+      fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       labelExpand  : labelExpand,
       labelPadding : labelPadding,

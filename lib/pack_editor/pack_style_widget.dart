@@ -8,11 +8,19 @@ class PackStyleWidget extends StatelessWidget {
   static const String _newLine = '|»';
 
   final Map<String, dynamic> json;
+  final String path;
   final FieldDesc fieldDesc;
   final OwnerDelegate? ownerDelegate;
   final bool hideIdField;
 
-  const PackStyleWidget({required this.json, required this.fieldDesc, this.ownerDelegate, this.hideIdField = false, Key? key}) : super(key: key);
+  const PackStyleWidget({
+    required this.json,
+    required this.path,
+    required this.fieldDesc,
+    this.ownerDelegate,
+    this.hideIdField = false,
+    Key? key
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +35,8 @@ class PackStyleWidget extends StatelessWidget {
 
     return JsonExpansionFieldGroup(
       json             : json,
+      path             : path,
+      fieldName        : '',
       fieldDesc        : fieldDesc,
       onJsonFieldBuild : buildSubFiled,
       initiallyExpanded: initiallyExpanded,
@@ -37,6 +47,7 @@ class PackStyleWidget extends StatelessWidget {
   Widget buildSubFiled(
     BuildContext         context,
     Map<String, dynamic> json,
+    String               path,
     String               fieldName,
     FieldDesc            fieldDesc,
   ) {
@@ -64,6 +75,7 @@ class PackStyleWidget extends StatelessWidget {
     ].contains(fieldName)) {
       input = JsonBooleanField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
       );
@@ -76,6 +88,7 @@ class PackStyleWidget extends StatelessWidget {
     if (fieldName == DjfCardStyle.answerVariantList) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
@@ -85,6 +98,7 @@ class PackStyleWidget extends StatelessWidget {
     if (fieldName == DjfCardStyle.answerVariantAlign) {
       input = JsonDropdown(
           json              : json,
+          path              : path,
           fieldName         : fieldName,
           fieldDesc         : fieldDesc,
           defaultValue      : "left",
@@ -95,6 +109,7 @@ class PackStyleWidget extends StatelessWidget {
     if (fieldName == DjfCardStyle.answerInputMode) {
       input = JsonDropdown(
           json              : json,
+          path              : path,
           fieldName         : fieldName,
           fieldDesc         : fieldDesc,
           defaultValue      : "",
@@ -105,6 +120,7 @@ class PackStyleWidget extends StatelessWidget {
     if (fieldName == DjfCardStyle.widgetKeyboard) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
@@ -126,6 +142,8 @@ class PackStyleWidget extends StatelessWidget {
     if (fieldName == "buttonImageSize") {
       input = JsonRowFieldGroup(
         json             : json,
+        path             : path,
+        fieldName        : '',
         fieldDesc        : fieldDesc,
         onJsonFieldBuild : buildSubFiled,
       );
@@ -147,6 +165,7 @@ class PackStyleWidget extends StatelessWidget {
 
     input ??= JsonTextField(
       json         : json,
+      path         : path,
       fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       fieldType    : fieldType,
@@ -157,9 +176,12 @@ class PackStyleWidget extends StatelessWidget {
     );
 
     return JsonTitleRow(
+      path         : path,
+      fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       labelExpand  : labelExpand,
       labelPadding : labelPadding,
+//      titleWidget  : Text('$path/$fieldName'), // TODO убрать
       child        : input,
     );
   }

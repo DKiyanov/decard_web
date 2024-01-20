@@ -69,6 +69,15 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
   final _fileSourceKey = GlobalKey<PackFileSourceState>();
 
+  final String _rootPath = '';
+
+  final _jsonOwnerKey = GlobalKey<JsonOwnerState>();
+  event.Listener? _selectPathListener;
+
+  final _headTabIndex  = 0;
+  final _styleTabIndex = 1;
+  final _cardsTabIndex = 2;
+
   @override
   void initState() {
     super.initState();
@@ -138,8 +147,8 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   void dispose() {
     _saveJson();
 
+    _selectPathListener?.dispose();
     _headScrollController.dispose();
-
     _editorTabController.dispose();
 
     super.dispose();
@@ -209,6 +218,14 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
           ),
 
           actions: [
+            IconButton(
+                onPressed: (){
+                  //_selectPath('${DjfFile.qualityLevelList}[2]/${DjfQualityLevel.qualityName}');
+                  _selectPath('${DjfFile.templateList}[0]/${DjfCardTemplate.cardTemplateList}[0]/${DjfCard.bodyList}[0]/${DjfCardBody.clue}');
+                },
+                icon: const Icon(Icons.ac_unit)
+            ),
+
             StatefulBuilder(
               key: _dataChangedButtonKey,
               builder: (context, setState) {
@@ -229,6 +246,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
   Widget _body() {
     return JsonOwner(
+      key: _jsonOwnerKey,
       json: _packJson,
       onDataChanged: () {
         _setDataChanged(true);
@@ -307,7 +325,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
       child: ListView(
         controller: _headScrollController,
         children: [
-          PackHeadWidget(json: _packJson, fieldDesc: _descMap["head"]!),
+          PackHeadWidget(json: _packJson, path: _rootPath, fieldDesc: _descMap["head"]!),
           _qualityLevels(),
         ],
       ),
@@ -319,6 +337,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
       padding: _pagePadding,
       child: _PackEditorJsonTab(
         json: _packJson,
+        path: _rootPath,
         fieldName: DjfFile.cardStyleList,
         fieldDesc: _descMap[DjfFile.cardStyleList]!,
         objectWidgetCreator: _getStyleWidget,
@@ -331,6 +350,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
       padding: _pagePadding,
       child: _PackEditorJsonTab(
         json: _packJson,
+        path: _rootPath,
         fieldName: DjfFile.templateList,
         fieldDesc: _descMap[DjfFile.templateList]!,
         objectWidgetCreator: _getTemplateWidget,
@@ -341,6 +361,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   Widget _qualityLevels() {
     return JsonObjectArray(
       json: _packJson,
+      path: _rootPath,
       fieldName: DjfFile.qualityLevelList,
       fieldDesc: _descMap[DjfFile.qualityLevelList]!,
       objectWidgetCreator: _getQualityLevelWidget,
@@ -349,26 +370,29 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
   Widget _getQualityLevelWidget(
       Map<String, dynamic> json,
+      path,
       FieldDesc fieldDesc,
       OwnerDelegate? ownerDelegate,
       ){
-    return PackQualityLevelWidget(json: json, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate);
+    return PackQualityLevelWidget(json: json, path: path, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate);
   }
 
   Widget _getStyleWidget(
       Map<String, dynamic> json,
+      String path,
       FieldDesc fieldDesc,
       OwnerDelegate? ownerDelegate,
       ){
-    return PackStyleWidget(json: json, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate);
+    return PackStyleWidget(json: json, path: path, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate);
   }
 
   Widget _getTemplateWidget(
       Map<String, dynamic> json,
+      String path,
       FieldDesc fieldDesc,
       OwnerDelegate? ownerDelegate,
       ){
-    return PackTemplateWidget(json: json, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate);
+    return PackTemplateWidget(json: json, path: path, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate);
   }
 
   Widget _packView() {
@@ -539,16 +563,38 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
     _packHead.set<int?>(DjfFile.targetAgeHigh , _packJson[DjfFile.targetAgeHigh]);
     await _packHead.save();
   }
+
+  void _selectPath(String path) {
+    if (_jsonOwnerKey.currentState == null) return;
+    _selectPathListener ??= _jsonOwnerKey.currentState!.onSelectPath.subscribe((listener, path) => _onSelectPath(path??''));
+    _jsonOwnerKey.currentState!.selectPath(path);
+  }
+
+  void _onSelectPath(String path) {
+    final firstObject =  path.split('/').first;
+    if (firstObject == DjfFile.cardStyleList) {
+      _editorTabController.index = _styleTabIndex;
+      return;
+    }
+    if (firstObject.startsWith(DjfFile.templateList)) {
+      _editorTabController.index = _cardsTabIndex;
+      return;
+    }
+    _editorTabController.index = _headTabIndex;
+  }
+
 }
 
 class _PackEditorJsonTab extends StatefulWidget {
   final Map<String, dynamic> json;
+  final String path;
   final String fieldName;
   final FieldDesc fieldDesc;
   final JsonObjectBuild objectWidgetCreator;
 
   const _PackEditorJsonTab({
     required this.json,
+    required this.path,
     required this.fieldName,
     required this.fieldDesc,
     required this.objectWidgetCreator,
@@ -567,6 +613,12 @@ class _PackEditorJsonTabState extends State<_PackEditorJsonTab> with AutomaticKe
   bool get wantKeepAlive => true;
 
   @override
+  void dispose() {
+    _cardsScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     super.build(context);
 
@@ -574,6 +626,7 @@ class _PackEditorJsonTabState extends State<_PackEditorJsonTab> with AutomaticKe
       controller: _cardsScrollController,
       child: JsonObjectArray(
         json: widget.json,
+        path: widget.path,
         fieldName: widget.fieldName,
         fieldDesc: widget.fieldDesc,
         objectWidgetCreator: widget.objectWidgetCreator,

@@ -1,6 +1,7 @@
 import 'package:decard_web/dk_expansion_tile.dart';
 import 'package:decard_web/web_child.dart';
 import 'package:flutter/material.dart';
+import 'package:routemaster/routemaster.dart';
 import 'common.dart';
 import 'package:simple_events/simple_events.dart' as event;
 
@@ -86,9 +87,9 @@ class _ChildListState extends State<ChildList> {
           ),
           children: child.packInfoList.map((packInfo) => packInfo.getListTile(context,
               trailing: InkWell(
-                child: Icon(Icons.tune),
+                child: const Icon(Icons.tune),
                 onTap: () {
-
+                  Routemaster.of(context).push('/child_pack_tune', queryParameters: {'id' : child.childID, 'packGuid' : packInfo.guid});
                 },
               )
           )).toList(),

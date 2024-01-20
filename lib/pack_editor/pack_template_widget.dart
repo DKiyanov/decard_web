@@ -10,10 +10,11 @@ import 'package:simple_events/simple_events.dart' as event;
 
 class PackTemplateWidget extends StatefulWidget {
   final Map<String, dynamic> json;
+  final String path;
   final FieldDesc fieldDesc;
   final OwnerDelegate? ownerDelegate;
 
-  const PackTemplateWidget({required this.json, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
+  const PackTemplateWidget({required this.json, required this.path, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
 
   @override
   State<PackTemplateWidget> createState() => _PackTemplateWidgetState();
@@ -43,6 +44,8 @@ class _PackTemplateWidgetState extends State<PackTemplateWidget> {
 
     return JsonExpansionFieldGroup(
       json             : widget.json,
+      path             : widget.path,
+      fieldName        : '',
       fieldDesc        : widget.fieldDesc,
       onJsonFieldBuild : buildSubFiled,
       initiallyExpanded: initiallyExpanded,
@@ -53,6 +56,7 @@ class _PackTemplateWidgetState extends State<PackTemplateWidget> {
   Widget buildSubFiled(
       BuildContext         context,
       Map<String, dynamic> json,
+      String               path,
       String               fieldName,
       FieldDesc            fieldDesc,
   ) {
@@ -72,6 +76,7 @@ class _PackTemplateWidgetState extends State<PackTemplateWidget> {
           return JsonMultiValueField(
             key       : _paramKey,
             json      : json,
+            path      : path,
             fieldName : fieldName,
             fieldDesc : fieldDesc,
             wrap      : true,
@@ -91,6 +96,7 @@ class _PackTemplateWidgetState extends State<PackTemplateWidget> {
         onChange: _onChange,
         child: JsonObjectArray(
           json                : json,
+          path                : path,
           fieldName           : fieldName,
           fieldDesc           : fieldDesc,
           objectWidgetCreator : _getCardWidget,
@@ -100,6 +106,7 @@ class _PackTemplateWidgetState extends State<PackTemplateWidget> {
 
     input ??= JsonTextField(
       json         : json,
+      path         : path,
       fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       fieldType    : fieldType,
@@ -110,6 +117,8 @@ class _PackTemplateWidgetState extends State<PackTemplateWidget> {
     );
 
     return JsonTitleRow(
+      path         : path,
+      fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       labelExpand  : labelExpand,
       labelPadding : labelPadding,
@@ -119,10 +128,11 @@ class _PackTemplateWidgetState extends State<PackTemplateWidget> {
 
   Widget _getCardWidget(
       Map<String, dynamic> json,
+      String path,
       FieldDesc fieldDesc,
       OwnerDelegate? ownerDelegate,
   ){
-    return PackCardWidget(json: json, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate);
+    return PackCardWidget(json: json, path: path, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate);
   }
 
   void _onChange() {

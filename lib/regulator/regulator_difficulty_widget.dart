@@ -6,15 +6,18 @@ import '../regulator.dart';
 
 class RegulatorDifficultyWidget extends StatelessWidget {
   final Map<String, dynamic> json;
+  final String path;
   final FieldDesc fieldDesc;
   final OwnerDelegate? ownerDelegate;
 
-  const RegulatorDifficultyWidget({required this.json, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
+  const RegulatorDifficultyWidget({required this.json, required this.path, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return JsonExpansionFieldGroup(
       json             : json,
+      path             : path,
+      fieldName        : '',
       fieldDesc        : fieldDesc,
       onJsonFieldBuild : buildSubFiled,
       initiallyExpanded: true,
@@ -25,6 +28,7 @@ class RegulatorDifficultyWidget extends StatelessWidget {
   Widget buildSubFiled(
       BuildContext         context,
       Map<String, dynamic> json,
+      String               path,
       String               fieldName,
       FieldDesc            fieldDesc,
       ) {
@@ -41,6 +45,8 @@ class RegulatorDifficultyWidget extends StatelessWidget {
     if (['cost', 'penalty', 'tryCount', 'duration', 'durationLowCostPercent'].contains(fieldName)) {
       input = JsonRowFieldGroup(
         json             : json,
+        path             : path,
+        fieldName        : '',
         fieldDesc        : fieldDesc,
         onJsonFieldBuild : buildSubFiled,
       );
@@ -62,6 +68,7 @@ class RegulatorDifficultyWidget extends StatelessWidget {
 
     input ??= JsonTextField(
       json         : json,
+      path         : path,
       fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       fieldType    : fieldType,
@@ -72,6 +79,8 @@ class RegulatorDifficultyWidget extends StatelessWidget {
     );
 
     return JsonTitleRow(
+      path         : path,
+      fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       labelExpand  : labelExpand,
       labelPadding : labelPadding,

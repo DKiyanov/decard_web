@@ -4,6 +4,7 @@ import 'package:decard_web/app_state.dart';
 import 'package:decard_web/home_page.dart';
 import 'package:decard_web/pack_view.dart';
 import 'package:decard_web/page_not_found.dart';
+import 'package:decard_web/regulator/regulator_cardset_page.dart';
 import 'package:decard_web/showcase_out.dart';
 import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
@@ -108,6 +109,11 @@ RouteMap _buildRouteMapIn(BuildContext context) {
       '/pack/:id': (route) => NoAnimationPage(child: PackView(
           cardController: appState.cardController,
           packId: int.parse(route.pathParameters['id']!)
+      )),
+
+      '/child_pack_tune': (route) => NoAnimationPage(child: RegulatorCardSetPage(
+          childID : route.queryParameters['id']!,
+          fileGuid: route.queryParameters['packGuid']!,
       )),
     },
   );

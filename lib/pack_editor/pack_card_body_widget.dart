@@ -9,10 +9,11 @@ import 'pack_widgets.dart';
 
 class PackCardBodyWidget extends StatefulWidget {
   final Map<String, dynamic> json;
+  final String path;
   final FieldDesc fieldDesc;
   final OwnerDelegate? ownerDelegate;
 
-  const PackCardBodyWidget({required this.json, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
+  const PackCardBodyWidget({required this.json, required this.path, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
 
   @override
   State<PackCardBodyWidget> createState() => _PackCardBodyWidgetState();
@@ -30,6 +31,8 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
 
     return JsonExpansionFieldGroup(
       json             : widget.json,
+      path             : widget.path,
+      fieldName        : '',
       fieldDesc        : widget.fieldDesc,
       onJsonFieldBuild : buildSubFiled,
       initiallyExpanded: initiallyExpanded,
@@ -40,6 +43,7 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
   Widget buildSubFiled(
       BuildContext         context,
       Map<String, dynamic> json,
+      String               path,
       String               fieldName,
       FieldDesc            fieldDesc,
   ) {
@@ -54,12 +58,13 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
     FixBuilder? suffix;
 
     if (fieldName == DjfCardBody.style) {
-      return PackStyleWidget(json: json, fieldDesc: fieldDesc, hideIdField: true);
+      return PackStyleWidget(json: json, path: path, fieldDesc: fieldDesc, hideIdField: true);
     }
 
     if (fieldName == DjfCardBody.styleIdList) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
@@ -71,6 +76,7 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
     if (fieldName == DjfCardBody.questionData) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
@@ -120,6 +126,7 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
     if (fieldName == DjfCardBody.answerList) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
@@ -130,6 +137,7 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
 
     input ??= JsonTextField(
       json         : json,
+      path         : path,
       fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       fieldType    : fieldType,
@@ -140,9 +148,12 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
     );
 
     return JsonTitleRow(
+      path         : path,
+      fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       labelExpand  : labelExpand,
       labelPadding : labelPadding,
+//      titleWidget  : Text('$path/$fieldName'), // TODO убрать
       child        : input,
     );
   }

@@ -6,10 +6,11 @@ import 'pack_widgets.dart';
 
 class PackCardUpLinkWidget extends StatelessWidget {
   final Map<String, dynamic> json;
+  final String path;
   final FieldDesc fieldDesc;
   final OwnerDelegate? ownerDelegate;
 
-  const PackCardUpLinkWidget({required this.json, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
+  const PackCardUpLinkWidget({required this.json, required this.path, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +21,8 @@ class PackCardUpLinkWidget extends StatelessWidget {
 
     return JsonExpansionFieldGroup(
       json             : json,
+      path             : path,
+      fieldName        : '',
       fieldDesc        : fieldDesc,
       onJsonFieldBuild : buildSubFiled,
       initiallyExpanded: initiallyExpanded,
@@ -30,6 +33,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
   Widget buildSubFiled(
       BuildContext         context,
       Map<String, dynamic> json,
+      String               path,
       String               fieldName,
       FieldDesc            fieldDesc,
   ) {
@@ -46,6 +50,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
     if (fieldName == DjfUpLink.qualityName) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
@@ -56,6 +61,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
     if (fieldName == DjfUpLink.tags) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
@@ -66,6 +72,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
     if (fieldName == DjfUpLink.cards) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
@@ -76,6 +83,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
     if (fieldName == DjfUpLink.groups) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
@@ -85,6 +93,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
 
     input ??= JsonTextField(
       json         : json,
+      path         : path,
       fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       fieldType    : fieldType,
@@ -95,6 +104,8 @@ class PackCardUpLinkWidget extends StatelessWidget {
     );
 
     return JsonTitleRow(
+      path         : path,
+      fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       labelExpand  : labelExpand,
       labelPadding : labelPadding,

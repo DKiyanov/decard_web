@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../dk_expansion_tile.dart';
 import '../simple_menu.dart';
+import 'package:simple_events/simple_events.dart' as event;
 
 Map<String, FieldDesc> loadDescFromMap(Map<String, dynamic> json) {
   final result = <String, FieldDesc>{};
@@ -105,6 +108,7 @@ class JsonWidgetChangeListenerState extends State<JsonWidgetChangeListener> {
 typedef JsonFieldBuild = Widget Function(
   BuildContext context,
   Map<String, dynamic> json,
+  String path,
   String fieldName,
   FieldDesc fieldDesc,
 );
@@ -113,6 +117,8 @@ class JsonExpansionFieldGroup extends StatefulWidget {
   static const String keyBodyName = "bodyName";
 
   final Map<String, dynamic> json;
+  final String path;
+  final String fieldName;
   final FieldDesc fieldDesc;
   final JsonFieldBuild onJsonFieldBuild;
   final bool initiallyExpanded;
@@ -120,6 +126,8 @@ class JsonExpansionFieldGroup extends StatefulWidget {
 
   const JsonExpansionFieldGroup({
     required this.json,
+    required this.path,
+    required this.fieldName,
     required this.fieldDesc,
     required this.onJsonFieldBuild,
     this.initiallyExpanded = true,
@@ -132,12 +140,32 @@ class JsonExpansionFieldGroup extends StatefulWidget {
   State<JsonExpansionFieldGroup> createState() => _JsonExpansionFieldGroupState();
 }
 
+String joinPath(String str1, String str2) {
+  if (str1.isEmpty) return str2;
+  if (str2.isEmpty) return str1;
+  return '$str1/$str2';
+}
+
+bool pathInPath(String path, String subPath, [String fixChar = '/']) {
+  if (subPath.isEmpty) return true;
+  if (subPath.length > path.length) return false;
+  if (path.startsWith(subPath)) {
+    if (subPath.length == path.length) return true;
+    if (path.substring(subPath.length, subPath.length + 1) == fixChar) return true;
+  }
+  return false;
+}
+
 class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
   String _title = '';
   late FieldDesc _titleFieldDesc;
   final _titleKeyList = <String>[];
 
   final _titleWidgetKey = GlobalKey();
+
+  event.Listener? _selectPathListener;
+
+  final controller = DkExpansionTileController();
 
   @override
   void initState() {
@@ -149,8 +177,30 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _selectPathListener ??= JsonOwner.of(context)?.onSelectPath.subscribe((listener, path) => _onSelectPath(path??''));
+  }
+
+
+  @override
+  void dispose() {
+    _selectPathListener?.dispose();
+    super.dispose();
+  }
+
+  void _onSelectPath(String path) {
+    final inPath = pathInPath(path, joinPath(widget.path, widget.fieldName));
+    if (inPath) {
+      controller.expand();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final children = <Widget>[];
+
+    final path = joinPath(widget.path, widget.fieldName);
 
     for (var subField in widget.fieldDesc.subFields!.entries) {
       if (subField.key == JsonExpansionFieldGroup.keyBodyName) {
@@ -162,6 +212,7 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
         child: widget.onJsonFieldBuild.call(
           context,
           widget.json,
+          path,
           subField.key,
           subField.value,
         ),
@@ -201,6 +252,7 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
     return JsonWidgetChangeListener(
       onChange: _onSubFieldChanged,
       child: DkExpansionTile(
+        controller: controller,
         tilePadding: EdgeInsets.zero,
         childrenPadding: EdgeInsets.zero,
         title: titleWidget,
@@ -236,6 +288,8 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
 
 class JsonRowFieldGroup extends StatelessWidget {
   final Map<String, dynamic> json;
+  final String path;
+  final String fieldName;
   final FieldDesc fieldDesc;
   final JsonFieldBuild onJsonFieldBuild;
   final int labelFlex;
@@ -243,6 +297,8 @@ class JsonRowFieldGroup extends StatelessWidget {
 
   const JsonRowFieldGroup({
     required this.json,
+    required this.path,
+    required this.fieldName,
     required this.fieldDesc,
     required this.onJsonFieldBuild,
     this.inputFlex = 1,
@@ -255,11 +311,14 @@ class JsonRowFieldGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final children = <Widget>[];
 
+    final newPath = joinPath(path, fieldName);
+
     for (var subField in fieldDesc.subFields!.entries) {
       children.add(Expanded(
         child: onJsonFieldBuild.call(
           context,
           json,
+          newPath,
           subField.key,
           subField.value,
         ),
@@ -318,6 +377,7 @@ typedef TextValidate = String Function(String value);
 
 class JsonTextField extends StatefulWidget {
   final Map<String, dynamic> json;
+  final String path;
   final String fieldName;
   final FieldDesc fieldDesc;
   final FieldType fieldType;
@@ -332,6 +392,7 @@ class JsonTextField extends StatefulWidget {
 
   const JsonTextField({
     required this.json,
+    required this.path,
     required this.fieldName,
     required this.fieldDesc,
     this.fieldType = FieldType.text,
@@ -468,6 +529,7 @@ dynamic getJsonValue(FieldType fieldType, String value){
 
 class JsonBooleanField extends StatefulWidget {
   final Map<String, dynamic> json;
+  final String path;
   final String fieldName;
   final FieldDesc fieldDesc;
   final bool defaultValue;
@@ -477,6 +539,7 @@ class JsonBooleanField extends StatefulWidget {
 
   const JsonBooleanField({
     required this.json,
+    required this.path,
     required this.fieldName,
     required this.fieldDesc,
     this.defaultValue = false,
@@ -534,6 +597,7 @@ class _JsonBooleanFieldState extends State<JsonBooleanField> {
 
 class JsonDropdown extends StatefulWidget {
   final Map<String, dynamic> json;
+  final String path;
   final String fieldName;
   final FieldDesc fieldDesc;
   final FieldType fieldType;
@@ -547,6 +611,7 @@ class JsonDropdown extends StatefulWidget {
 
   JsonDropdown({
     required this.json,
+    required this.path,
     required this.fieldName,
     required this.fieldDesc,
     this.defaultValue = "",
@@ -657,46 +722,93 @@ class _JsonDropdownState extends State<JsonDropdown> {
   }
 }
 
-class JsonTitleRow extends StatelessWidget {
+class JsonTitleRow extends StatefulWidget {
+  final String path;
+  final String fieldName;
   final FieldDesc fieldDesc;
   final Widget child;
   final bool labelExpand;
   final EdgeInsetsGeometry? labelPadding;
   final int labelFlex;
   final int childFlex;
+  final Widget? titleWidget;
 
   const JsonTitleRow({
+    required this.path,
+    required this.fieldName,
     required this.fieldDesc,
     required this.child,
     this.labelExpand = true,
     this.labelPadding,
     this.labelFlex = 1,
     this.childFlex = 1,
+    this.titleWidget,
 
     Key? key
   }) : super(key: key);
 
   @override
+  State<JsonTitleRow> createState() => _JsonTitleRowState();
+}
+
+class _JsonTitleRowState extends State<JsonTitleRow> {
+  JsonOwnerState? _jsonOwner;
+  event.Listener? _selectPathListener;
+  bool _selected = false;
+  bool _waitSelected = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _jsonOwner = JsonOwner.of(context);
+    _selectPathListener ??= _jsonOwner?.onSelectPath.subscribe((listener, path) => _onSelectPath(path??''));
+  }
+
+  @override
+  void dispose() {
+    _selectPathListener?.dispose();
+    super.dispose();
+  }
+
+  void _onSelectPath(String path) {
+    final newSelected = joinPath(widget.path, widget.fieldName) == path;
+    if (_selected != newSelected) {
+      setState(() {
+        _waitSelected = true;
+        _selected = newSelected;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     Widget label;
 
-    if (labelExpand) {
-      label = Expanded(flex: labelFlex,child: JsonTitle(fieldDesc),);
+    if (widget.labelExpand) {
+      label = Expanded(flex: widget.labelFlex,child: JsonTitle(widget.fieldDesc, titleWidget: widget.titleWidget));
     } else {
-      label = JsonTitle(fieldDesc);
+      label = JsonTitle(widget.fieldDesc, titleWidget: widget.titleWidget);
     }
 
-    if (labelPadding != null) {
+    if (widget.labelPadding != null) {
       label = Container(
-        padding: labelPadding,
+        padding: widget.labelPadding,
         child  : label,
       );
     }
 
-    return Row(children: [
-      label,
-      Expanded(flex: childFlex, child: child),
-    ]);
+    if (_waitSelected) {
+      _waitSelected = false;
+      _jsonOwner?.confirmPathSelection(joinPath(widget.path, widget.fieldName), context);
+    }
+
+    return Container(
+      color: _selected? Colors.yellow : null,
+      child: Row(children: [
+        label,
+        Expanded(flex: widget.childFlex, child: widget.child),
+      ]),
+    );
   }
 }
 
@@ -711,6 +823,7 @@ typedef OnTextFiledFocusChangeCallback = Function(TextEditingController controll
 
 class JsonMultiValueField extends StatefulWidget {
   final Map<String, dynamic> json;
+  final String path;
   final String fieldName;
   final FieldDesc fieldDesc;
   final bool readOnly;
@@ -736,6 +849,7 @@ class JsonMultiValueField extends StatefulWidget {
 
   const JsonMultiValueField({
     required this.json,
+    required this.path,
     required this.fieldName,
     required this.fieldDesc,
     this.readOnly = false,
@@ -1389,6 +1503,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
 
 typedef JsonObjectBuild = Widget Function(
   Map<String, dynamic> json,
+  String path,
   FieldDesc fieldDesc,
   OwnerDelegate? ownerDelegate,
 );
@@ -1401,6 +1516,7 @@ class OwnerDelegate {
 
 class JsonObjectArray extends StatefulWidget {
   final Map<String, dynamic> json;
+  final String path;
   final String fieldName;
   final FieldDesc fieldDesc;
   final JsonObjectBuild objectWidgetCreator;
@@ -1408,6 +1524,7 @@ class JsonObjectArray extends StatefulWidget {
 
   const JsonObjectArray({
     required this.json,
+    required this.path,
     required this.fieldName,
     required this.fieldDesc,
     required this.objectWidgetCreator,
@@ -1422,6 +1539,10 @@ class JsonObjectArray extends StatefulWidget {
 
 class _JsonObjectArrayState extends State<JsonObjectArray> {
   final _objectList = <Map<String, dynamic>>[];
+
+  event.Listener? _selectPathListener;
+
+  final controller = DkExpansionTileController();
 
   @override
   void initState() {
@@ -1440,11 +1561,32 @@ class _JsonObjectArrayState extends State<JsonObjectArray> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _selectPathListener ??= JsonOwner.of(context)?.onSelectPath.subscribe((listener, path) => _onSelectPath(path??''));
+  }
+
+  void _onSelectPath(String path) {
+    final inPath = pathInPath(path, joinPath(widget.path, widget.fieldName), '[');
+    if (inPath) {
+      controller.expand();
+    }
+  }
+
+  @override
+  void dispose() {
+    _selectPathListener?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final children = <Widget>[];
 
     for (var index = 0; index < _objectList.length; index++){
       final object = _objectList[index];
+
+      final path = '${joinPath(widget.path, widget.fieldName)}[$index]';
 
       final delegate = OwnerDelegate();
       delegate.indexInArray = index;
@@ -1461,7 +1603,7 @@ class _JsonObjectArrayState extends State<JsonObjectArray> {
       children.add(
           Padding(
             padding: const EdgeInsets.only(left: 10),
-            child: widget.objectWidgetCreator.call(object, widget.fieldDesc, delegate),
+            child: widget.objectWidgetCreator.call(object, path, widget.fieldDesc, delegate),
           )
       );
     }
@@ -1490,6 +1632,7 @@ class _JsonObjectArrayState extends State<JsonObjectArray> {
     }
 
     return DkExpansionTile(
+      controller: controller,
       tilePadding: EdgeInsets.zero,
       childrenPadding: EdgeInsets.zero,
       initiallyExpanded: widget.initiallyExpanded,
@@ -1583,6 +1726,10 @@ class JsonOwner extends StatefulWidget {
 }
 
 class JsonOwnerState extends State<JsonOwner> {
+  final onSelectPath = event.SimpleEvent<String>();
+  Timer? _selectPathTimer;
+  int _tickCount = 0;
+
   @override
   Widget build(BuildContext context) {
     return JsonWidgetChangeListener(
@@ -1594,6 +1741,28 @@ class JsonOwnerState extends State<JsonOwner> {
   void onChange() {
     widget.onDataChanged.call();
   }
+
+  void selectPath(String path) {
+    onSelectPath.send(path);
+    _tickCount = 0;
+    _selectPathTimer = Timer.periodic(const Duration(milliseconds: 20), (timer) {
+      _tickCount ++;
+      if (_tickCount > 40) {
+        _selectPathTimer!.cancel();
+        _selectPathTimer = null;
+      }
+
+      onSelectPath.send(path);
+    });
+  }
+
+  Future<void> confirmPathSelection(String path, BuildContext context) async {
+    _selectPathTimer!.cancel();
+    _selectPathTimer = null;
+    Future.delayed(const Duration(milliseconds: 300), (){
+      Scrollable.ensureVisible(context);
+    });
+  }
 }
 
 typedef StringValueListGetter = List<String> Function(BuildContext context);
@@ -1601,6 +1770,7 @@ typedef StringValueListGetterAsync = Future<List<String>> Function(BuildContext 
 
 class JsonDropdownAsync extends StatefulWidget {
   final Map<String, dynamic> json;
+  final String path;
   final String fieldName;
   final FieldDesc fieldDesc;
   final FieldType fieldType;
@@ -1614,6 +1784,7 @@ class JsonDropdownAsync extends StatefulWidget {
 
   const JsonDropdownAsync({
     required this.json,
+    required this.path,
     required this.fieldName,
     required this.fieldDesc,
     this.valuesGetter,

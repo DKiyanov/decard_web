@@ -12,6 +12,7 @@ import 'parse_class_info.dart';
 import 'package:simple_events/simple_events.dart' as event;
 
 class WebChild {
+  final String childID;
   final String name;
   final String deviceName;
 
@@ -25,12 +26,16 @@ class WebChild {
 
   final packInfoList = <WebPackInfo>[];
 
-  WebChild(this.name, this.deviceName, this.sourcePath, String? regulatorJson) {
+  WebChild(this.childID, this.name, this.deviceName, this.sourcePath, String? regulatorJson) {
     dbSource       = DbSourceMem.create();
     cardController = CardController(dbSource: dbSource);
     if (regulatorJson != null) {
       _regulator = Regulator.fromMap(jsonDecode(regulatorJson));
     }
+  }
+
+  Future<void> regulatorChange(Map<String, dynamic> json) async {
+    _regulator = Regulator.fromMap(json);
   }
 }
 
@@ -79,7 +84,7 @@ class WebChildListManager {
           regulatorJson = regulator.get<String>(ParseWebChildSource.textContent)!;
         }
 
-        webChild = WebChild(childName, deviceName, sourcePath, regulatorJson);
+        webChild = WebChild(device.objectId!, childName, deviceName, sourcePath, regulatorJson);
         webChildList.add(webChild);
         _changed = true;
       } else {

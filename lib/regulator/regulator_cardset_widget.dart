@@ -6,15 +6,18 @@ import '../regulator.dart';
 
 class RegulatorCardSetWidget extends StatelessWidget {
   final Map<String, dynamic> json;
+  final String path;
   final FieldDesc fieldDesc;
   final OwnerDelegate? ownerDelegate;
 
-  const RegulatorCardSetWidget({required this.json, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
+  const RegulatorCardSetWidget({required this.json, required this.path, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return JsonExpansionFieldGroup(
       json             : json,
+      path             : path,
+      fieldName        : '',
       fieldDesc        : fieldDesc,
       onJsonFieldBuild : buildSubFiled,
       initiallyExpanded: true,
@@ -25,6 +28,7 @@ class RegulatorCardSetWidget extends StatelessWidget {
   Widget buildSubFiled(
       BuildContext         context,
       Map<String, dynamic> json,
+      String               path,
       String               fieldName,
       FieldDesc            fieldDesc,
       ) {
@@ -42,6 +46,7 @@ class RegulatorCardSetWidget extends StatelessWidget {
     if (fieldName == DrfCardSet.cards) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : true,
@@ -52,6 +57,7 @@ class RegulatorCardSetWidget extends StatelessWidget {
     if (fieldName == DrfCardSet.groups) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : true,
@@ -62,6 +68,7 @@ class RegulatorCardSetWidget extends StatelessWidget {
     if (fieldName == DrfCardSet.tags) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : true,
@@ -72,6 +79,7 @@ class RegulatorCardSetWidget extends StatelessWidget {
     if (fieldName == DrfCardSet.andTags) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : true,
@@ -82,6 +90,7 @@ class RegulatorCardSetWidget extends StatelessWidget {
     if (fieldName == DrfCardSet.difficultyLevels) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : true,
@@ -92,6 +101,7 @@ class RegulatorCardSetWidget extends StatelessWidget {
     if (fieldName == DrfCardSet.exclude) {
       input = JsonBooleanField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
       );
@@ -100,6 +110,7 @@ class RegulatorCardSetWidget extends StatelessWidget {
     if (fieldName == DrfCardSet.difficultyLevel) {
       input = JsonDropdown(
         json              : json,
+        path              : path,
         fieldName         : fieldName,
         fieldDesc         : fieldDesc,
         fieldType         : FieldType.int,
@@ -112,6 +123,7 @@ class RegulatorCardSetWidget extends StatelessWidget {
     if (fieldName == DrfCardSet.style) {
       input = JsonMultiValueField(
         json      : json,
+        path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : false,
@@ -122,6 +134,7 @@ class RegulatorCardSetWidget extends StatelessWidget {
 
     input ??= JsonTextField(
       json         : json,
+      path         : path,
       fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       fieldType    : fieldType,
@@ -132,6 +145,8 @@ class RegulatorCardSetWidget extends StatelessWidget {
     );
 
     return JsonTitleRow(
+      path         : path,
+      fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       labelExpand  : labelExpand,
       labelPadding : labelPadding,

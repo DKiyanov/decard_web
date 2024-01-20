@@ -6,14 +6,17 @@ import 'pack_widgets.dart';
 
 class PackHeadWidget extends StatelessWidget {
   final Map<String, dynamic> json;
+  final String path;
   final FieldDesc fieldDesc;
 
-  const PackHeadWidget({required this.json, required this.fieldDesc, Key? key}) : super(key: key);
+  const PackHeadWidget({required this.json, required this.path, required this.fieldDesc, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return JsonExpansionFieldGroup(
       json             : json,
+      path             : path,
+      fieldName        : '',
       fieldDesc        : fieldDesc,
       onJsonFieldBuild : buildSubFiled,
     );
@@ -22,6 +25,7 @@ class PackHeadWidget extends StatelessWidget {
   Widget buildSubFiled(
     BuildContext         context,
     Map<String, dynamic> json,
+    String               path,
     String               fieldName,
     FieldDesc            fieldDesc,
   ) {
@@ -43,6 +47,7 @@ class PackHeadWidget extends StatelessWidget {
     if (fieldName == DjfFile.license) {
       input = JsonDropdown(
         json              : json,
+        path              : path,
         fieldName         : fieldName,
         fieldDesc         : fieldDesc,
         defaultValue      : "",
@@ -53,6 +58,8 @@ class PackHeadWidget extends StatelessWidget {
     if (fieldName == 'targetAge') {
       input = JsonRowFieldGroup(
         json             : json,
+        path             : path,
+        fieldName        : '',
         fieldDesc        : fieldDesc,
         onJsonFieldBuild : buildSubFiled,
       );
@@ -74,6 +81,7 @@ class PackHeadWidget extends StatelessWidget {
 
     input ??= JsonTextField(
       json         : json,
+      path         : path,
       fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       fieldType    : fieldType,
@@ -85,9 +93,12 @@ class PackHeadWidget extends StatelessWidget {
     );
 
     return JsonTitleRow(
+      path         : path,
+      fieldName    : fieldName,
       fieldDesc    : fieldDesc,
       labelExpand  : labelExpand,
       labelPadding : labelPadding,
+//      titleWidget  : Text('$path/$fieldName'), // TODO убрать
       child        : input,
     );
   }

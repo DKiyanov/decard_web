@@ -7,8 +7,9 @@ import '../regulator.dart';
 
 class RegulatorParams extends StatefulWidget {
   final Map<String, dynamic> json;
+  final String path;
   final Map<String, dynamic> descMap;
-  const RegulatorParams({required this.json, required this.descMap, Key? key}) : super(key: key);
+  const RegulatorParams({required this.json, required this.path, required this.descMap, Key? key}) : super(key: key);
 
   @override
   State<RegulatorParams> createState() => _RegulatorParamsState();
@@ -38,12 +39,13 @@ class _RegulatorParamsState extends State<RegulatorParams> {
   }
 
   Widget _options() {
-    return RegulatorOptionsWidget(json: widget.json[DrfRegulator.options], fieldDesc: widget.descMap[DrfRegulator.options]!);
+    return RegulatorOptionsWidget(json: widget.json[DrfRegulator.options], path: widget.path, fieldDesc: widget.descMap[DrfRegulator.options]!);
   }
 
   Widget _difficultyList() {
     return JsonObjectArray(
       json: widget.json,
+      path: widget.path,
       fieldName: DrfRegulator.difficultyList,
       fieldDesc: widget.descMap[DrfRegulator.difficultyList]!,
       objectWidgetCreator: _getDifficultyWidget,
@@ -52,9 +54,10 @@ class _RegulatorParamsState extends State<RegulatorParams> {
 
   Widget _getDifficultyWidget(
       Map<String, dynamic> json,
+      String path,
       FieldDesc fieldDesc,
       OwnerDelegate? ownerDelegate,
       ){
-    return RegulatorDifficultyWidget(json: json, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate);
+    return RegulatorDifficultyWidget(json: json, path: path, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate);
   }
 }
