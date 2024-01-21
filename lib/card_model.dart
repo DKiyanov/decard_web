@@ -48,6 +48,9 @@ class CardSource {
   String get data => _data!;
   String get source => '$_type:$_data';
 
+  bool get isPackFile => _isPackFile();
+  bool get isLink     => _isLink();
+
   CardSource(String source) {
     _type = FileExt.getContentExt(source);
     _data = FileExt.getContentData(_type!, source);
@@ -72,6 +75,24 @@ class CardSource {
         _type = fileExt;
       }
     }
+  }
+
+  bool _isLink() {
+    if ([FileExt.contentText].contains(_type)) return false;
+    if (_hasLinkPrefix()) return true;
+    return false;
+  }
+
+  bool _isPackFile() {
+    if ([FileExt.contentText, FileExt.contentUnknown].contains(_type)) return false;
+    if (_hasLinkPrefix()) return false;
+    return true;
+  }
+
+  bool _hasLinkPrefix() {
+    final prefix = data.split('://').first.toLowerCase();
+    if (["http", "https"].contains(prefix)) return true;
+    return false;
   }
 }
 

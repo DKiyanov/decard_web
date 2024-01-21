@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 import 'db.dart';
 import 'card_model.dart';
@@ -47,14 +48,19 @@ class CardController {
 
   /// Sets the current card data
   Future<void> setCard(int jsonFileID, int cardID, {int? bodyNum, CardSetBody setBody = CardSetBody.random, int? startTime}) async {
-    _card = await CardData.create(dbSource, regulator, jsonFileID, cardID, bodyNum: bodyNum, setBody: setBody);
+    try {
+      _card = await CardData.create(dbSource, regulator, jsonFileID, cardID, bodyNum: bodyNum, setBody: setBody);
 
-    _cardParam   = CardParam(_card!.difficulty, _card!.stat.quality);
+      _cardParam   = CardParam(_card!.difficulty, _card!.stat.quality);
 
-    _cardViewController = CardViewController(_card!, _cardParam!, _onCardResult, startTime);
+      _cardViewController = CardViewController(_card!, _cardParam!, _onCardResult, startTime);
 
-    onSetCard?.call(_card!.head.cardID);
-
+      onSetCard?.call(_card!.head.cardID);
+    } catch (e) {
+      _card = null;
+      Fluttertoast.showToast(msg: 'Карточка содержит ошибку, просмотр не возможен');
+    }
+    
     onChange.send();
   }
 

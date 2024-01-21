@@ -12,6 +12,7 @@ import '../card_widget.dart';
 import '../common.dart';
 import '../db_mem.dart';
 import '../decardj.dart';
+import '../loader.dart';
 import '../parse_class_info.dart';
 import '../parse_pack_info.dart';
 import 'pack_file_source.dart';
@@ -42,6 +43,8 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   late DbSourceMem  _dbSource;
   late CardController _cardController;
   int? _jsonFileID;
+
+  late DbValidator _dbValidator;
 
   late CardNavigatorData _cardNavigatorData;
 
@@ -78,6 +81,13 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   final _styleTabIndex = 1;
   final _cardsTabIndex = 2;
 
+  final _fileSourceTabIndex = 0;
+  final _paramsTabIndex     = 1;
+  final _packPreview        = 3;
+
+  final _packErrorList = <DbValidatorResult>[];
+  final _validatePackResultPanelKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -106,6 +116,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
     _dbSource = DbSourceMem.create();
     _cardController = CardController(dbSource: _dbSource);
+    _dbValidator = DbValidator(_dbSource);
 
     String? packJsonPath;
 
@@ -159,6 +170,8 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
     _dbSource.db.clearDb();
    _jsonFileID = await _dbSource.loadJson(sourceFileID: '${widget.packId}', rootPath: packRootPath, jsonMap: _packJson, fileUrlMap: _fileUrlMap);
+
+   _validatePack();
 
     await _cardNavigatorData.setData();
 
@@ -220,8 +233,9 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
           actions: [
             IconButton(
                 onPressed: (){
-                  //_selectPath('${DjfFile.qualityLevelList}[2]/${DjfQualityLevel.qualityName}');
-                  _selectPath('${DjfFile.templateList}[0]/${DjfCardTemplate.cardTemplateList}[0]/${DjfCard.bodyList}[0]/${DjfCardBody.clue}');
+                  // final path = '${DjfFile.qualityLevelList}[2]/${DjfQualityLevel.qualityName}';
+                  const path = '${DjfFile.templateList}[0]/${DjfCardTemplate.cardTemplateList}[0]/${DjfCard.bodyList}[0]/${DjfCardBody.clue}';
+                  _selectPath(path);
                 },
                 icon: const Icon(Icons.ac_unit)
             ),
@@ -245,21 +259,32 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Widget _body() {
-    return JsonOwner(
-      key: _jsonOwnerKey,
-      json: _packJson,
-      onDataChanged: () {
-        _setDataChanged(true);
-        _setEditorTitle();
-        Future.delayed(const Duration(seconds: 20), (){
-          _saveJson();
-        });
-      },
+    return Column(
+      children: [
+        Expanded(
+          child: JsonOwner(
+            key: _jsonOwnerKey,
+            json: _packJson,
+            onDataChanged: () {
+              _setDataChanged(true);
+              _setEditorTitle();
+              Future.delayed(const Duration(seconds: 20), (){
+                _saveJson();
+              });
+            },
 
-      child: Row(children: [
-        Expanded(child: _editor()),
-        Expanded(child: _rightPanel()),
-      ]),
+            child: Row(children: [
+              Expanded(child: _editor()),
+              Expanded(child: _rightPanel()),
+            ]),
+          ),
+        ),
+
+        LimitedBox(
+          maxHeight: 200,
+          child: _validatePackResultPanel()
+        ),
+      ],
     );
   }
 
@@ -453,9 +478,10 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Widget _templatesSources() {
-    //return const Center(child: Text('Значения параметров'));
-
-    return TemplatesSources(json: _packJson);
+    return TemplatesSources(
+      json   : _packJson,
+      editor : this,
+    );
   }
 
   void _setDataChanged(bool dataChanged){
@@ -583,6 +609,39 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
     _editorTabController.index = _headTabIndex;
   }
 
+  Future<void> _validatePack() async {
+    _packErrorList.clear();
+    final checkResultList = await _dbValidator.checkJsonFile(_jsonFileID!);
+    _packErrorList.addAll(checkResultList);
+    _validatePackResultPanelKey.currentState?.setState(() {});
+  }
+
+  final onSelectSourceIndex = event.SimpleEvent<int>();
+
+  Widget _validatePackResultPanel() {
+    return StatefulBuilder(
+      key: _validatePackResultPanelKey,
+      builder: (context, setState) {
+        if (_packErrorList.isEmpty) return Container(height: 0);
+
+        return ListView(
+          shrinkWrap: true,
+          children: _packErrorList.map((errData) => ListTile(
+            title: Text(errData.message),
+            subtitle: Text(errData.path),
+            onTap: (){
+              _selectPath(errData.path);
+
+              if (errData.sourceIndex != null) {
+                _rightTabController.index = _paramsTabIndex;
+                onSelectSourceIndex.send(errData.sourceIndex);
+              }
+            },
+          )).toList(),
+        );
+      }
+    );
+  }
 }
 
 class _PackEditorJsonTab extends StatefulWidget {

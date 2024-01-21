@@ -1748,7 +1748,7 @@ class JsonOwnerState extends State<JsonOwner> {
     _selectPathTimer = Timer.periodic(const Duration(milliseconds: 20), (timer) {
       _tickCount ++;
       if (_tickCount > 40) {
-        _selectPathTimer!.cancel();
+        _selectPathTimer?.cancel();
         _selectPathTimer = null;
       }
 

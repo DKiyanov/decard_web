@@ -8,12 +8,15 @@ import 'package:fluttertoast/fluttertoast.dart';
 
 import '../decardj.dart';
 import '../simple_dialog.dart';
+import 'pack_editor.dart';
 import 'pack_widgets.dart';
+import 'package:simple_events/simple_events.dart' as event;
 
 class TemplatesSources extends StatefulWidget {
   final Map<String, dynamic> json;
+  final PackEditorState editor;
 
-  const TemplatesSources({required this.json, Key? key}) : super(key: key);
+  const TemplatesSources({required this.json, required this.editor, Key? key}) : super(key: key);
 
   @override
   State<TemplatesSources> createState() => _TemplatesSourcesState();
@@ -26,6 +29,10 @@ class _TemplatesSourcesState extends State<TemplatesSources> {
 
   GlobalKey? _paramTabKey;
 
+  late event.Listener _selectSourceIndexListener;
+
+  int _selectedSourceIndex = -1;
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +40,38 @@ class _TemplatesSourcesState extends State<TemplatesSources> {
 
     if (_templatesMap.isNotEmpty) {
       _selectTemplate(_selIndex);
+    }
+
+    _selectSourceIndexListener = widget.editor.onSelectSourceIndex.subscribe((listener, data) {
+      _selectSourceIndex(data!);
+    });
+  }
+
+  @override
+  void dispose() {
+    _selectSourceIndexListener.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectSourceIndex(int sourceIndex) async {
+    final templateSourceList = (widget.json[DjfFile.templatesSources]??[]) as List;
+    final sourceRow = templateSourceList[sourceIndex] as Map<String, dynamic>;
+    final templateName = sourceRow[DjfTemplateSource.templateName] as String;
+
+    _selectedSourceIndex = 0;
+
+    for (int index = 0; index < sourceIndex; index ++) {
+      final sourceRow = templateSourceList[index] as Map<String, dynamic>;
+      final rowTemplateName = sourceRow[DjfTemplateSource.templateName] as String;
+      if (rowTemplateName != templateName) continue;
+      _selectedSourceIndex ++;
+    }
+
+    if (_selTemplate != templateName) {
+      final templateIndex = _templatesMap.keys.toList().indexOf(templateName);
+      _selectTemplate(templateIndex);
+    } else {
+      setState(() {});
     }
   }
 
@@ -137,6 +176,7 @@ class _TemplatesSourcesState extends State<TemplatesSources> {
           fieldName    : DjfFile.templatesSources,
           templateName : _selTemplate,
           params       : _templatesMap[_selTemplate]!,
+          selectedRow  : _selectedSourceIndex,
         ),
       ),
 
@@ -149,12 +189,14 @@ class TemplateParamTab extends StatefulWidget {
   final String fieldName;
   final String templateName;
   final List<String> params;
+  final int selectedRow;
 
   const TemplateParamTab({
     required this.json,
     required this.fieldName,
     required this.templateName,
     required this.params,
+    this.selectedRow = -1,
 
     Key? key
   }) : super(key: key);
@@ -201,6 +243,16 @@ class _TemplateParamTabState extends State<TemplateParamTab> {
       final row  = PlutoRow(cells: cells);
       _rowDataMap[row] = sourceMap;
       _rows.add(row);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant TemplateParamTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedRow != widget.selectedRow) {
+      if (widget.selectedRow >= 0) {
+        _stateManager.setCurrentCellPosition(PlutoGridCellPosition(rowIdx: widget.selectedRow, columnIdx: 0));
+      }
     }
   }
 
@@ -282,6 +334,16 @@ class _TemplateParamTabState extends State<TemplateParamTab> {
                 icon: const Icon(Icons.paste)
             ),
           ),
+
+            Tooltip(
+              message: 'test',
+              child: IconButton(
+                  onPressed: (){
+                    _stateManager.setCurrentCellPosition(const PlutoGridCellPosition(rowIdx: 2, columnIdx: 0));
+                  },
+                  icon: const Icon(Icons.ac_unit)
+              ),
+            ),
 
         ]),
 
