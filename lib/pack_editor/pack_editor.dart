@@ -87,6 +87,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
   final _packErrorList = <DbValidatorResult>[];
   final _validatePackResultPanelKey = GlobalKey();
+  DbValidatorResult? _selectedPackError;
 
   @override
   void initState() {
@@ -629,13 +630,18 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
           children: _packErrorList.map((errData) => ListTile(
             title: Text(errData.message),
             subtitle: Text(errData.path),
+            selected: errData == _selectedPackError,
+            selectedTileColor: Colors.yellow,
             onTap: (){
+              _selectedPackError = errData;
               _selectPath(errData.path);
 
               if (errData.sourceIndex != null) {
                 _rightTabController.index = _paramsTabIndex;
                 onSelectSourceIndex.send(errData.sourceIndex);
               }
+
+              setState((){});
             },
           )).toList(),
         );

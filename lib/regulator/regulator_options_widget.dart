@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../pack_editor/pack_widgets.dart';
-import '../regulator.dart';
+import 'regulator.dart';
 
 
 class RegulatorOptionsWidget extends StatelessWidget {
@@ -20,7 +20,6 @@ class RegulatorOptionsWidget extends StatelessWidget {
       fieldName        : '',
       fieldDesc        : fieldDesc,
       onJsonFieldBuild : buildSubFiled,
-      initiallyExpanded: true,
       ownerDelegate    : ownerDelegate,
     );
   }
@@ -52,7 +51,7 @@ class RegulatorOptionsWidget extends StatelessWidget {
       );
     }
 
-    if (fieldName == DrfOptions.hotGroupAvgQualityTopLimit) {
+    if (fieldName == DrfOptions.hotGroupMinQualityTopLimit) {
       labelExpand  = false;
       labelPadding = const EdgeInsets.only(right: 10);
       fieldType    = FieldType.int;
@@ -76,14 +75,14 @@ class RegulatorOptionsWidget extends StatelessWidget {
       );
     }
 
-    if (fieldName == DrfOptions.lowDayCount) {
+    if (fieldName == DrfOptions.lowTryCount) {
       labelExpand  = false;
       labelPadding = const EdgeInsets.only(right: 10);
       fieldType    = FieldType.int;
       align        = TextAlign.center;
     }
 
-    if (fieldName == DrfOptions.lowTryCount) {
+    if (fieldName == DrfOptions.lowDayCount) {
       labelExpand  = false;
       labelPadding = const EdgeInsets.only(left: 10, right: 10);
       fieldType    = FieldType.int;

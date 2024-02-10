@@ -4,14 +4,75 @@ import 'package:collection/collection.dart';
 import 'package:decard_web/parse_pack_info.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 
+import 'child_test_results.dart';
 import 'db_mem.dart';
-import 'regulator.dart';
+import 'regulator/regulator.dart';
 import 'card_controller.dart';
 import 'db.dart';
 import 'parse_class_info.dart';
 import 'package:simple_events/simple_events.dart' as event;
 
-class WebChild {
+class WebChild{
+  final String childID;
+  final String childName; 
+
+  Regulator? _regulator;
+  Regulator get regulator => _regulator!;
+
+
+  ChildTestResults? _testResults;
+  Future<ChildTestResults> get testResults async {
+    if (_testResults != null) return _testResults!;
+    _testResults = ChildTestResults(this);
+    await _testResults!.init();
+    return _testResults!;
+  }
+
+  WebChild(this.childID, this.childName, String? regulatorJson) {
+    if (regulatorJson != null) {
+      _regulator = Regulator.fromMap(jsonDecode(regulatorJson));
+    } else {
+      _regulator = Regulator.newEmpty();
+    }
+    _regulator!.fillDifficultyLevels();
+  }
+  
+  Future<void> regulatorChange(Map<String, dynamic> json) async {
+    _regulator = Regulator.fromMap(json);
+  }
+  
+  /// load last test results from server
+  Future<void> updateTestResultFromServer() async {
+    // TODO correct it
+    // final from = await dbSource.tabTestResult.getLastTime();
+    // final to   = dateTimeToInt(DateTime.now());
+    //
+    // final testResultList = await serverConnect.getTestsResultsFromServer(this, from, to);
+    //
+    // for (var testResult in testResultList) {
+    //   dbSource.tabTestResult.insertRow(testResult);
+    // }
+    //
+    // await updateStatFromServer();
+  }
+
+  /// load stat data from server
+  /// to download statistics to the parent device
+  /// to download statistics to the child's device when installing the application
+  Future<void> updateStatFromServer() async {
+    // TODO correct it
+    // final curDate = dateToInt(DateTime.now());
+    // if (_lastStatDate >= curDate) return;
+    //
+    // final newLastDate = await serverConnect.updateStatFromServer(this, _lastStatDate);
+    // if (newLastDate == 0) return;
+    //
+    // _lastStatDate = newLastDate;
+    // await prefs.setInt(_kLastStatDate, _lastStatDate);
+  }
+}
+
+class WebChildDevice {
   final String childID;
   final String name;
   final String deviceName;
@@ -21,21 +82,12 @@ class WebChild {
   late DbSource dbSource;
   late CardController cardController;
 
-  Regulator? _regulator;
-  Regulator get regulator => _regulator!;
 
   final packInfoList = <WebPackInfo>[];
 
-  WebChild(this.childID, this.name, this.deviceName, this.sourcePath, String? regulatorJson) {
+  WebChildDevice(this.childID, this.name, this.deviceName, this.sourcePath) {
     dbSource       = DbSourceMem.create();
     cardController = CardController(dbSource: dbSource);
-    if (regulatorJson != null) {
-      _regulator = Regulator.fromMap(jsonDecode(regulatorJson));
-    }
-  }
-
-  Future<void> regulatorChange(Map<String, dynamic> json) async {
-    _regulator = Regulator.fromMap(json);
   }
 }
 
@@ -44,7 +96,8 @@ class WebChildListManager {
 
   WebChildListManager(this.userID);
 
-  final webChildList = <WebChild>[];
+  final childList     = <WebChild>[];
+  final deviceList    = <WebChildDevice>[];
   final _packInfoList = <WebPackInfo>[];
 
   final onChange = event.SimpleEvent();
@@ -53,47 +106,67 @@ class WebChildListManager {
   Future<void> refreshChildList() async {
     final queryChild =  QueryBuilder<ParseObject>(ParseObject(ParseChild.className));
     queryChild.whereEqualTo(ParseChild.userID, userID);
-    final childList = await queryChild.find();
+    final parseChildList = await queryChild.find();
 
     final queryDevice =  QueryBuilder<ParseObject>(ParseObject(ParseDevice.className));
     queryDevice.whereEqualTo(ParseDevice.userID, userID);
-    final deviceList = await queryDevice.find();
+    final parseDeviceList = await queryDevice.find();
 
     final queryRegulator = QueryBuilder<ParseObject>(ParseObject(ParseWebChildSource.className));
     queryRegulator.whereEqualTo(ParseWebChildSource.userID, userID);
     queryRegulator.whereEqualTo(ParseWebChildSource.sourceType, ParseWebChildSource.sourceTypeRegulator);
     queryRegulator.keysToReturn([ParseWebChildSource.path, ParseWebChildSource.textContent]);
-    final regulatorList = await queryRegulator.find();
+    final parseRegulatorList = await queryRegulator.find();
 
-    final localWebChildList = <WebChild>[];
-    localWebChildList.addAll(webChildList);
+    final localChildList = <WebChild>[];
+    localChildList.addAll(childList);
 
-    for (var device in deviceList) {
-      final deviceName    = device.get<String>(ParseDevice.name)!;
-      final deviceChildID = device.get<String>(ParseDevice.childID)!;
-      final child         = childList.firstWhere((child) => child.objectId == deviceChildID);
-      final childName     = child.get<String>(ParseChild.name)!;
+    for (var parseChild in parseChildList) {
+      final child = childList.firstWhereOrNull((child) => child.childID == parseChild.objectId);
+      if (child == null) {
+        final childName = parseChild.get<String>(ParseChild.name)!;
 
-      final sourcePath = '$childName/$deviceName';
-
-      var webChild = webChildList.firstWhereOrNull((webChild) => webChild.sourcePath == sourcePath);
-      if (webChild == null) {
         String? regulatorJson;
-        final regulator = regulatorList.firstWhereOrNull((regulator) => regulator.get<String>(ParseWebChildSource.path) == sourcePath);
-        if (regulator != null) {
-          regulatorJson = regulator.get<String>(ParseWebChildSource.textContent)!;
+        final parseRegulator = parseRegulatorList.firstWhereOrNull((parseRegulator) => parseRegulator.get<String>(ParseWebChildSource.path) == childName);
+        if (parseRegulator != null) {
+          regulatorJson = parseRegulator.get<String>(ParseWebChildSource.textContent)!;
         }
 
-        webChild = WebChild(device.objectId!, childName, deviceName, sourcePath, regulatorJson);
-        webChildList.add(webChild);
+        final newChild = WebChild(parseChild.objectId!, childName, regulatorJson);
+        childList.add(newChild);
         _changed = true;
       } else {
-        localWebChildList.remove(webChild);
+        localChildList.remove(child);
       }
     }
 
-    for (var webChild in localWebChildList) {
-      webChildList.remove(webChild);
+    for (var child in localChildList) {
+      childList.remove(child);
+      _changed = true;
+    }
+
+    final localDeviceList = <WebChildDevice>[];
+    localDeviceList.addAll(deviceList);
+
+    for (var parseDevice in parseDeviceList) {
+      final deviceName    = parseDevice.get<String>(ParseDevice.name)!;
+      final deviceChildID = parseDevice.get<String>(ParseDevice.childID)!;
+      final child         = childList.firstWhere((child) => child.childID == deviceChildID);
+
+      final sourcePath = '${child.childName}/$deviceName';
+
+      final device = deviceList.firstWhereOrNull((device) => device.sourcePath == sourcePath);
+      if (device == null) {
+        final newDevice = WebChildDevice(parseDevice.objectId!, child.childName, deviceName, sourcePath);
+        deviceList.add(newDevice);
+        _changed = true;
+      } else {
+        localDeviceList.remove(device);
+      }
+    }
+
+    for (var device in localDeviceList) {
+      deviceList.remove(device);
       _changed = true;
     }
 
@@ -130,7 +203,7 @@ class WebChildListManager {
       }
     }
 
-    for (var child in webChildList) {
+    for (var child in deviceList) {
       final localPackInfoList = <WebPackInfo>[];
       localPackInfoList.addAll(child.packInfoList);
 
@@ -157,8 +230,8 @@ class WebChildListManager {
 
   }
 
-  Future<bool> addPack(WebPackInfo packInfo, WebChild child) async {
-    final result = await addPackForChild(packInfo.packId, userID, child.sourcePath);
+  Future<bool> addPack(WebPackInfo packInfo, WebChildDevice device) async {
+    final result = await addPackForChild(packInfo.packId, userID, device.sourcePath);
 
     if (result) {
       if (!_packInfoList.any((testPackInfo) => testPackInfo.packId == packInfo.packId)) {

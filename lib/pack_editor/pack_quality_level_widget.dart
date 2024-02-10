@@ -13,9 +13,9 @@ class PackQualityLevelWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool initiallyExpanded = false;
+    var expandMode = JsonExpansionFieldGroupMode.initialCollapsed;
     if (json.isEmpty) {
-      initiallyExpanded = true;
+      expandMode = JsonExpansionFieldGroupMode.initialExpanded;
       json[DjfCardTemplate.templateName] = "";
     }
 
@@ -25,7 +25,7 @@ class PackQualityLevelWidget extends StatelessWidget {
       fieldDesc        : fieldDesc,
       fieldName        : '',
       onJsonFieldBuild : buildSubFiled,
-      initiallyExpanded: initiallyExpanded,
+      mode             : expandMode,
       ownerDelegate    : ownerDelegate,
     );
   }

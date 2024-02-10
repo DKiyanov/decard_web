@@ -5,7 +5,7 @@ import 'package:collection/collection.dart';
 import 'boxes_area.dart';
 import 'drag_box_widget.dart';
 
-typedef DragBoxTap = Future<String?> Function(String label, Widget child, Offset position, Offset globalPosition);
+typedef DragBoxTap = Future<String?> Function(String label, Widget child, int pos, Offset position, Offset globalPosition);
 typedef OnChangeHeight = void Function(double newHeight);
 
 enum DragBoxSpec {
@@ -70,6 +70,14 @@ class WordPanelController {
     if (!_panelState!.mounted) return null;
 
     return _panelState!._getBoxAtPos(pos);
+  }
+
+  List<String> getWordList(){
+    if (_panelState == null) return [];
+    if (!_panelState!.mounted) return [];
+
+    final wordList= _panelState!._getWordList();
+    return wordList;
   }
 
   String _getText(){
@@ -380,12 +388,18 @@ class WordPanelState extends State<WordPanel> {
     }
   }
 
-  String _getText(){
+  List<String> _getWordList() {
     final wordList = <String>[];
 
     for (var i = 0; i < _boxInfoList.length; i++) {
       wordList.add(_boxInfoList[i].data.ext.label);
     }
+
+    return wordList;
+  }
+
+  String _getText(){
+    final wordList = _getWordList();
 
     final ret = WordPanelController.wordListToText(wordList);
     return ret;
@@ -752,7 +766,9 @@ class WordPanelState extends State<WordPanel> {
       boxInfo.data.ext.spec = DragBoxSpec.tapInProcess;
       boxInfo.setState();
 
-      final newLabel = await widget.onDragBoxTap!.call(boxInfo.data.ext.label, boxInfo.data.subWidget!, position, globalPosition);
+      final pos = _boxInfoList.indexOf(boxInfo);
+
+      final newLabel = await widget.onDragBoxTap!.call(boxInfo.data.ext.label, boxInfo.data.subWidget!, pos, position, globalPosition);
       if (newLabel != null ) {
         if (boxInfo.data.ext.label != newLabel) {
           boxInfo.data.ext.label = newLabel;
@@ -784,7 +800,9 @@ class WordPanelState extends State<WordPanel> {
     if (onDragTap == null) return;
     if (boxInfo == null) return;
 
-    final newLabel = await onDragTap.call(boxInfo.data.ext.label, boxInfo.data.subWidget!, position, globalPosition);
+    final pos = _boxInfoList.indexOf(boxInfo);
+
+    final newLabel = await onDragTap.call(boxInfo.data.ext.label, boxInfo.data.subWidget!, pos, position, globalPosition);
     if (newLabel == null || boxInfo.data.ext.label == newLabel) return;
 
     boxInfo.data.ext.label = newLabel;

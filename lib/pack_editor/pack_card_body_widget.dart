@@ -24,9 +24,9 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
 
   @override
   Widget build(BuildContext context) {
-    bool initiallyExpanded = false;
+    var expandMode = JsonExpansionFieldGroupMode.initialCollapsed;
     if (widget.json.isEmpty) {
-      initiallyExpanded = true;
+      expandMode = JsonExpansionFieldGroupMode.initialExpanded;
     }
 
     return JsonExpansionFieldGroup(
@@ -35,7 +35,7 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
       fieldName        : '',
       fieldDesc        : widget.fieldDesc,
       onJsonFieldBuild : buildSubFiled,
-      initiallyExpanded: initiallyExpanded,
+      mode             : expandMode,
       ownerDelegate    : widget.ownerDelegate,
     );
   }

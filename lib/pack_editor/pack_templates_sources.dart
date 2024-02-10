@@ -214,6 +214,8 @@ class _TemplateParamTabState extends State<TemplateParamTab> {
 
   late List<dynamic> _sourceList;
 
+  //int _selectedRowIdx = -1;
+
   @override
   void initState() {
     super.initState();
@@ -251,7 +253,7 @@ class _TemplateParamTabState extends State<TemplateParamTab> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedRow != widget.selectedRow) {
       if (widget.selectedRow >= 0) {
-        _stateManager.setCurrentCellPosition(PlutoGridCellPosition(rowIdx: widget.selectedRow, columnIdx: 0));
+        _stateManager.moveScrollByRow(PlutoMoveDirection.down, widget.selectedRow);
       }
     }
   }
@@ -335,16 +337,6 @@ class _TemplateParamTabState extends State<TemplateParamTab> {
             ),
           ),
 
-            Tooltip(
-              message: 'test',
-              child: IconButton(
-                  onPressed: (){
-                    _stateManager.setCurrentCellPosition(const PlutoGridCellPosition(rowIdx: 2, columnIdx: 0));
-                  },
-                  icon: const Icon(Icons.ac_unit)
-              ),
-            ),
-
         ]),
 
         Expanded(
@@ -355,11 +347,16 @@ class _TemplateParamTabState extends State<TemplateParamTab> {
               columnSize: PlutoGridColumnSizeConfig(
                 autoSizeMode: PlutoAutoSizeMode.scale,
                 resizeMode: PlutoResizeMode.normal,
-
-              )
+              ),
             ),
             onLoaded: (event) {
               _stateManager = event.stateManager;
+            },
+            rowColorCallback: (rowColorContext){
+              if (rowColorContext.rowIdx == widget.selectedRow) {
+                return Colors.yellow;
+              }
+              return Colors.white;
             },
             onChanged: (event) {
               final sourceMap = _rowDataMap[event.row]!;

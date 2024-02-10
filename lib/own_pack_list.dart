@@ -419,15 +419,15 @@ class _OwnPackListState extends State<OwnPackList> {
   }
 
   Future<void> _addPackForChildDialog(WebPackInfo packInfo) async {
-    if (widget.childManager.webChildList.isEmpty) {
+    if (widget.childManager.childList.isEmpty) {
       await widget.childManager.refreshChildList();
     }
-    if (widget.childManager.webChildList.isEmpty) {
+    if (widget.childManager.childList.isEmpty) {
       Fluttertoast.showToast(msg: 'Ещё нет ни одного ребёнка');
       return;
     }
 
-    final selectedChild = <WebChild>[];
+    final selectedDevice = <WebChildDevice>[];
 
     final result = await simpleDialog(
       context: context,
@@ -435,23 +435,23 @@ class _OwnPackListState extends State<OwnPackList> {
       content: StatefulBuilder(builder: (context, setState) {
         return SingleChildScrollView(
           child: ListBody(
-            children: widget.childManager.webChildList.map((child) {
-              final added = child.packInfoList.any((testPackInfo) => testPackInfo.packId == packInfo.packId);
+            children: widget.childManager.deviceList.map((device) {
+              final added = device.packInfoList.any((testPackInfo) => testPackInfo.packId == packInfo.packId);
 
               return ListTile(
                 leading: Checkbox(
-                  value: added || selectedChild.contains(child),
+                  value: added || selectedDevice.contains(device),
                   onChanged: added? null : (bool? value) {
                     if (value == null) return;
                     if (value) {
-                      selectedChild.add(child);
+                      selectedDevice.add(device);
                     } else {
-                      selectedChild.remove(child);
+                      selectedDevice.remove(device);
                     }
                     setState((){});
                   },
                 ),
-                title: Text('${child.name} ${child.deviceName}'),
+                title: Text('${device.name} ${device.deviceName}'),
               );
             }).toList(),
           ),
@@ -461,12 +461,12 @@ class _OwnPackListState extends State<OwnPackList> {
 
     if (!result) return;
 
-    for (var child in selectedChild) {
-      await _addPackForChild(packInfo, child);
+    for (var device in selectedDevice) {
+      await _addPackForChild(packInfo, device);
     }
   }
 
-  Future<void> _addPackForChild(WebPackInfo packInfo, WebChild child) async {
-    await widget.childManager.addPack(packInfo, child);
+  Future<void> _addPackForChild(WebPackInfo packInfo, WebChildDevice device) async {
+    await widget.childManager.addPack(packInfo, device);
   }
 }

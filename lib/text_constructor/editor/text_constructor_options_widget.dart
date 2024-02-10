@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../pack_editor/pack_widgets.dart';
-import 'regulator.dart';
+import '../../pack_editor/pack_widgets.dart';
+import '../word_panel_model.dart';
 
-
-class RegulatorDifficultyWidget extends StatelessWidget {
+class TextConstructorOptionsWidget extends StatelessWidget {
   final Map<String, dynamic> json;
   final String path;
   final FieldDesc fieldDesc;
-  final OwnerDelegate? ownerDelegate;
 
-  const RegulatorDifficultyWidget({required this.json, required this.path, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
+  const TextConstructorOptionsWidget({required this.json, required this.path, required this.fieldDesc, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +18,6 @@ class RegulatorDifficultyWidget extends StatelessWidget {
       fieldName        : '',
       fieldDesc        : fieldDesc,
       onJsonFieldBuild : buildSubFiled,
-      ownerDelegate    : ownerDelegate,
     );
   }
 
@@ -40,29 +37,17 @@ class RegulatorDifficultyWidget extends StatelessWidget {
     var readOnly  = false;
     FixBuilder? prefix;
     FixBuilder? suffix;
+    TextValidate? onValidate;
 
-    if (['cost', 'penalty', 'tryCount', 'duration', 'durationLowCostPercent'].contains(fieldName)) {
-      input = JsonRowFieldGroup(
-        json             : json,
-        path             : path,
-        fieldName        : '',
-        fieldDesc        : fieldDesc,
-        onJsonFieldBuild : buildSubFiled,
+    if ([JrfTextConstructor.fontSize, JrfTextConstructor.boxHeight].contains(fieldName) ) {
+      fieldType = FieldType.int;
+    } else {
+      input = JsonBooleanField(
+        json      : json,
+        path      : path,
+        fieldName : fieldName,
+        fieldDesc : fieldDesc,
       );
-    }
-
-    if ([DrfDifficulty.maxCost, DrfDifficulty.maxPenalty, DrfDifficulty.maxTryCount, DrfDifficulty.maxDuration, DrfDifficulty.maxDurationLowCostPercent].contains(fieldName)) {
-      labelExpand  = false;
-      labelPadding = const EdgeInsets.only(right: 10);
-      fieldType    = FieldType.int;
-      align        = TextAlign.center;
-    }
-
-    if ([DrfDifficulty.minCost, DrfDifficulty.minPenalty, DrfDifficulty.minTryCount, DrfDifficulty.minDuration, DrfDifficulty.minDurationLowCostPercent].contains(fieldName)) {
-      labelExpand  = false;
-      labelPadding = const EdgeInsets.only(left: 10, right: 10);
-      fieldType    = FieldType.int;
-      align        = TextAlign.center;
     }
 
     input ??= JsonTextField(
@@ -75,6 +60,7 @@ class RegulatorDifficultyWidget extends StatelessWidget {
       readOnly     : readOnly,
       prefix       : prefix,
       suffix       : suffix,
+      onValidate   : onValidate,
     );
 
     return JsonTitleRow(

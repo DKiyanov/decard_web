@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../decardj.dart';
 import '../pack_editor/pack_widgets.dart';
 import '../pack_editor/values_json.dart';
-import '../regulator.dart';
+import 'regulator.dart';
 
 class RegulatorCardSetWidget extends StatelessWidget {
   final Map<String, dynamic> json;
@@ -20,7 +21,6 @@ class RegulatorCardSetWidget extends StatelessWidget {
       fieldName        : '',
       fieldDesc        : fieldDesc,
       onJsonFieldBuild : buildSubFiled,
-      initiallyExpanded: true,
       ownerDelegate    : ownerDelegate,
     );
   }
@@ -115,7 +115,7 @@ class RegulatorCardSetWidget extends StatelessWidget {
         fieldDesc         : fieldDesc,
         fieldType         : FieldType.int,
         defaultValue      : "0",
-        possibleValuesMap : getJsonFieldValues(fieldName),
+        possibleValuesMap : getJsonFieldValues(DjfCard.difficulty),
         colorIfEmpty      : JsonTheme.colorIfEmpty,
       );
     }

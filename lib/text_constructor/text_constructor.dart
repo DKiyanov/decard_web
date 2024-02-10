@@ -6,7 +6,6 @@ import 'word_grid.dart';
 import 'word_panel.dart';
 import 'word_panel_model.dart';
 import 'package:flutter/material.dart';
-import 'dart:io';
 
 import 'package:simple_events/simple_events.dart';
 
@@ -14,6 +13,311 @@ import '../audio_button.dart';
 import '../common.dart';
 import 'drag_box_widget.dart';
 
+class LabelInfo {
+  static const String selectPrefix = '\$';
+
+  final String label;
+  late bool isSelected;
+  late bool isObject;
+  late int? viewIndex;
+  late String _word;
+
+  bool get isText => !isObject;
+
+  String get word {
+    if (isObject) return '#$_word';
+    return _word;
+  }
+
+  String get objectName {
+    assert(isObject == true);
+    return _word;
+  }
+
+  LabelInfo(this.label) {
+    String str = label;
+    if (str.startsWith(selectPrefix)) {
+      isSelected = true;
+      str = str.substring(1);
+    } else {
+      isSelected = false;
+    }
+
+    if (str.startsWith('#')){
+      isObject = true;
+      if (str.substring(2,3) == '|') {
+        _word = label.substring(3);
+        viewIndex = int.parse(label.substring(1,2));
+      } else {
+        _word = label.substring(1);
+        viewIndex = null;
+      }
+    } else {
+      isObject = false;
+      _word = str;
+    }
+  }
+
+  static String unSelect(String label) {
+    if (label.startsWith(selectPrefix)) return label.substring(1);
+    return label;
+  }
+}
+
+class ViewInfo {
+  static const String menuSkipText = '-';
+
+  final String viewStr;
+  late  int    styleIndex;
+  late  String menuText;
+  late  String text;
+
+  bool get skipMenu => menuText == '-';
+
+  ViewInfo(this.viewStr){
+    final viewSplit1 = viewStr.split('|');
+    if (viewSplit1.length == 1) {
+      text       = viewSplit1[0];
+      styleIndex = -1;
+      menuText   = '';
+    } else {
+      text = viewSplit1[1];
+
+      final viewSplit2 = viewSplit1[0].split('/');
+      final styleIndexStr = viewSplit2[0];
+      if (styleIndexStr.isNotEmpty) {
+        styleIndex = int.parse(styleIndexStr);
+      } else {
+        styleIndex = -1;
+      }
+      if (viewSplit2.length > 1) {
+        menuText = viewSplit2[1];
+      } else {
+        menuText = '';
+      }
+    }
+  }
+
+  static String getViewStr(int styleIndex, String menuText, String text){
+    return '$styleIndex/$menuText|$text';
+  }
+}
+
+class StyleInfoField{
+  static const charColor       = "charColor";
+  static const backgroundColor = "backgroundColor";
+  static const frameColor      = "frameColor";
+  static const fontBold        = "fontBold";
+  static const fontItalic      = "fontItalic";
+  static const linePos         = "linePos";
+  static const lineStyle       = "lineStyle";
+  static const lineColor       = "lineColor";
+}
+
+class StyleInfo {
+  static const Map<String, Color> colorKeyMap = {
+    'r' : Colors.red,
+    'g' : Colors.green,
+    'b' : Colors.blue,
+    'y' : Colors.yellow,
+    'o' : Colors.orange,
+    'd' : Colors.black,
+    'w' : Colors.white,
+  };
+
+  static const Map<String, String> colorNameMap = {
+    'r' : 'red',
+    'g' : 'green',
+    'b' : 'blue',
+    'y' : 'yellow',
+    'o' : 'orange',
+    'd' : 'black',
+    'w' : 'white',
+  };
+
+  static const Map<String, TextDecoration> linePosNameMap = {
+    'underline'   : TextDecoration.underline,
+    'lineThrough' : TextDecoration.lineThrough,
+  };
+
+  static const Map<String, TextDecoration> _linePosKeyMap = {
+    'l' : TextDecoration.underline,
+    'd' : TextDecoration.lineThrough,
+  };
+
+  static const Map<String, TextDecorationStyle> _lineStyleKeyMap = {
+    '_' : TextDecorationStyle.solid,
+    '~' : TextDecorationStyle.wavy,
+    '=' : TextDecorationStyle.double,
+    '-' : TextDecorationStyle.dashed,
+    '.' : TextDecorationStyle.dotted,
+  };
+
+  final bool   fontBold;
+  final bool   fontItalic;
+  final Color? charColor;
+  final Color? backgroundColor;
+  final Color? frameColor;
+  final TextDecoration?      linePos;
+  final TextDecorationStyle? lineStyle;
+  final Color?               lineColor;
+
+  StyleInfo({
+    this.fontBold = false,
+    this.fontItalic = false,
+    this.charColor,
+    this.backgroundColor,
+    this.frameColor,
+    this.linePos,
+    this.lineStyle,
+    this.lineColor,
+  });
+
+  factory StyleInfo.fromStyleStr(String styleStr) {
+    bool   fontBold = false;
+    bool   fontItalic = false;
+    Color? charColor;
+    Color? backgroundColor;
+    Color? frameColor;
+
+    TextDecoration?      linePos;
+    TextDecorationStyle? lineStyle;
+    Color?               lineColor;
+
+    final subStyleList = styleStr.split(',');
+
+    for (var subStyle in subStyleList) {
+      final subStyleStr = subStyle.trim().toLowerCase();
+      final subStyleLen = subStyleStr.length;
+
+      if (subStyleLen == 1) {
+        if (subStyleStr == 'b') {
+          fontBold = true;
+        }
+        if (subStyleStr == 'i') {
+          fontItalic = true;
+        }
+      }
+
+      if (subStyleLen == 3) {
+        final formatCh = subStyleStr.substring(0,1);
+        final formatId = subStyleStr.substring(0,2);
+        final colorKey = subStyleStr.substring(2,3);
+        final color = colorKeyMap[colorKey];
+
+        if (formatId == 'cc') {
+          charColor = color;
+        }
+        if (formatId == 'bc') {
+          backgroundColor = color;
+        }
+        if (formatId == 'fc') {
+          frameColor = color;
+        }
+
+        if (formatCh == 'l') {
+          linePos = TextDecoration.underline;
+          final lineStyleStr = formatId.substring(1,2);
+          lineStyle = _lineStyleKeyMap[lineStyleStr] ;
+          lineColor  = color;
+        }
+
+        if (formatCh == 'd') {
+          linePos = TextDecoration.lineThrough;
+          final lineStyleStr = formatId.substring(1,2);
+          lineStyle = _lineStyleKeyMap[lineStyleStr] ;
+          lineColor  = color;
+        }
+      }
+    }
+
+    return StyleInfo(
+        fontBold         : fontBold,
+        fontItalic       : fontItalic,
+        charColor        : charColor,
+        backgroundColor  : backgroundColor,
+        frameColor       : frameColor,
+        linePos          : linePos,
+        lineStyle        : lineStyle,
+        lineColor        : lineColor,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    final result = <String, dynamic>{
+      StyleInfoField.charColor       : colorNameMap[_colorToColorKey(charColor)],
+      StyleInfoField.backgroundColor : colorNameMap[_colorToColorKey(backgroundColor)],
+      StyleInfoField.frameColor      : colorNameMap[_colorToColorKey(frameColor)],
+      StyleInfoField.fontBold        : fontBold,
+      StyleInfoField.fontItalic      : fontItalic,
+      StyleInfoField.linePos         : linePos?.toString().split('.').last,
+      StyleInfoField.lineStyle       : lineStyle?.name,
+      StyleInfoField.lineColor       : colorNameMap[_colorToColorKey(lineColor)],
+    };
+
+    return result;
+  }
+
+  factory StyleInfo.fromMap(Map<String, dynamic> map) {
+    return StyleInfo(
+      fontBold         : map[StyleInfoField.fontBold]??false,
+      fontItalic       : map[StyleInfoField.fontItalic]??false,
+      charColor        : colorNameToColor(map[StyleInfoField.charColor]),
+      backgroundColor  : colorNameToColor(map[StyleInfoField.backgroundColor]),
+      frameColor       : colorNameToColor(map[StyleInfoField.frameColor]),
+      linePos          : linePosNameMap[map[StyleInfoField.linePos]],
+      lineStyle        : TextDecorationStyle.values.firstWhereOrNull((lineStyle) => lineStyle.name == map[StyleInfoField.lineStyle]),
+      lineColor        : colorNameToColor(map[StyleInfoField.lineColor]),
+    );
+  }
+
+  static Color colorNameToColor(String? colorName) {
+    if (colorName == null) return Colors.transparent;
+    final colorKey = colorNameMap.entries.firstWhereOrNull((entry) => entry.value == colorName)?.key;
+    if (colorKey == null) return Colors.transparent;
+    return colorKeyMap[colorKey]!;
+  }
+
+  @override
+  String toString() {
+    final subStyleList = <String>[];
+
+    if (fontBold) {
+      subStyleList.add('b');
+    }
+
+    if (fontItalic) {
+      subStyleList.add('i');
+    }
+
+    if (charColor != null) {
+      subStyleList.add('cc${_colorToColorKey(charColor!)}');
+    }
+
+    if (backgroundColor != null) {
+      subStyleList.add('bc${_colorToColorKey(backgroundColor!)}');
+    }
+
+    if (frameColor != null) {
+      subStyleList.add('fc${_colorToColorKey(frameColor!)}');
+    }
+
+    if (linePos != null) {
+      final linePosStr   = _linePosKeyMap.entries.firstWhereOrNull((entry) => entry.value == linePos)?.key;
+      final lineStyleStr = _lineStyleKeyMap.entries.firstWhereOrNull((entry) => entry.value == lineStyle)?.key;
+      final lineColorStr = _colorToColorKey(lineColor!);
+      subStyleList.add('$linePosStr$lineStyleStr$lineColorStr');
+    }
+
+
+    return subStyleList.join(',');
+  }
+
+  String? _colorToColorKey(Color? color) {
+    if (color == null) return null;
+    return colorKeyMap.entries.firstWhereOrNull((entry) => entry.value == color)?.key;
+  }
+}
 
 typedef RegisterAnswer = void Function(String answerValue, [List<String>? answerList]);
 typedef PrepareFilePath = String Function(String fileName);
@@ -23,10 +327,11 @@ class TextConstructorWidget extends StatefulWidget {
   final RegisterAnswer? onRegisterAnswer;
   final PrepareFilePath? onPrepareFileUrl;
   final int? randomPercent;
-  const TextConstructorWidget({required this.textConstructor, this.onRegisterAnswer, this.onPrepareFileUrl, this.randomPercent, Key? key}) : super(key: key);
+  final void Function(int pos, String label)? onTapLabel;
+  const TextConstructorWidget({required this.textConstructor, this.onRegisterAnswer, this.onPrepareFileUrl, this.randomPercent, this.onTapLabel, Key? key}) : super(key: key);
 
   @override
-  State<TextConstructorWidget> createState() => _TextConstructorWidgetState();
+  State<TextConstructorWidget> createState() => TextConstructorWidgetState();
 }
 
 class _HistData {
@@ -41,9 +346,9 @@ class _RandomDelWordResult {
   _RandomDelWordResult(this.text, this.delWords);
 }
 
-class _TextConstructorWidgetState extends State<TextConstructorWidget> {
-  late TextConstructorData _textConstructorData;
-  late WordPanelController _panelController;
+class TextConstructorWidgetState extends State<TextConstructorWidget> {
+  late TextConstructorData textConstructorData;
+  late WordPanelController panelController;
   late WordGridController  _basementController;
 
   final Color  _defaultTextColor  = Colors.white;
@@ -56,20 +361,10 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
   final Color  _editPosColor      = Colors.blue;
   final Color  _insertPosColor    = Colors.green;
   final Color  _colorWordNormal   = Colors.grey;
-//  final Color  _colorWordSelected = Colors.yellow;
   final Color  _colorWordCanDrop  = Colors.amber;
   final Color  _colorWordMove     = Colors.black12;
   final double _editPosWidth      = 10;
   final double _insertPosWidth    = 10;
-//  final double _basementMinHeight = 200;
-
-  final Map<String, Color> _colorMap = {
-    'r' : Colors.red,
-    'g' : Colors.green,
-    'b' : Colors.blue,
-    'y' : Colors.yellow,
-    'o' : Colors.orange,
-  };
 
   final _historyList = <_HistData>[];
   bool _historyRecordOn = true;
@@ -88,29 +383,29 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
   void initState() {
     super.initState();
 
-    _textConstructorData = widget.textConstructor; //TextConstructorData.fromMap(jsonDecode(textConstructorJson));
-    _fontSize = _textConstructorData.fontSize;
+    textConstructorData = widget.textConstructor; //TextConstructorData.fromMap(jsonDecode(textConstructorJson));
+    _fontSize = textConstructorData.fontSize;
 
-    var panelText = _textConstructorData.text;
+    var panelText = textConstructorData.text;
     var basementText = widget.textConstructor.basement;
 
     if (widget.randomPercent != null) {
-      if (_textConstructorData.randomMixWord) {
+      if (textConstructorData.randomMixWord) {
         panelText = _randomMixWord(panelText, widget.randomPercent!);
       }
-      if (_textConstructorData.randomDelWord) {
+      if (textConstructorData.randomDelWord) {
         final delResult = _randomDelWord(panelText, widget.randomPercent!);
         panelText = delResult.text;
         basementText = '$basementText ${delResult.delWords}';
       }
     }
 
-    _panelController = WordPanelController(
+    panelController = WordPanelController(
       text          : panelText,
       onChange      : _onChange,
-      canMoveWord   : _textConstructorData.canMoveWord,
-      noCursor      : _textConstructorData.noCursor,
-      focusAsCursor : _textConstructorData.focusAsCursor,
+      canMoveWord   : textConstructorData.canMoveWord,
+      noCursor      : textConstructorData.noCursor,
+      focusAsCursor : textConstructorData.focusAsCursor,
     );
 
     _basementController = WordGridController(basementText);
@@ -166,7 +461,7 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
       _historyPos = -1;
     }
 
-    final panelStr = _panelController.text;
+    final panelStr = panelController.text;
     if (_historyList.isNotEmpty && _historyList.last.panelStr == panelStr) {
       return;
     }
@@ -270,13 +565,13 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
   Widget _wordPanel() {
     return WordPanel(
       key                : _panelKey,
-      controller         : _panelController,
+      controller         : panelController,
       onDragBoxBuild     : _onDragBoxBuild,
       onDragBoxTap       : _onDragBoxTap,
       onDragBoxLongPress : _onDragBoxLongPress,
       onDoubleTap        : _onDragBoxLongPress,
       onChangeHeight     : (double newHeight) {
-        final extHeight = newHeight + _panelController.wordBoxHeight;
+        final extHeight = newHeight + panelController.wordBoxHeight;
         if (_panelHeight != extHeight) {
           setState(() {
             _panelHeight = extHeight;
@@ -313,22 +608,22 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
                 data: IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
 
-                  if (_textConstructorData.btnKeyboard) ...[
+                  if (textConstructorData.btnKeyboard) ...[
                     IconButton(
                       onPressed: () async {
                         final word = await _wordInputDialog(context);
                         if (word.isEmpty) return;
 
-                        final pos = _panelController.getCursorPos(lastPostIfNot: true);
-                        _panelController.saveCursor();
-                        _panelController.insertWord(pos, word);
-                        _panelController.refreshPanel();
+                        final pos = panelController.getCursorPos(lastPostIfNot: true);
+                        panelController.saveCursor();
+                        panelController.insertWord(pos, word);
+                        panelController.refreshPanel();
                       },
                       icon: const Icon(Icons.keyboard_alt_outlined),
                     ),
                   ],
 
-                  if (_textConstructorData.btnUndo) ...[
+                  if (textConstructorData.btnUndo) ...[
                     IconButton(
                       onPressed: (_historyPos == 0 || _historyList.length == 1) ? null : (){
                         if (_historyPos < 0) {
@@ -339,7 +634,7 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
 
                         _historyRecordOn = false;
                         final histData = _historyList[_historyPos];
-                        _panelController.text = histData.panelStr;
+                        panelController.text = histData.panelStr;
                         _basementController.setVisibleWords(histData.basementStr);
                         _historyRecordOn = true;
 
@@ -349,13 +644,13 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
                     ),
                   ],
 
-                  if (_textConstructorData.btnRedo) ...[
+                  if (textConstructorData.btnRedo) ...[
                     IconButton(
                       onPressed: (_historyPos < 0 || _historyPos == (_historyList.length - 1) ) ? null : (){
                         _historyPos ++;
                         _historyRecordOn = false;
                         final histData = _historyList[_historyPos];
-                        _panelController.text = histData.panelStr;
+                        panelController.text = histData.panelStr;
                         _basementController.setVisibleWords(histData.basementStr);
                         _historyRecordOn = true;
 
@@ -365,24 +660,24 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
                     ),
                   ],
 
-                  if (_textConstructorData.btnBackspace) ...[
+                  if (textConstructorData.btnBackspace) ...[
                     IconButton(
                       onPressed: ()=> _deleteWord(-1),
                       icon: const Icon(Icons.backspace_outlined),
                     ),
                   ],
 
-                  if (_textConstructorData.btnDelete) ...[
+                  if (textConstructorData.btnDelete) ...[
                     IconButton(
                       onPressed: ()=> _deleteWord(),
                       icon: const Icon(Icons.delete_outline),
                     ),
                   ],
 
-                  if (_textConstructorData.btnClear) ...[
+                  if (textConstructorData.btnClear) ...[
                     IconButton(
                       onPressed: (){
-                        _panelController.text = '';
+                        panelController.text = '';
                       },
                       icon: const Icon(Icons.clear_outlined),
                     ),
@@ -391,7 +686,7 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
                   if (widget.onRegisterAnswer != null) ...[
                     IconButton(
                       onPressed: (){
-                        widget.onRegisterAnswer!.call(_panelController.text, _textConstructorData.answerList);
+                        widget.onRegisterAnswer!.call(panelController.text, textConstructorData.answerList);
                       },
                       icon: const Icon(Icons.check, color: Colors.lightGreenAccent),
                     ),
@@ -405,11 +700,11 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
   }
 
   void _deleteWord([int posAdd = 0]){
-    var pos = _panelController.getCursorPos(onlyCursor: true);
+    var pos = panelController.getCursorPos(onlyCursor: true);
 
     bool cursor = false;
     if (pos < 0) {
-      pos = _panelController.getFocusPos();
+      pos = panelController.getFocusPos();
       if (pos < 0) return;
     } else {
       cursor = true;
@@ -421,31 +716,31 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
 
     if (cursor) {
       if (pos == 0) {
-        _panelController.saveCursor(pos + 1);
+        panelController.saveCursor(pos + 1);
       } else {
-        _panelController.saveCursor(pos);
+        panelController.saveCursor(pos);
       }
     }
 
-    var word = _panelController.getWord(pos);
+    var word = panelController.getWord(pos);
 
-    if (word.substring(0,1) == '\$') {
-      word = word.substring(1);
-    }
+    final wordInfo = LabelInfo(word);
 
-    final wordObject = _getWordObjectFromLabel(word);
-    if (wordObject != null) {
+    if (wordInfo.isObject) {
+      final wordObject = getWordObject(wordInfo.objectName);
       if (wordObject.nonRemovable) return;
     }
 
-    _basementController.addWord(word);
+    _basementController.addWord(wordInfo.word);
 
-    _panelController.deleteWord(pos);
-    _panelController.refreshPanel();
+    panelController.deleteWord(pos);
+    panelController.refreshPanel();
   }
 
-  Future<String?> _onDragBoxTap(String label, Widget child, Offset position, Offset globalPosition) async {
+  Future<String?> _onDragBoxTap(String label, Widget child, int pos, Offset position, Offset globalPosition) async {
     if (label.isEmpty) return label;
+
+    widget.onTapLabel?.call(pos, label);
 
     if (label == JrfSpecText.wordKeyboard) {
       final inputValue = await _wordInputDialog(context);
@@ -454,24 +749,24 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
     }
 
     final boxWidget = child as _BoxWidget;
-    final fileName = _textConstructorData.audioMap[boxWidget.outStr];
+    final fileName = textConstructorData.audioMap[boxWidget.outStr];
     if (fileName != null) {
       final filePath = widget.onPrepareFileUrl!(fileName);
       await playAudio(filePath);
     }
 
-    if (_textConstructorData.markStyle >= 0) {
-      if (label.substring(0, 1) == '\$') {
+    if (textConstructorData.markStyle >= 0) {
+      if (label.startsWith(LabelInfo.selectPrefix)) {
         label = label.substring(1);
       } else {
-        label = '\$$label';
+        label = '${LabelInfo.selectPrefix}$label';
       }
     }
 
     return label;
   }
 
-  Future<String?> _onDragBoxLongPress(String label, Widget child, Offset position, Offset globalPosition) async {
+  Future<String?> _onDragBoxLongPress(String label, Widget child, int pos, Offset position, Offset globalPosition) async {
     return _showPopupMenu(label, globalPosition);
   }
 
@@ -482,7 +777,7 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
         color: _editPosColor,
       ),
       width: _editPosWidth,
-      height: _panelController.wordBoxHeight,
+      height: panelController.wordBoxHeight,
     );
   }
 
@@ -493,7 +788,7 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
         color: _insertPosColor,
       ),
       width: _insertPosWidth,
-      height: _panelController.wordBoxHeight,
+      height: panelController.wordBoxHeight,
     );
   }
 
@@ -506,7 +801,7 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
       return _insertPosWidget();
     }
 
-    return _labelWidget(context, ext.label, ext.spec);
+    return labelWidget(context, ext.label, ext.spec);
   }
 
   Widget _basementGroupHead(BuildContext context, String label) {
@@ -518,68 +813,47 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
       return _basementGroupHead(context, ext.label);
     }
 
-    return _labelWidget(context, ext.label, DragBoxSpec.none);
+    return labelWidget(context, ext.label, DragBoxSpec.none);
   }
 
   double _internalBoxHeight() {
-    if (_textConstructorData.boxHeight > 0) {
-      return _textConstructorData.boxHeight - 2;
+    if (textConstructorData.boxHeight > 0) {
+      return textConstructorData.boxHeight - 2;
     }
 
-    if (_panelController.wordBoxHeight == 0.0) return 20.0;
-    return _panelController.wordBoxHeight - 2;
+    if (panelController.wordBoxHeight == 0.0) return 20.0;
+    return panelController.wordBoxHeight - 2;
   }
 
-  WordObject? _getWordObjectFromLabel(String label) {
-    if (label.substring(0, 1) != '#') return null;
-
-    String objectName;
-    if (label.substring(2,3) == '|') {
-      objectName = label.substring(3);
-    } else {
-      objectName = label.substring(1);
-    }
-
-    final wordObject = _textConstructorData.objects.firstWhereOrNull((wordObject) => wordObject.name == objectName)!;
+  WordObject getWordObject(String objectName) {
+    final wordObject = textConstructorData.objects.firstWhereOrNull((wordObject) => wordObject.name == objectName)!;
     return wordObject;
   }
 
-  Widget _labelWidget(BuildContext context, String label, DragBoxSpec spec) {
+  Widget labelWidget(BuildContext context, String label, DragBoxSpec spec) {
     if (label.isEmpty) return Container();
-
-    var viewIndex = -1;
 
     int? styleIndex;
 
-    if (label.substring(0, 1) == '\$' && _textConstructorData.markStyle >= 0) {
-      styleIndex = _textConstructorData.markStyle;
-      label = label.substring(1);
+    final labelInfo = LabelInfo(label);
+
+    if (labelInfo.isSelected && textConstructorData.markStyle >= 0) {
+      styleIndex = textConstructorData.markStyle;
     }
 
-    if (label.substring(0, 1) == '#') {
-      String objectName;
-      if (label.substring(2,3) == '|') {
-        objectName = label.substring(3);
-        viewIndex = int.parse(label.substring(1,2));
-      } else {
-        objectName = label.substring(1);
-      }
+    if (labelInfo.isObject) {
 
-      final wordObject = _textConstructorData.objects.firstWhereOrNull((wordObject) => wordObject.name == objectName)!;
+      final wordObject = textConstructorData.objects.firstWhereOrNull((wordObject) => wordObject.name == labelInfo.objectName)!;
 
-      if (viewIndex < 0) {
-        viewIndex = wordObject.viewIndex;
-      }
+      final viewStr = wordObject.views[labelInfo.viewIndex??wordObject.viewIndex];
 
-      final viewStr = wordObject.views[viewIndex];
-
-      return _getObjectViewWidget(context, objectName: objectName, viewStr: viewStr, styleIndex: styleIndex, spec: spec );
+      return getObjectViewWidget(context, objectName: labelInfo.objectName, viewStr: viewStr, styleIndex: styleIndex, spec: spec );
     }
 
-    return _getObjectViewWidget(context, label: label, styleIndex: styleIndex, spec : spec );
+    return getObjectViewWidget(context, label: label, styleIndex: styleIndex, spec : spec );
   }
 
-  Widget _getObjectViewWidget(BuildContext context, {
+  Widget getObjectViewWidget(BuildContext context, {
     String      label      = '',
     String      objectName = '',
     String      viewStr    = '',
@@ -606,23 +880,15 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
 
     var localStyleIndex = -1;
 
+    if (viewStr.isNotEmpty) {
+      final viewInfo = ViewInfo(viewStr);
+
+      outStr = viewInfo.text;
+
+      localStyleIndex = viewInfo.styleIndex;
+    }
+
     if (objectName.isNotEmpty) {
-      final viewSplit1 = viewStr.split('|');
-      if (viewSplit1.length == 1) {
-        outStr = viewSplit1[0];
-      } else {
-        outStr = viewSplit1[1];
-
-        final viewSplit2 = viewSplit1[0].split('/');
-        final styleIndexStr = viewSplit2[0];
-        if (styleIndexStr.isNotEmpty) {
-          localStyleIndex = int.parse(styleIndexStr);
-        }
-        if (viewSplit2.length > 1) {
-          menuText = viewSplit2[1];
-        }
-      }
-
       if (outStr.isEmpty) {
         outStr = objectName;
       }
@@ -633,71 +899,26 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
     }
 
     if (localStyleIndex >= 0) {
-      final styleStr = _textConstructorData.styles[localStyleIndex];
-      final subStyleList = styleStr.split(',');
+      final styleStr = textConstructorData.styles[localStyleIndex];
+      final styleInfo = StyleInfo.fromStyleStr(styleStr);
 
-      for (var subStyle in subStyleList) {
-        final subStyleStr = subStyle.trim().toLowerCase();
-        final subStyleLen = subStyleStr.length;
+      textStyleBold = styleInfo.fontBold;
+      textStyleItalic = styleInfo.fontItalic;
 
-        if (subStyleLen == 1) {
-          if (subStyleStr == 'b') {
-            textStyleBold = true;
-          }
-          if (subStyleStr == 'i') {
-            textStyleItalic = true;
-          }
-        }
+      if (styleInfo.charColor != null) {
+        textColor = styleInfo.charColor!;
+      }
+      if (styleInfo.backgroundColor != null) {
+        backgroundColor = styleInfo.backgroundColor!;
+      }
+      if (styleInfo.frameColor != null) {
+        borderColor = styleInfo.frameColor!;
+      }
 
-        if (subStyleLen == 3) {
-          final formatCh = subStyleStr.substring(0,1);
-          final formatId = subStyleStr.substring(0,2);
-          final colorKey = subStyleStr.substring(2,3);
-
-          if (formatId == 'cc') {
-            textColor = _colorMap[colorKey]!;
-          }
-          if (formatId == 'bc') {
-            backgroundColor = _colorMap[colorKey]!;
-          }
-          if (formatId == 'fc') {
-            borderColor = _colorMap[colorKey]!;
-          }
-
-          if (formatCh == 'l') {
-            linePos = TextDecoration.underline;
-            lineColor = _colorMap[colorKey]!;
-
-            if (formatId == 'l_') {
-              lineStyle = TextDecorationStyle.solid;
-            }
-            if (formatId == 'l~') {
-              lineStyle = TextDecorationStyle.wavy;
-            }
-            if (formatId == 'l=') {
-              lineStyle = TextDecorationStyle.double;
-            }
-            if (formatId == 'l-') {
-              lineStyle = TextDecorationStyle.dashed;
-            }
-            if (formatId == 'l.') {
-              lineStyle = TextDecorationStyle.dotted;
-            }
-          }
-
-          if (formatCh == 'd') {
-            linePos = TextDecoration.lineThrough;
-            lineColor = _colorMap[colorKey]!;
-
-            if (formatId == 'd=') {
-              lineStyle = TextDecorationStyle.double;
-            }
-            if (formatId == 'd-') {
-              lineStyle = TextDecorationStyle.solid;
-            }
-          }
-        }
-
+      if (styleInfo.linePos != null) {
+        linePos   = styleInfo.linePos!;
+        lineStyle = styleInfo.lineStyle!;
+        lineColor = styleInfo.lineColor!;
       }
     }
 
@@ -806,7 +1027,7 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
     required Color  backgroundColor,
   }){
     return  Container(
-      height:  _textConstructorData.boxHeight > 0 ? _textConstructorData.boxHeight : null,
+      height:  textConstructorData.boxHeight > 0 ? textConstructorData.boxHeight : null,
       padding: const EdgeInsets.only(left: 10, right: 10),
       decoration: BoxDecoration(
         border: Border.all(
@@ -825,26 +1046,21 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
 
   Future<String?> _showPopupMenu(String label, Offset position) async {
     if (label.isEmpty) return null;
-    if (label.substring(0, 1) != '#') return null;
+    final labelInfo = LabelInfo(label);
 
-    String objectName;
-    if (label.substring(2,3) == '|') {
-      objectName = label.substring(3);
-    } else {
-      objectName = label.substring(1);
-    }
+    if (!labelInfo.isObject) return null;
 
-    final wordObject = _textConstructorData.objects.firstWhereOrNull((wordObject) => wordObject.name == objectName)!;
+    final wordObject = textConstructorData.objects.firstWhereOrNull((wordObject) => wordObject.name == labelInfo.objectName)!;
 
     final popupItems = <PopupMenuEntry<String>>[];
 
     for ( var i = 0; i < wordObject.views.length; i++ ) {
       final viewStr = wordObject.views[i];
-      final popupItemWidget = _getObjectViewWidget(context, objectName: objectName, viewStr: viewStr, forPopup: true) as _BoxWidget;
+      final popupItemWidget = getObjectViewWidget(context, objectName: labelInfo.objectName, viewStr: viewStr, forPopup: true) as _BoxWidget;
       if (popupItemWidget.menuText == JrfSpecText.hideMenuItem) continue;
 
       popupItems.add( PopupMenuItem(
-          value: '#$i|$objectName',
+          value: '#$i|${labelInfo.objectName}',
           padding: EdgeInsets.zero,
           child: Center(child: popupItemWidget)
       ));
@@ -861,15 +1077,15 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
   }
 
   void _onBasementBoxTap(DragBoxInfo<GridBoxExt> boxInfo, Offset position) {
-    if (!_textConstructorData.notDelFromBasement){
+    if (!textConstructorData.notDelFromBasement){
       boxInfo.setState(visible: false);
       _basementController.refresh();
     }
 
-    final curPos = _panelController.getCursorPos(lastPostIfNot: true);
-    _panelController.saveCursor();
-    _panelController.insertWord(curPos, boxInfo.data.ext.label);
-    _panelController.refreshPanel();
+    final curPos = panelController.getCursorPos(lastPostIfNot: true);
+    panelController.saveCursor();
+    panelController.insertWord(curPos, boxInfo.data.ext.label);
+    panelController.refreshPanel();
   }
 
   Future<String> _wordInputDialog(BuildContext context) async {
@@ -901,7 +1117,7 @@ class _TextConstructorWidgetState extends State<TextConstructorWidget> {
           );
         });
 
-    textController.dispose();
+    //textController.dispose();
 
     if (result != null && result) return word;
 

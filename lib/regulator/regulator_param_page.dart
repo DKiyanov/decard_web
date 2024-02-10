@@ -1,22 +1,22 @@
-import 'package:decard_web/app_state.dart';
 import 'package:decard_web/regulator/regulator_desc_json.dart';
-import 'package:decard_web/web_child.dart';
+import 'package:decard_web/regulator/regulator_difficulty_widget.dart';
+import 'package:decard_web/regulator/regulator_options_widget.dart';
 import 'package:flutter/material.dart';
 
+import '../app_state.dart';
 import '../pack_editor/pack_widgets.dart';
 import 'regulator.dart';
-import 'regulator_cardset_widget.dart';
+import '../web_child.dart';
 
-class RegulatorCardSetPage extends StatefulWidget {
+class RegulatorParamsPage extends StatefulWidget {
   final String childID;
-  final String fileGuid;
-  const RegulatorCardSetPage({required this.childID, required this.fileGuid, Key? key}) : super(key: key);
+  const RegulatorParamsPage({required this.childID, Key? key}) : super(key: key);
 
   @override
-  State<RegulatorCardSetPage> createState() => _RegulatorCardSetPageState();
+  State<RegulatorParamsPage> createState() => _RegulatorParamsPageState();
 }
 
-class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
+class _RegulatorParamsPageState extends State<RegulatorParamsPage> {
   late WebChild _child;
   late Map<String, dynamic> _regulatorJson;
   late Map<String, FieldDesc> _descMap;
@@ -54,7 +54,7 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
       child: Scaffold(
         appBar: AppBar(
           centerTitle: true,
-          title: const Text('Настройка файл'),
+          title: const Text('Настройка индивидуальных параметров ребёнка'),
         ),
         body: _body(),
       ),
@@ -68,35 +68,40 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
         _changed = true;
       },
 
-      child: SingleChildScrollView(
-        controller: _scrollController,
-        child: JsonObjectArray(
-          json: _regulatorJson,
-          path: _rootPath,
-          fieldName: DrfRegulator.setList,
-          fieldDesc: _descMap[DrfRegulator.setList]!,
-          objectWidgetCreator: _getCardSetWidget,
-          onFilter: (object) {
-            final setMap = object as Map<String, dynamic>;
-            final fileGuid = setMap[DrfCardSet.fileGUID] as String;
-            return fileGuid == widget.fileGuid;
-          },
-          onNewRowObjectInit: (object) {
-            final setMap = object as Map<String, dynamic>;
-            setMap[DrfCardSet.fileGUID] = widget.fileGuid;
-          },
+      child: Padding(
+        padding: const EdgeInsets.only(left: 10, right: 20),
+        child: ListView(
+          controller: _scrollController,
+          children: [
+            _options(),
+            _difficultyList(),
+          ],
         ),
       ),
     );
   }
 
-  Widget _getCardSetWidget(
+  Widget _options() {
+    return RegulatorOptionsWidget(json: _regulatorJson[DrfRegulator.options], path: _rootPath, fieldDesc: _descMap[DrfRegulator.options]!);
+  }
+
+  Widget _difficultyList() {
+    return JsonObjectArray(
+      json: _regulatorJson,
+      path: _rootPath,
+      fieldName: DrfRegulator.difficultyList,
+      fieldDesc: _descMap[DrfRegulator.difficultyList]!,
+      objectWidgetCreator: _getDifficultyWidget,
+    );
+  }
+
+  Widget _getDifficultyWidget(
       Map<String, dynamic> json,
-      path,
+      String path,
       FieldDesc fieldDesc,
       OwnerDelegate? ownerDelegate,
       ){
-    return RegulatorCardSetWidget(json: json, path: path, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate);
+    return RegulatorDifficultyWidget(json: json, path: path, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate);
   }
 
   Future<void> _save() async {

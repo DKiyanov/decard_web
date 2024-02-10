@@ -5,7 +5,9 @@ import 'package:decard_web/home_page.dart';
 import 'package:decard_web/pack_view.dart';
 import 'package:decard_web/page_not_found.dart';
 import 'package:decard_web/regulator/regulator_cardset_page.dart';
+import 'package:decard_web/regulator/regulator_param_page.dart';
 import 'package:decard_web/showcase_out.dart';
+import 'package:decard_web/text_constructor/editor/text_constructor_editor_page.dart';
 import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
 import 'package:url_strategy/url_strategy.dart';
@@ -73,6 +75,8 @@ RouteMap _buildRouteMapIn(BuildContext context) {
 
     routes: {
       '/': (route) {
+        return const NoAnimationPage(child: TextConstructorEditorPage()); // TODO for debug
+
         if (appState.serverConnect.isLoggedIn) {
           return TabPage(
             child: const HomePage(),
@@ -109,6 +113,10 @@ RouteMap _buildRouteMapIn(BuildContext context) {
       '/pack/:id': (route) => NoAnimationPage(child: PackView(
           cardController: appState.cardController,
           packId: int.parse(route.pathParameters['id']!)
+      )),
+
+      '/child_tune': (route) => NoAnimationPage(child: RegulatorParamsPage(
+        childID : route.queryParameters['id']!,
       )),
 
       '/child_pack_tune': (route) => NoAnimationPage(child: RegulatorCardSetPage(

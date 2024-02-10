@@ -134,7 +134,7 @@ class TextConstructorData {
 
   Map<String, dynamic> toJson() => {
     JrfTextConstructor.text               :text,
-    JrfTextConstructor.objects            :objects,
+    JrfTextConstructor.objects            :objects.map((object) => object.toJson()).toList(),
     JrfTextConstructor.styles             :styles,
     JrfTextConstructor.markStyle          :markStyle,
     JrfTextConstructor.basement           :basement,

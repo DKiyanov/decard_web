@@ -113,6 +113,13 @@ typedef JsonFieldBuild = Widget Function(
   FieldDesc fieldDesc,
 );
 
+enum JsonExpansionFieldGroupMode{
+  initialExpanded,
+  initialCollapsed,
+  alwaysExpanded,
+  noHead
+}
+
 class JsonExpansionFieldGroup extends StatefulWidget {
   static const String keyBodyName = "bodyName";
 
@@ -121,8 +128,10 @@ class JsonExpansionFieldGroup extends StatefulWidget {
   final String fieldName;
   final FieldDesc fieldDesc;
   final JsonFieldBuild onJsonFieldBuild;
-  final bool initiallyExpanded;
+  final JsonExpansionFieldGroupMode mode;
   final OwnerDelegate? ownerDelegate;
+  final Widget Function(BuildContext context, FieldDesc fieldDesc, String title, Map<String, dynamic> json)? titleBuilder;
+  final void Function(Map<String, dynamic> json)? onSubFiledChanged;
 
   const JsonExpansionFieldGroup({
     required this.json,
@@ -130,8 +139,10 @@ class JsonExpansionFieldGroup extends StatefulWidget {
     required this.fieldName,
     required this.fieldDesc,
     required this.onJsonFieldBuild,
-    this.initiallyExpanded = true,
+    this.mode = JsonExpansionFieldGroupMode.initialExpanded,
     this.ownerDelegate,
+    this.titleBuilder,
+    this.onSubFiledChanged,
 
     Key? key
   }) : super(key: key);
@@ -219,11 +230,19 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
       ));
     }
 
+    if (widget.mode == JsonExpansionFieldGroupMode.noHead) {
+      return Column(children: children);
+    }
+
     children.add(Container(height: 8));
 
     final titleWidget = StatefulBuilder(
       key:  _titleWidgetKey,
       builder: (context,  setState) {
+        if (widget.titleBuilder != null) {
+          return widget.titleBuilder!.call(context, _titleFieldDesc, _title, widget.json);
+        }
+
         Widget? prevTitleWidget;
         if (_title.isNotEmpty) {
           prevTitleWidget = Text(_title);
@@ -249,6 +268,16 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
       subTitle = Text(widget.fieldDesc.helperText!, style: const TextStyle(color: Colors.grey));
     }
 
+    if (widget.mode == JsonExpansionFieldGroupMode.alwaysExpanded) {
+      children.insert(0, ListTile(
+        title:  titleWidget,
+        subtitle: subTitle,
+        contentPadding: EdgeInsets.zero,
+      ));
+
+      return Column(children: children);
+    }
+
     return JsonWidgetChangeListener(
       onChange: _onSubFieldChanged,
       child: DkExpansionTile(
@@ -257,7 +286,7 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
         childrenPadding: EdgeInsets.zero,
         title: titleWidget,
         subtitle: subTitle,
-        initiallyExpanded : widget.initiallyExpanded,
+        initiallyExpanded : widget.mode == JsonExpansionFieldGroupMode.initialExpanded,
         children: children,
         onTap: (){},
       ),
@@ -265,6 +294,13 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
   }
 
   _onSubFieldChanged() {
+    widget.onSubFiledChanged?.call(widget.json);
+
+    if (widget.titleBuilder != null) {
+      _titleWidgetKey.currentState?.setState(() {});
+      return;
+    }
+
     final newTitle = _buildTitle();
     if (_title != newTitle) {
       _title = newTitle;
@@ -608,6 +644,7 @@ class JsonDropdown extends StatefulWidget {
   final Color? colorIfEmpty;
   final List<String>? possibleValues;
   final Map<String, String>? possibleValuesMap; // key - internal value; value - visible value
+  final Widget Function(String key, String value)? itemBuilder;
 
   JsonDropdown({
     required this.json,
@@ -622,6 +659,7 @@ class JsonDropdown extends StatefulWidget {
     this.colorIfEmpty,
     this.possibleValues,
     this.possibleValuesMap,
+    this.itemBuilder,
 
     Key? key
   }) : super(key: key) {
@@ -709,10 +747,17 @@ class _JsonDropdownState extends State<JsonDropdown> {
           },
 
           items: _values.map<DropdownMenuItem<String>>((String value) {
+            String keyValue;
+            if (widget.possibleValuesMap != null) {
+              keyValue = widget.possibleValuesMap!.entries.firstWhere((entry) => entry.value == value).key;
+            } else {
+              keyValue = value;
+            }
+
             return DropdownMenuItem<String>(
               value: value,
               alignment : alignment,
-              child: Text(value),
+              child: widget.itemBuilder == null? Text(value) : widget.itemBuilder!.call(keyValue, value),
             );
           }).toList(),
         ),
@@ -903,6 +948,8 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
 
   String? _editableValue;
 
+  bool? _noCheckBoxValues;
+
   @override
   void initState() {
     super.initState();
@@ -1080,6 +1127,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
             if (_valueList.isEmpty && _checkBoxListGetterOn){
               _checkBoxListOn = true;
               await _getCheckBoxValueList();
+              _noCheckBoxValues = _checkBoxValueList.isEmpty;
               setStateNeed = true;
             }
           }
@@ -1216,6 +1264,10 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
   }
 
   Widget _buttonShowCheckBoxList() {
+    if (_noCheckBoxValues != null && _noCheckBoxValues!) {
+      return Container();
+    }
+
     return Row(
       children: [
         Expanded(
@@ -1521,6 +1573,8 @@ class JsonObjectArray extends StatefulWidget {
   final FieldDesc fieldDesc;
   final JsonObjectBuild objectWidgetCreator;
   final bool initiallyExpanded;
+  final bool Function(dynamic rowObject)? onFilter;
+  final void Function(dynamic rowObject)? onNewRowObjectInit;
 
   const JsonObjectArray({
     required this.json,
@@ -1529,6 +1583,8 @@ class JsonObjectArray extends StatefulWidget {
     required this.fieldDesc,
     required this.objectWidgetCreator,
     this.initiallyExpanded = true,
+    this.onFilter,
+    this.onNewRowObjectInit,
 
     Key? key
   }) : super(key: key);
@@ -1585,6 +1641,10 @@ class _JsonObjectArrayState extends State<JsonObjectArray> {
 
     for (var index = 0; index < _objectList.length; index++){
       final object = _objectList[index];
+
+      if (widget.onFilter != null) {
+        if (!widget.onFilter!.call(object)) continue;
+      }
 
       final path = '${joinPath(widget.path, widget.fieldName)}[$index]';
 
@@ -1653,6 +1713,7 @@ class _JsonObjectArrayState extends State<JsonObjectArray> {
 
   _addSubObject() {
     final object = <String,dynamic>{};
+    widget.onNewRowObjectInit?.call(object);
     _objectList.add(object);
 
     JsonWidgetChangeListener.of(context)?.setChanged();

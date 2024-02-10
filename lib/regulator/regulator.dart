@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 
-import 'db.dart';
+import '../db.dart';
 
 /// Manage the selection and execution of cards on the child's device
 class DrfRegulator {
@@ -404,16 +404,20 @@ class Regulator {
   }
 
   Map<String, dynamic> toJson() => {
-    DrfRegulator.options        : options,
-    DrfRegulator.setList        : cardSetList,
-    DrfRegulator.difficultyList : difficultyList,
+    DrfRegulator.options        : options.toJson(),
+    DrfRegulator.setList        : cardSetList.map((cardSet) => cardSet.toJson()).toList(),
+    DrfRegulator.difficultyList : difficultyList.map((difficulty) => difficulty.toJson()).toList(),
   };
+
+  factory Regulator.newEmpty() {
+    return Regulator(options: RegOptions(), cardSetList: [], difficultyList: []);
+  }
 
   static Future<Regulator> fromFile(String filePath) async {
     final jsonFile = File(filePath);
 
     if (! await jsonFile.exists()) {
-      return Regulator(options: RegOptions(), cardSetList: [], difficultyList: []);
+      return Regulator.newEmpty();
     }
 
     final fileData = await jsonFile.readAsString();

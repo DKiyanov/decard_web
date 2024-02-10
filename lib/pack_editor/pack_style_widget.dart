@@ -24,12 +24,12 @@ class PackStyleWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool initiallyExpanded = false;
+    var expandMode = JsonExpansionFieldGroupMode.initialCollapsed;
     if (hideIdField) {
       json[DjfCardStyle.id] = "";
     }
     if (json.isEmpty) {
-      initiallyExpanded = true;
+      expandMode = JsonExpansionFieldGroupMode.initialExpanded;
       json[DjfCardStyle.id] = "";
     }
 
@@ -39,7 +39,7 @@ class PackStyleWidget extends StatelessWidget {
       fieldName        : '',
       fieldDesc        : fieldDesc,
       onJsonFieldBuild : buildSubFiled,
-      initiallyExpanded: initiallyExpanded,
+      mode             : expandMode,
       ownerDelegate    : ownerDelegate,
     );
   }

@@ -1,5 +1,5 @@
 const regulatorDescJson = {
-  "option" : {
+  "options" : {
     "title" : "Настройки системы",
     "body"  : {
 
@@ -18,10 +18,12 @@ const regulatorDescJson = {
         "title" : "Лимиты, определяющие активность группы",
         "body"  : {
           "hotGroupMinQualityTopLimit" : {
-            "title" : "Минимальное качество для карточек, входящих в группу"
+            "title" : "Минимальное качество",
+            "help"  : "Минимальное качество для карточек, входящих в группу"
           },
           "hotGroupAvgQualityTopLimit" : {
-            "title" : "Среднее качество карточек, входящих в группу"
+            "title" : "Среднее качество",
+            "help"  : "Среднее качество карточек, входящих в группу"
           },
         }
       },
@@ -63,8 +65,8 @@ const regulatorDescJson = {
     }
   },
 
-  "cardSet" : {
-    "title" : "Настройка пакетов карточек",
+  "setList" : {
+    "title" : "Настройка пакета карточек",
     "body"  : {
       "cards" : {
         "title" : "Идентификаторы карточек"
@@ -93,8 +95,8 @@ const regulatorDescJson = {
     }
   },
 
-  "difficulty" : {
-    "title" : "Настройка уровней сложности",
+  "difficultyList" : {
+    "title" : "Список уровней сложности",
     "body"  : {
 
       "cost": {

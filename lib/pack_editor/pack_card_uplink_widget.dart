@@ -14,9 +14,9 @@ class PackCardUpLinkWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool initiallyExpanded = false;
+    var expandMode = JsonExpansionFieldGroupMode.initialCollapsed;
     if (json.isEmpty) {
-      initiallyExpanded = true;
+      expandMode = JsonExpansionFieldGroupMode.initialExpanded;
     }
 
     return JsonExpansionFieldGroup(
@@ -25,7 +25,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
       fieldName        : '',
       fieldDesc        : fieldDesc,
       onJsonFieldBuild : buildSubFiled,
-      initiallyExpanded: initiallyExpanded,
+      mode             : expandMode,
       ownerDelegate    : ownerDelegate,
     );
   }

@@ -36,9 +36,9 @@ class _PackTemplateWidgetState extends State<PackTemplateWidget> {
 
   @override
   Widget build(BuildContext context) {
-    bool initiallyExpanded = false;
+    var expandedMode = JsonExpansionFieldGroupMode.initialCollapsed;
     if (widget.json.isEmpty) {
-      initiallyExpanded = true;
+      expandedMode = JsonExpansionFieldGroupMode.initialExpanded;
       widget.json[DjfCardTemplate.templateName] = "";
     }
 
@@ -48,7 +48,7 @@ class _PackTemplateWidgetState extends State<PackTemplateWidget> {
       fieldName        : '',
       fieldDesc        : widget.fieldDesc,
       onJsonFieldBuild : buildSubFiled,
-      initiallyExpanded: initiallyExpanded,
+      mode             : expandedMode,
       ownerDelegate    : widget.ownerDelegate,
     );
   }

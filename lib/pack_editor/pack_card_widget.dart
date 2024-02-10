@@ -17,9 +17,9 @@ class PackCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool initiallyExpanded = false;
+    var expandMode = JsonExpansionFieldGroupMode.initialCollapsed;
     if (json.isEmpty) {
-      initiallyExpanded = true;
+      expandMode = JsonExpansionFieldGroupMode.initialExpanded;
       json[DjfCard.id] = "";
       json[DjfCard.title] = "";
     }
@@ -30,7 +30,7 @@ class PackCardWidget extends StatelessWidget {
       fieldName        : '',
       fieldDesc        : fieldDesc,
       onJsonFieldBuild : buildSubFiled,
-      initiallyExpanded: initiallyExpanded,
+      mode             : expandMode,
       ownerDelegate    : ownerDelegate,
     );
   }

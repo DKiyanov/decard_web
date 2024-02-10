@@ -28,7 +28,7 @@ class _ChildListState extends State<ChildList> {
   }
 
   void _starting() async {
-    if (widget.childManager.webChildList.isEmpty) {
+    if (widget.childManager.childList.isEmpty) {
       await widget.childManager.refreshChildList();
     }
 
@@ -72,27 +72,36 @@ class _ChildListState extends State<ChildList> {
 
   Widget _body() {
     return ListView(
-      children: widget.childManager.webChildList.map((child) {
+      children: widget.childManager.childList.map((child) {
         return DkExpansionTile(
           title: Row(
             children: [
-              Expanded(child: Text('${child.name} ${child.deviceName}')),
+              Expanded(child: Text('${child.childName} ')),
+              InkWell(
+                  child: const Icon(Icons.multiline_chart),
+                  onTap: () {
+                    Routemaster.of(context).push('/child_stat', queryParameters: {'id' : child.childID});
+                  }
+              ),
               InkWell(
                 child: const Icon(Icons.tune),
                 onTap: () {
-
+                  Routemaster.of(context).push('/child_tune', queryParameters: {'id' : child.childID});
                 }
               ),
             ],
           ),
-          children: child.packInfoList.map((packInfo) => packInfo.getListTile(context,
-              trailing: InkWell(
-                child: const Icon(Icons.tune),
-                onTap: () {
-                  Routemaster.of(context).push('/child_pack_tune', queryParameters: {'id' : child.childID, 'packGuid' : packInfo.guid});
-                },
-              )
-          )).toList(),
+          children: widget.childManager.deviceList.where((device) => device.childID == child.childID).map((device) => DkExpansionTile(
+            title: Text(device.deviceName),
+            children: device.packInfoList.map((packInfo) => packInfo.getListTile(context,
+                trailing: InkWell(
+                  child: const Icon(Icons.tune),
+                  onTap: () {
+                    Routemaster.of(context).push('/child_pack_tune', queryParameters: {'id' : child.childID, 'packGuid' : packInfo.guid});
+                  },
+                )
+            )).toList(),
+          )).toList()
         );
       }).toList(),
     );
