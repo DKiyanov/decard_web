@@ -12,7 +12,7 @@ Future<bool?> simpleDialog ({
 }) async {
   return await showDialog<bool>(
     context: context,
-    barrierDismissible: false, // user must tap button!
+    barrierDismissible: barrierDismissible,
     builder: (BuildContext context) {
       return AlertDialog(
         title: title,

@@ -175,14 +175,12 @@ const testTextConstructorJson = {
 
     {
       "name" :  "символ",
-      "viewIndex": 1,
       "notDelete": true,
       "views": ["2|", "3|"]
     },
 
     {
       "name" :  "объект-3",
-      "viewIndex": 1,
       "views": ["2|вариант-3", "3|вариант-4"]
     }
 

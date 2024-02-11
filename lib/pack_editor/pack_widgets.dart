@@ -209,6 +209,13 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
 
   @override
   Widget build(BuildContext context) {
+    return JsonWidgetChangeListener(
+      onChange: _onSubFieldChanged,
+      child: _body(context),
+    );
+  }
+
+  Widget _body(BuildContext context) {
     final children = <Widget>[];
 
     final path = joinPath(widget.path, widget.fieldName);
@@ -278,18 +285,15 @@ class _JsonExpansionFieldGroupState extends State<JsonExpansionFieldGroup> {
       return Column(children: children);
     }
 
-    return JsonWidgetChangeListener(
-      onChange: _onSubFieldChanged,
-      child: DkExpansionTile(
-        controller: controller,
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: EdgeInsets.zero,
-        title: titleWidget,
-        subtitle: subTitle,
-        initiallyExpanded : widget.mode == JsonExpansionFieldGroupMode.initialExpanded,
-        children: children,
-        onTap: (){},
-      ),
+    return DkExpansionTile(
+      controller: controller,
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: EdgeInsets.zero,
+      title: titleWidget,
+      subtitle: subTitle,
+      initiallyExpanded : widget.mode == JsonExpansionFieldGroupMode.initialExpanded,
+      children: children,
+      onTap: (){},
     );
   }
 

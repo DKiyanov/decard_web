@@ -3,7 +3,7 @@ import 'package:decard_web/text_constructor/editor/text_constructor_desc_json.da
 import 'package:flutter/material.dart';
 
 import '../../pack_editor/pack_widgets.dart';
-import '../text_constructor.dart';
+import '../word_panel_model.dart';
 
 class TextConstructorWordStyleWidget extends StatefulWidget {
   final String styleStr;
@@ -78,7 +78,7 @@ class _TextConstructorWordStyleWidgetState extends State<TextConstructorWordStyl
 
     final widgetKey = ValueKey('$fieldName/$keyIndex');
 
-    if ([StyleInfoField.charColor, StyleInfoField.backgroundColor, StyleInfoField.frameColor, StyleInfoField.lineColor].contains(fieldName)) {
+    if ([JrfStyleInfo.charColor, JrfStyleInfo.backgroundColor, JrfStyleInfo.frameColor, JrfStyleInfo.lineColor].contains(fieldName)) {
       input = JsonDropdown(
         key               : widgetKey,
         json              : json,
@@ -104,7 +104,7 @@ class _TextConstructorWordStyleWidgetState extends State<TextConstructorWordStyl
       );
     }
 
-    if ([StyleInfoField.fontBold, StyleInfoField.fontItalic].contains(fieldName)) {
+    if ([JrfStyleInfo.fontBold, JrfStyleInfo.fontItalic].contains(fieldName)) {
       input = JsonBooleanField(
         key       : widgetKey,
         json      : json,
@@ -114,7 +114,7 @@ class _TextConstructorWordStyleWidgetState extends State<TextConstructorWordStyl
       );
     }
 
-    if ([StyleInfoField.linePos].contains(fieldName)) {
+    if ([JrfStyleInfo.linePos].contains(fieldName)) {
       input = JsonDropdown(
         key               : widgetKey,
         json              : json,
@@ -141,7 +141,7 @@ class _TextConstructorWordStyleWidgetState extends State<TextConstructorWordStyl
       );
     }
 
-    if ([StyleInfoField.lineStyle].contains(fieldName)) {
+    if ([JrfStyleInfo.lineStyle].contains(fieldName)) {
       input = JsonDropdown(
         key               : widgetKey,
         json              : json,

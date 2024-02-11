@@ -41,8 +41,9 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   final _styleListKey = GlobalKey();
 
   final _stylePanelKey = GlobalKey();
-  String _selStyleStr = '';
-  int    _selStyleIndex = -1;
+  bool _styleExpanded = false;
+  StyleInfo? _selStyleInfo;
+  int        _selStyleIndex = -1;
 
   @override
   void initState() {
@@ -111,11 +112,10 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
           _selLabelInfo  =  LabelInfo(_selLabel);
           if (_selLabelInfo!.isObject){
             final object = _constructor.textConstructorData.objects.firstWhere((object) => object.name == _selLabelInfo!.objectName);
-            final viewIndex = _selLabelInfo!.viewIndex??object.viewIndex;
-            final viewStr = object.views[viewIndex];
-            final viewInfo = ViewInfo(viewStr);
+            final viewIndex = _selLabelInfo!.viewIndex;
+            final viewInfo = object.views[viewIndex];
             _selStyleIndex = viewInfo.styleIndex;
-            _selStyleStr   = _constructor.textConstructorData.styles[_selStyleIndex];
+            _selStyleInfo  = _constructor.textConstructorData.styles[_selStyleIndex];
             _stylePanelKey.currentState?.setState(() {});
           }
 
@@ -146,7 +146,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
             IconButton(
                 onPressed: (){
                   if (object != null){
-                    object.views.add('');
+                    object.views.add(ViewInfo(''));
                     setState((){});
                   } else {
                     _replaceWordToObject();
@@ -164,8 +164,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
         if (object != null) {
           final children = <Widget>[];
           for (int viewIndex = 0; viewIndex < object.views.length; viewIndex ++) {
-            final viewStr = object.views[viewIndex];
-            final viewInfo = ViewInfo(viewStr);
+            final viewInfo = object.views[viewIndex];
 
             String outStr     = viewInfo.text;
             String menuText   = viewInfo.menuText;
@@ -179,16 +178,26 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
             final styleItems = <DropdownMenuItem<int>>[];
 
-            for (int styleIndex = -1; styleIndex < _constructor.textConstructorData.styles.length; styleIndex ++) {
+            styleItems.add(DropdownMenuItem<int>(
+              value: -1,
+              child: _constructor.getObjectViewWidget(context,
+                  objectName : object.name,
+                  label      : outStr,
+                  styleIndex : -1
+              ),
+            ));
+
+            for (int styleIndex = 0; styleIndex < _constructor.textConstructorData.styles.length; styleIndex ++) {
               styleItems.add(DropdownMenuItem<int>(
                 value: styleIndex,
                 child: _constructor.getObjectViewWidget(context,
-                    objectName: object.name,
-                    label     : outStr,
-                    styleIndex: styleIndex
+                    objectName : object.name,
+                    label      : outStr,
+                    styleIndex : styleIndex
                 ),
               ));
             }
+
 
             children.add(Row(
               children: [
@@ -198,14 +207,14 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                       children: [
                         _constructor.getObjectViewWidget(context,
                             objectName: object.name,
-                            viewStr: viewStr
+                            viewInfo: viewInfo
                         ),
 
                         Expanded(child: Container()),
 
                         IconButton(
-                          onPressed: (){
-                            _deleteObjectView(object!, viewIndex);
+                          onPressed: () async {
+                            if (! await _deleteObjectView(object!, viewIndex)) return;
                             _selLabel = object.name;
                             setState((){});
                             _constructorKey.currentState?.setState(() {});
@@ -225,7 +234,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                               items: styleItems,
                               onChanged: (value) {
                                 if (value == null) return;
-                                object!.views[viewIndex] = ViewInfo.getViewStr(value, menuText, outStr);
+                                object!.views[viewIndex] = ViewInfo.formComponents(value, menuText, outStr);
                                 setState((){});
                                 _constructorKey.currentState?.setState(() {});
                               }
@@ -239,7 +248,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                         child: TextFormField(
                           initialValue: outStr,
                           onFieldSubmitted: (text){
-                            object!.views[viewIndex] = ViewInfo.getViewStr(styleIndex, menuText, text);
+                            object!.views[viewIndex] = ViewInfo.formComponents(styleIndex, menuText, text);
                             setState((){});
                             _constructorKey.currentState?.setState(() {});
                           },
@@ -258,7 +267,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                                   if (!value) {
                                     menuText = '-';
                                   }
-                                  object!.views[viewIndex] = ViewInfo.getViewStr(styleIndex, menuText, outStr);
+                                  object!.views[viewIndex] = ViewInfo.formComponents(styleIndex, menuText, outStr);
                                   setState((){});
                                   _constructorKey.currentState?.setState(() {});
                                 }
@@ -269,7 +278,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                                 child: TextFormField(
                                   initialValue: outStr,
                                   onFieldSubmitted: (text){
-                                    object!.views[viewIndex] = ViewInfo.getViewStr(styleIndex, text, outStr);
+                                    object!.views[viewIndex] = ViewInfo.formComponents(styleIndex, text, outStr);
                                     setState((){});
                                     _constructorKey.currentState?.setState(() {});
                                   },
@@ -327,15 +336,43 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       key: _stylePanelKey,
       builder: (context, setState) {
         return DkExpansionTile(
-          title: const Text('Стили'),
+          title: Row(
+            children: [
+              const Expanded(child: Text('Стили')),
+              if (_styleExpanded) ...[
+                IconButton(
+                    onPressed: _selStyleInfo == null ? null : () async {
+                      if (! await _deleteSelStyle()) return;
+                      _stylePanelKey.currentState?.setState(() {});
+                      _constructorKey.currentState?.setState(() {});
+                      _objectEditorKey.currentState?.setState(() {});
+                    },
+                    icon: const Icon(Icons.delete)
+                ),
+
+                IconButton(
+                    onPressed: (){
+                      _addStyleNew();
+                      _stylePanelKey.currentState?.setState(() {});
+                    },
+                    icon: const Icon(Icons.add)
+                )
+              ],
+            ],
+          ),
           children: [
             Row(
               children: [
                 Expanded(flex: 1, child: _styleList()),
-                Expanded(flex: 2, child: _selStyleTuner(_selStyleStr))
+                Expanded(flex: 2, child: _selStyleTuner(_selStyleInfo.toString()))
               ],
             )
           ],
+
+          onExpansionChanged: (expanded) {
+            _styleExpanded = expanded;
+            _stylePanelKey.currentState?.setState(() {});
+          },
         );
       }
     );
@@ -367,7 +404,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
               onTap: () {
                 _selStyleIndex = styleIndex;
-                _selStyleStr = _constructor.textConstructorData.styles[_selStyleIndex];
+                _selStyleInfo = _constructor.textConstructorData.styles[_selStyleIndex];
                 _stylePanelKey.currentState?.setState(() {});
               },
             ),
@@ -383,33 +420,53 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   }
 
   Widget _selStyleTuner(String styleStr) {
-    if (styleStr.isEmpty) return Container();
-
     return TextConstructorWordStyleWidget(
       styleStr: styleStr,
       fieldDesc: _descMap["style"]!,
       onChange: (newStyleStr){
-        _selStyleStr = newStyleStr;
-        _constructor.textConstructorData.styles[_selStyleIndex] = newStyleStr;
+        _selStyleInfo = StyleInfo.fromStyleStr(newStyleStr) ;
+        _constructor.textConstructorData.styles[_selStyleIndex] = _selStyleInfo!;
         _styleListKey.currentState?.setState(() {});
         _constructor.setState(() {});
       },
     );
   }
 
-  List<Map<String, dynamic>> _convertStyleListIn(List<dynamic> styleList) {
+  void _addStyleNew() {
+    _constructor.textConstructorData.styles.add(StyleInfo());
+  }
+
+  Future<bool> _deleteSelStyle() async {
+    final dlgResult = await simpleDialog(
+      context: context,
+      title: const Text('Удалить стиль?'),
+      barrierDismissible: true
+    )?? false;
+    if (!dlgResult) return false;
+
+    for (var object in _constructor.textConstructorData.objects) {
+      for (int viewIndex = 0; viewIndex < object.views.length; viewIndex ++) {
+        final view = object.views[viewIndex];
+        if (view.styleIndex == _selStyleIndex) {
+          final newView = ViewInfo.formComponents(-1, view.menuText, view.text);
+          object.views[viewIndex] = newView;
+        }
+      }
+    }
+
+    _constructor.textConstructorData.styles.removeAt(_selStyleIndex);
+
+    return true;
+  }
+
+  List<Map<String, dynamic>> _convertStyleListIn(List<StyleInfo> styleList) {
     final result = <Map<String, dynamic>>[];
 
     for (var style in styleList) {
-      result.add(_convertStyleIn(style as String));
+      result.add(style.toMap());
     }
 
     return result;
-  }
-
-  Map<String, dynamic> _convertStyleIn(String styleStr) {
-    final styleInfo = StyleInfo.fromStyleStr(styleStr);
-    return styleInfo.toMap();
   }
 
   void _replaceWordToObject() {
@@ -418,7 +475,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     word = LabelInfo.unSelect(word);
 
     _constructor.textConstructorData.objects.add(
-        WordObject(name: word, viewIndex: 0, nonRemovable: false, views: [''])
+        WordObject(name: word, nonRemovable: false, views: [ViewInfo('')])
     );
 
     _constructor.panelController.deleteWord(pos);
@@ -443,14 +500,11 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       if (!labelInfo.isObject) continue;
       if (labelInfo.objectName != object.name) continue;
 
-      final viewIndex = labelInfo.viewIndex??object.viewIndex;
 
       var word = object.name;
-      if (viewIndex >= 0) {
-        final viewStr = object.views[viewIndex];
-        if (viewStr.isNotEmpty) {
-          word = viewStr.split('|').last;
-        }
+      final viewInfo = object.views[labelInfo.viewIndex];
+      if (viewInfo.text.isNotEmpty) {
+        word = viewInfo.text;
       }
 
       _constructor.panelController.deleteWord(pos);
@@ -459,22 +513,25 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
     _constructor.textConstructorData.objects.remove(object);
 
+    _selPos = focusPos;
+    _selLabel = wordList[focusPos];
+    _selLabelInfo = LabelInfo(_selLabel);
+
     _constructor.panelController.setFocusPos(focusPos);
-    //constructor.panelController.refreshPanel();
   }
 
-  void _deleteObjectView(WordObject object, int delViewIndex) async {
+  Future<bool> _deleteObjectView(WordObject object, int delViewIndex) async {
     final dlgResult = await simpleDialog(
       context: context,
       title: const Text('Предупреждение'),
       content: const Text('Удалить эту настройку визуализации?')
     )??false;
 
-    if (!dlgResult) return;
+    if (!dlgResult) return false;
 
     if (object.views.length == 1) {
       _replaceObjectToWord(object);
-      return;
+      return true;
     }
 
     final wordList = _constructor.panelController.getWordList();
@@ -487,38 +544,19 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       if (!labelInfo.isObject) continue;
       if (labelInfo.objectName != object.name) continue;
 
-      var viewIndex = labelInfo.viewIndex??object.viewIndex;
+      if (labelInfo.viewIndex <= delViewIndex) continue;
 
-      if (viewIndex <= delViewIndex) continue;
-
-      final newViewIndex = viewIndex - 1;
+      final newViewIndex = labelInfo.viewIndex - 1;
 
       wordList[pos] = '#$newViewIndex|${object.name}';
     }
 
     object.views.removeAt(delViewIndex);
+    return true;
   }
 
   void _startTest() {
-    //_textConstructorData.styles[2] = 'ccg,bcb';
-    //constructor.panelController.insertText(1, '#1|символ');
 
-    final pos = _constructor.panelController.getFocusPos();
-    var word = _constructor.panelController.getWord(pos);
-    word = LabelInfo.unSelect(word);
-
-    _constructor.textConstructorData.objects.add(
-      WordObject(name: word, viewIndex: 0, nonRemovable: false, views: [
-        '0|$word',
-        '1|$word',
-        '2|$word',
-      ])
-    );
-
-    _constructor.panelController.deleteWord(pos);
-    _constructor.panelController.insertWord(pos, '#$word');
-
-    _constructor.panelController.refreshPanel();
   }
 
 
