@@ -18,6 +18,7 @@ class TextConstructorOptionsWidget extends StatelessWidget {
       fieldName        : '',
       fieldDesc        : fieldDesc,
       onJsonFieldBuild : buildSubFiled,
+      mode             : JsonExpansionFieldGroupMode.initialCollapsed,
     );
   }
 

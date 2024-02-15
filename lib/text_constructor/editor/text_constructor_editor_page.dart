@@ -18,7 +18,16 @@ class TextConstructorEditorPage extends StatefulWidget {
   State<TextConstructorEditorPage> createState() => _TextConstructorEditorPageState();
 }
 
+class AnswerTextConstructor {
+  final GlobalKey<TextConstructorWidgetState> key;
+  final TextConstructorData textConstructorData;
+  bool viewOnly = true;
+  AnswerTextConstructor(this.key, this.textConstructorData);
+}
+
 class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
+  late Color _panelColor;
+  
   late Map<String, dynamic> _json;
   final Map<String, dynamic> _styleJson = {};
 
@@ -45,9 +54,16 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   StyleInfo? _selStyleInfo;
   int        _selStyleIndex = -1;
 
+  final _answersPanelKey = GlobalKey();
+  bool _answersExpanded = false;
+
+  final _answerList = <AnswerTextConstructor>[];
+
   @override
   void initState() {
     super.initState();
+    
+    _panelColor = Colors.grey.shade200;
 
     _json = <String, dynamic>{};
 
@@ -88,9 +104,134 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       children: [
         _textConstructor(),
         _objectEditor(),
+        Container(height: 6),
         _stylePanel(),
-        TextConstructorOptionsWidget(json: _json, path: _rootPath, fieldDesc: _descMap["options"]!),
+        Container(height: 6),
+        _answersPanel(),
+        Container(height: 6),
+        _optionsPanel(),
       ],
+    );
+  }
+
+  Widget _answersPanel() {
+    return StatefulBuilder(
+      key:  _answersPanelKey,
+      builder: (context, setState) {
+        final title = Row(
+          children: [
+            const Expanded(child: Text('Ответы')),
+
+            if (_answersExpanded || _answerList.isEmpty) ...[
+              IconButton(
+                  onPressed: () {
+                    setState((){
+                      _addAnswer();
+                      _answersExpanded = true;
+                    });
+                  },
+                  icon: const Icon(Icons.add, color: Colors.blue)
+              )
+            ],
+          ],
+        );
+
+        if (_answerList.isEmpty) {
+          return ListTile(
+            title: title,
+            tileColor: _panelColor,
+            contentPadding: const EdgeInsets.only(left: 16, right: 4),
+          );
+        }
+
+        return DkExpansionTile(
+          title: title,
+
+          collapsedBackgroundColor: _panelColor,
+          backgroundColor: _panelColor,
+
+          initiallyExpanded: _answersExpanded,
+
+          children: _answerList.map((answer) {
+            return StatefulBuilder(builder: (context, setState) {
+              final answerWidget = Container(
+                decoration: answer.viewOnly? null : const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide( color:  Colors.blue, width: 3)
+                  )
+                ),
+
+                child: TextConstructorWidget(
+                  key: answer.key,
+                  textConstructor: answer.textConstructorData,
+                  viewOnly: answer.viewOnly,
+                  toolbarTrailing: Row(
+                    children: [
+                      IconButton(
+                          onPressed: () {
+                            answer.viewOnly = true;
+                            setState((){});
+                          },
+                          icon: const Icon(Icons.check, color: Colors.lightGreenAccent)
+                      ),
+
+                      IconButton(
+                          onPressed: () {
+                            _answerList.remove(answer);
+                            _answersPanelKey.currentState?.setState((){});
+                          },
+                          icon: const Icon(Icons.delete, color: Colors.redAccent)
+                      ),
+
+                    ],
+                  ),
+
+                  // onRegisterAnswer: answer.viewOnly? null : (text, answerList) {
+                  //   answer.viewOnly = true;
+                  //   setState((){});
+                  // },
+                ),
+              );
+
+              return Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 4),
+                child: Row(
+                  children: [
+                    Expanded(child: answerWidget),
+
+                    if (answer.viewOnly) ...[
+                      IconButton(
+                          onPressed: () {
+                            answer.viewOnly = false;
+                            setState((){});
+                          },
+                          icon: const Icon(Icons.edit, color: Colors.blue)
+                      )
+                    ]
+
+                  ],
+                ),
+              );
+            });
+          }).toList(),
+
+          onExpansionChanged: (expanded) {
+            setState((){
+              _answersExpanded = expanded;
+            });
+          },
+        );
+      }
+    );
+  }
+
+  Widget _optionsPanel() {
+    return Container(
+      color: _panelColor,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 16, right: 16),
+        child: TextConstructorOptionsWidget(json: _json, path: _rootPath, fieldDesc: _descMap["options"]!),
+      ),
     );
   }
 
@@ -129,6 +270,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     return StatefulBuilder(
       key: _objectEditorKey,
       builder: (context, setState) {
+
         if (_selPos < 0) return Container();
 
         WordObject? object;
@@ -147,15 +289,14 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                 onPressed: (){
                   if (object != null){
                     object.views.add(ViewInfo(''));
-                    setState((){});
                   } else {
                     _replaceWordToObject();
-                    _selLabel = '#${_selLabelInfo!.word}';
                     _objectExpanded = true;
-                    setState((){});
+                    _constructorKey.currentState?.setState(() {});
                   }
+                  setState((){});
                 },
-                icon: const Icon(Icons.add)
+                icon: const Icon(Icons.add, color: Colors.blue)
             ),
           ],
 
@@ -215,7 +356,6 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                         IconButton(
                           onPressed: () async {
                             if (! await _deleteObjectView(object!, viewIndex)) return;
-                            _selLabel = object.name;
                             setState((){});
                             _constructorKey.currentState?.setState(() {});
                           },
@@ -302,16 +442,21 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
             title: title,
             initiallyExpanded: _objectExpanded,
             childrenPadding: const EdgeInsets.only(left: 40),
-            children: children,
+            collapsedBackgroundColor: _panelColor,
+            backgroundColor: _panelColor,
             onExpansionChanged: (expanded){
               _objectExpanded = expanded;
               setState((){});
             },
+            children: children,
           );
         }
 
-
-        return ListTile(title: title);
+        return ListTile(
+          title: title,
+          contentPadding: const EdgeInsets.only(left: 16, right: 4),
+          tileColor: _panelColor,
+        );
       }
     );
   }
@@ -360,6 +505,15 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
               ],
             ],
           ),
+
+          onExpansionChanged: (expanded) {
+            _styleExpanded = expanded;
+            _stylePanelKey.currentState?.setState(() {});
+          },
+
+          collapsedBackgroundColor: _panelColor,
+          backgroundColor: _panelColor,
+
           children: [
             Row(
               children: [
@@ -368,11 +522,6 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
               ],
             )
           ],
-
-          onExpansionChanged: (expanded) {
-            _styleExpanded = expanded;
-            _stylePanelKey.currentState?.setState(() {});
-          },
         );
       }
     );
@@ -479,11 +628,15 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     );
 
     _constructor.panelController.deleteWord(pos);
-    _constructor.panelController.insertWord(pos, '#$word');
+
+    word = '#$word';
+    _constructor.panelController.insertWord(pos, word);
 
     _constructor.panelController.setFocusPos(pos);
 
-    _constructor.panelController.refreshPanel();
+    _selPos       = pos;
+    _selLabel     = word;
+    _selLabelInfo = LabelInfo(_selLabel);
   }
 
   void _replaceObjectToWord(WordObject object) {
@@ -509,13 +662,15 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
       _constructor.panelController.deleteWord(pos);
       _constructor.panelController.insertWord(pos, word);
+
+      if (pos == focusPos) {
+        _selPos       = focusPos;
+        _selLabel     = word;
+        _selLabelInfo = LabelInfo(_selLabel);
+      }
     }
 
     _constructor.textConstructorData.objects.remove(object);
-
-    _selPos = focusPos;
-    _selLabel = wordList[focusPos];
-    _selLabelInfo = LabelInfo(_selLabel);
 
     _constructor.panelController.setFocusPos(focusPos);
   }
@@ -553,6 +708,19 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
     object.views.removeAt(delViewIndex);
     return true;
+  }
+
+  void _addAnswer() {
+    final textConstructorData = TextConstructorData(
+      text    : _constructor.panelController.text,
+      styles  : _constructor.textConstructorData.styles,
+      objects : _constructor.textConstructorData.objects,
+      btnKeyboard: false,
+    );
+
+    final widgetKey = GlobalKey<TextConstructorWidgetState>();
+
+    _answerList.add(AnswerTextConstructor(widgetKey, textConstructorData));
   }
 
   void _startTest() {

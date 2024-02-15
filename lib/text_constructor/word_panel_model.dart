@@ -357,7 +357,7 @@ class TextConstructorData {
   final List<StyleInfo> styles;
   final int markStyle;
   final String basement;
-  final Map<String, String> audioMap;
+  final Map<String, String>? audioMap;
 
   final bool canMoveWord;
   final bool randomMixWord;
@@ -383,13 +383,13 @@ class TextConstructorData {
     required this.text,
     required this.objects,
     required this.styles,
-    required this.markStyle,
-    required this.basement,
-    required this.audioMap,
-    required this.randomMixWord,
-    required this.randomDelWord,
-    required this.randomView,
-    required this.notDelFromBasement,
+    this.markStyle = -1,
+    this.basement = '',
+    this.audioMap,
+    this.randomMixWord = false,
+    this.randomDelWord = false,
+    this.randomView = false,
+    this.notDelFromBasement = false,
     this.canMoveWord   = true,
     this.noCursor      = false,
     this.focusAsCursor = true,

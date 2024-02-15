@@ -13,7 +13,7 @@ import '../audio_button.dart';
 import '../common.dart';
 import 'drag_box_widget.dart';
 
-typedef RegisterAnswer = void Function(String answerValue, [List<String>? answerList]);
+typedef RegisterAnswer = void Function(String answerValue, List<String>? answerList);
 typedef PrepareFilePath = String Function(String fileName);
 
 class TextConstructorWidget extends StatefulWidget {
@@ -21,8 +21,21 @@ class TextConstructorWidget extends StatefulWidget {
   final RegisterAnswer? onRegisterAnswer;
   final PrepareFilePath? onPrepareFileUrl;
   final int? randomPercent;
+  final bool viewOnly; // no edit panel + no basement + no empty space row at bottom + no moving + no menu
   final void Function(int pos, String label)? onTapLabel;
-  const TextConstructorWidget({required this.textConstructor, this.onRegisterAnswer, this.onPrepareFileUrl, this.randomPercent, this.onTapLabel, Key? key}) : super(key: key);
+  final Widget? toolbarTrailing;
+
+  const TextConstructorWidget({
+    required this.textConstructor,
+    this.onRegisterAnswer,
+    this.onPrepareFileUrl,
+    this.randomPercent,
+    this.viewOnly = false,
+    this.onTapLabel,
+    this.toolbarTrailing,
+
+    Key? key
+  }) : super(key: key);
 
   @override
   State<TextConstructorWidget> createState() => TextConstructorWidgetState();
@@ -40,7 +53,7 @@ class _RandomDelWordResult {
   _RandomDelWordResult(this.text, this.delWords);
 }
 
-class TextConstructorWidgetState extends State<TextConstructorWidget> {
+class TextConstructorWidgetState extends State<TextConstructorWidget> with AutomaticKeepAliveClientMixin<TextConstructorWidget> {
   late TextConstructorData textConstructorData;
   late WordPanelController panelController;
   late WordGridController  _basementController;
@@ -74,6 +87,9 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> {
   final _basementKey = GlobalKey();
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
 
@@ -97,12 +113,27 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> {
     panelController = WordPanelController(
       text          : panelText,
       onChange      : _onChange,
-      canMoveWord   : textConstructorData.canMoveWord,
+      canMoveWord   : textConstructorData.canMoveWord && !widget.viewOnly,
       noCursor      : textConstructorData.noCursor,
       focusAsCursor : textConstructorData.focusAsCursor,
     );
 
     _basementController = WordGridController(basementText);
+  }
+
+  @override
+  void didUpdateWidget(covariant TextConstructorWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.viewOnly != oldWidget.viewOnly) {
+      panelController.canMoveWord = textConstructorData.canMoveWord && !widget.viewOnly;
+      if (widget.viewOnly) {
+        _panelHeight -= panelController.wordBoxHeight;
+      } else {
+        _panelHeight += panelController.wordBoxHeight;
+      }
+    }
+
   }
 
   String _randomMixWord(String text, int percent) {
@@ -168,6 +199,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return LayoutBuilder(builder: (BuildContext context, BoxConstraints viewportConstraints) {
       WidgetsBinding.instance.addPostFrameCallback((_){
         if (_starting) {
@@ -190,6 +222,13 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> {
   }
 
   Widget _body(BoxConstraints viewportConstraints) {
+    if (widget.viewOnly) {
+      return SizedBox(
+          height: _panelHeight,
+          child: _wordPanel()
+      );
+    }
+
     if (_basementHeight == 0.0) {
       return Column(
         children: [
@@ -265,7 +304,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> {
       onDragBoxLongPress : _onDragBoxLongPress,
       onDoubleTap        : _onDragBoxLongPress,
       onChangeHeight     : (double newHeight) {
-        final extHeight = newHeight + panelController.wordBoxHeight;
+        final extHeight = newHeight + (widget.viewOnly? 0 : panelController.wordBoxHeight);
         if (_panelHeight != extHeight) {
           setState(() {
             _panelHeight = extHeight;
@@ -386,6 +425,10 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> {
                     ),
                   ],
 
+                  if (widget.toolbarTrailing != null) ...[
+                    widget.toolbarTrailing!
+                  ]
+
                 ]),
               )
           );
@@ -443,7 +486,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> {
     }
 
     final boxWidget = child as _BoxWidget;
-    final fileName = textConstructorData.audioMap[boxWidget.outStr];
+    final fileName = textConstructorData.audioMap?[boxWidget.outStr];
     if (fileName != null) {
       final filePath = widget.onPrepareFileUrl!(fileName);
       await playAudio(filePath);
@@ -537,7 +580,8 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> {
 
     if (labelInfo.isObject) {
 
-      final wordObject = textConstructorData.objects.firstWhereOrNull((wordObject) => wordObject.name == labelInfo.objectName)!;
+      final wordObject = textConstructorData.objects.firstWhereOrNull((wordObject) => wordObject.name == labelInfo.objectName);
+      if (wordObject == null) return Container(); // its possible when object was removed in editor
 
       final viewInfo = wordObject.views[labelInfo.viewIndex];
 
@@ -734,6 +778,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> {
   }
 
   Future<String?> _showPopupMenu(String label, Offset position) async {
+    if (widget.viewOnly) return null;
     if (label.isEmpty) return null;
     final labelInfo = LabelInfo(label);
 

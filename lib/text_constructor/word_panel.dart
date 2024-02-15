@@ -29,7 +29,7 @@ class WordPanelController {
 
   final VoidCallback? onChange;
 
-  final bool canMoveWord;
+  bool canMoveWord;
   final bool noCursor;
   final bool focusAsCursor;
 
