@@ -15,6 +15,7 @@ import 'drag_box_widget.dart';
 
 typedef RegisterAnswer = void Function(String answerValue, List<String>? answerList);
 typedef PrepareFilePath = String Function(String fileName);
+typedef Decorator = Widget Function(Widget child);
 
 class TextConstructorWidget extends StatefulWidget {
   final TextConstructorData textConstructor;
@@ -23,7 +24,11 @@ class TextConstructorWidget extends StatefulWidget {
   final int? randomPercent;
   final bool viewOnly; // no edit panel + no basement + no empty space row at bottom + no moving + no menu
   final void Function(int pos, String label)? onTapLabel;
-  final Widget? toolbarTrailing;
+  final List<Widget>? toolbarLeading;
+  final List<Widget>? toolbarTrailing;
+  final Decorator? toolbarDecorator;
+  final Decorator? wordPanelDecorator;
+  final Decorator? basementPanelDecorator;
 
   const TextConstructorWidget({
     required this.textConstructor,
@@ -32,7 +37,11 @@ class TextConstructorWidget extends StatefulWidget {
     this.randomPercent,
     this.viewOnly = false,
     this.onTapLabel,
+    this.toolbarLeading,
     this.toolbarTrailing,
+    this.toolbarDecorator,
+    this.wordPanelDecorator,
+    this.basementPanelDecorator,
 
     Key? key
   }) : super(key: key);
@@ -86,6 +95,10 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
   final _panelKey = GlobalKey();
   final _basementKey = GlobalKey();
 
+  late Decorator _toolbarDecorator;
+  late Decorator _wordPanelDecorator;
+  late Decorator _basementPanelDecorator;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -109,6 +122,10 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
         basementText = '$basementText ${delResult.delWords}';
       }
     }
+
+    _toolbarDecorator       = widget.toolbarDecorator       ?? _toolbarDefaultDecorator;
+    _wordPanelDecorator     = widget.wordPanelDecorator     ?? _wordPanelDefaultDecorator;
+    _basementPanelDecorator = widget.basementPanelDecorator ?? _basementPanelDefaultDecorator;
 
     panelController = WordPanelController(
       text          : panelText,
@@ -223,9 +240,11 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
 
   Widget _body(BoxConstraints viewportConstraints) {
     if (widget.viewOnly) {
-      return SizedBox(
+      return _wordPanelDecorator(
+        SizedBox(
           height: _panelHeight,
           child: _wordPanel()
+        )
       );
     }
 
@@ -233,13 +252,15 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       return Column(
         children: [
 
-          _toolbar(),
+          _toolbarDecorator(
+            _toolbar()
+          ),
 
-          Container(height: 4),
-
-          SizedBox(
-            height: _panelHeight,
-            child: _wordPanel()
+          _wordPanelDecorator(
+            SizedBox(
+              height: _panelHeight,
+              child: _wordPanel()
+            )
           ),
 
           Offstage( child: SizedBox(
@@ -253,25 +274,23 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
     return Column(
       children: [
 
-        _toolbar(),
-
-        Container(height: 4),
-
-        SizedBox(
-            height: _panelHeight,
-            child: _wordPanel()
+        _toolbarDecorator(
+          _toolbar()
         ),
 
-        const Divider(
-          color: Colors.black,
+        _wordPanelDecorator(
+          SizedBox(
+              height: _panelHeight,
+              child: _wordPanel()
+          )
         ),
 
-        SizedBox(
-          height:  _basementHeight,
-          child: _basement(),
+        _basementPanelDecorator(
+          SizedBox(
+            height:  _basementHeight,
+            child: _basement(),
+          )
         ),
-
-        Container(height: 4),
       ],
     );
 
@@ -340,6 +359,10 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
               child: IconTheme(
                 data: IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+
+                  if (widget.toolbarLeading != null) ...[
+                    ...widget.toolbarLeading!,
+                  ],
 
                   if (textConstructorData.btnKeyboard) ...[
                     IconButton(
@@ -426,7 +449,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
                   ],
 
                   if (widget.toolbarTrailing != null) ...[
-                    widget.toolbarTrailing!
+                    ...widget.toolbarTrailing!,
                   ]
 
                 ]),
@@ -856,6 +879,29 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
     if (result != null && result) return word;
 
     return '';
+  }
+
+  Widget _toolbarDefaultDecorator(Widget child) {
+    return child;
+  }
+  Widget _wordPanelDefaultDecorator(Widget child) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 4),
+      child: child,
+    );
+  }
+  Widget _basementPanelDefaultDecorator(Widget child) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Column(
+        children: [
+          const Divider(
+            color: Colors.black,
+          ),
+          child,
+        ],
+      ),
+    );
   }
 }
 

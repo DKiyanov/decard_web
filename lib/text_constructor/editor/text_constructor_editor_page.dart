@@ -164,9 +164,10 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                 child: TextConstructorWidget(
                   key: answer.key,
                   textConstructor: answer.textConstructorData,
+                  wordPanelDecorator: _wordPanelDefaultDecorator,
+                  basementPanelDecorator: _basementPanelDefaultDecorator,
                   viewOnly: answer.viewOnly,
-                  toolbarTrailing: Row(
-                    children: [
+                  toolbarTrailing: [
                       IconButton(
                           onPressed: () {
                             answer.viewOnly = true;
@@ -182,14 +183,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                           },
                           icon: const Icon(Icons.delete, color: Colors.redAccent)
                       ),
-
                     ],
-                  ),
-
-                  // onRegisterAnswer: answer.viewOnly? null : (text, answerList) {
-                  //   answer.viewOnly = true;
-                  //   setState((){});
-                  // },
                 ),
               );
 
@@ -239,6 +233,8 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     return TextConstructorWidget(
       key             : _constructorKey,
       textConstructor : _textConstructorData,
+      wordPanelDecorator: _wordPanelDefaultDecorator,
+      basementPanelDecorator: _basementPanelDefaultDecorator,
       onTapLabel: (pos, label) {
         label = LabelInfo.unSelect(label);
 
@@ -716,11 +712,32 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       styles  : _constructor.textConstructorData.styles,
       objects : _constructor.textConstructorData.objects,
       btnKeyboard: false,
+      btnClear: false,
     );
 
     final widgetKey = GlobalKey<TextConstructorWidgetState>();
 
     _answerList.add(AnswerTextConstructor(widgetKey, textConstructorData));
+  }
+
+  Widget _wordPanelDefaultDecorator(Widget child) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 4, left: 8, right: 8),
+      child: child,
+    );
+  }
+  Widget _basementPanelDefaultDecorator(Widget child) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4, left: 8, right: 8),
+      child: Column(
+        children: [
+          const Divider(
+            color: Colors.black,
+          ),
+          child,
+        ],
+      ),
+    );
   }
 
   void _startTest() {
