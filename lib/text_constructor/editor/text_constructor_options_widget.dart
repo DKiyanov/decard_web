@@ -7,8 +7,9 @@ class TextConstructorOptionsWidget extends StatelessWidget {
   final Map<String, dynamic> json;
   final String path;
   final FieldDesc fieldDesc;
+  final JsonChanged onChange;
 
-  const TextConstructorOptionsWidget({required this.json, required this.path, required this.fieldDesc, Key? key}) : super(key: key);
+  const TextConstructorOptionsWidget({required this.json, required this.path, required this.fieldDesc, required this.onChange, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +20,7 @@ class TextConstructorOptionsWidget extends StatelessWidget {
       fieldDesc        : fieldDesc,
       onJsonFieldBuild : buildSubFiled,
       mode             : JsonExpansionFieldGroupMode.initialCollapsed,
+      onSubFiledChanged: onChange,
     );
   }
 
@@ -41,7 +43,7 @@ class TextConstructorOptionsWidget extends StatelessWidget {
     TextValidate? onValidate;
 
     if ([JrfTextConstructor.fontSize, JrfTextConstructor.boxHeight].contains(fieldName) ) {
-      fieldType = FieldType.int;
+      fieldType = FieldType.double;
     } else {
       input = JsonBooleanField(
         json      : json,

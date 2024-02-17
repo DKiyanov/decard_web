@@ -120,6 +120,8 @@ enum JsonExpansionFieldGroupMode{
   noHead
 }
 
+typedef JsonChanged = void Function(Map<String, dynamic> json);
+
 class JsonExpansionFieldGroup extends StatefulWidget {
   static const String keyBodyName = "bodyName";
 
@@ -131,7 +133,7 @@ class JsonExpansionFieldGroup extends StatefulWidget {
   final JsonExpansionFieldGroupMode mode;
   final OwnerDelegate? ownerDelegate;
   final Widget Function(BuildContext context, FieldDesc fieldDesc, String title, Map<String, dynamic> json)? titleBuilder;
-  final void Function(Map<String, dynamic> json)? onSubFiledChanged;
+  final JsonChanged? onSubFiledChanged;
 
   const JsonExpansionFieldGroup({
     required this.json,
@@ -429,6 +431,7 @@ class JsonTextField extends StatefulWidget {
   final FixBuilder? prefix;
   final FixBuilder? suffix;
   final TextValidate? onValidate;
+  final bool changeOnSubmit;
 
   const JsonTextField({
     required this.json,
@@ -444,6 +447,7 @@ class JsonTextField extends StatefulWidget {
     this.prefix,
     this.suffix,
     this.onValidate,
+    this.changeOnSubmit = true,
 
     Key? key
   }) : super(key: key);
@@ -469,9 +473,11 @@ class _JsonTextFieldState extends State<JsonTextField> {
     _isEmpty = controller.text.isEmpty;
     _errorText = widget.onValidate?.call(controller.text)??"";
 
-    controller.addListener(() {
-      onChange(controller.text);
-    });
+    if (!widget.changeOnSubmit) {
+      controller.addListener(() {
+        onChange(controller.text);
+      });
+    }
   }
 
   @override
@@ -523,6 +529,9 @@ class _JsonTextFieldState extends State<JsonTextField> {
         helperText: widget.fieldDesc.helperText,
         errorText: _errorText.isEmpty ? null : _errorText,
       ),
+      onSubmitted: (value) {
+        onChange(value);
+      },
     );
   }
 
@@ -559,7 +568,7 @@ dynamic getJsonValue(FieldType fieldType, String value){
   }
 
   if (fieldType == FieldType.double || fieldType == FieldType.signedDouble) {
-    return double.tryParse(value)??0;
+    return double.tryParse(value)??0.0;
   }
 
   if (value.isEmpty) return null;

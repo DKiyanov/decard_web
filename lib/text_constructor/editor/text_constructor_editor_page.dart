@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:decard_web/dk_expansion_tile.dart';
 import 'package:decard_web/text_constructor/editor/text_constructor_options_widget.dart';
 import 'package:flutter/material.dart';
@@ -11,24 +13,26 @@ import 'text_constructor_word_style_widget.dart';
 import '../../pack_editor/pack_widgets.dart';
 import '../word_panel_model.dart';
 
-class TextConstructorEditorPage extends StatefulWidget {
-  const TextConstructorEditorPage({Key? key}) : super(key: key);
-
-  @override
-  State<TextConstructorEditorPage> createState() => _TextConstructorEditorPageState();
-}
 
 class AnswerTextConstructor {
-  final GlobalKey<TextConstructorWidgetState> key;
+  GlobalKey<TextConstructorWidgetState> key;
   final TextConstructorData textConstructorData;
   bool viewOnly = true;
   AnswerTextConstructor(this.key, this.textConstructorData);
 }
 
+class TextConstructorEditorPage extends StatefulWidget {
+  final String jsonStr;
+  const TextConstructorEditorPage({required this.jsonStr, Key? key}) : super(key: key);
+
+  @override
+  State<TextConstructorEditorPage> createState() => _TextConstructorEditorPageState();
+}
+
 class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   late Color _panelColor;
   
-  late Map<String, dynamic> _json;
+  late Map<String, dynamic> _jsonMap;
   final Map<String, dynamic> _styleJson = {};
 
   late Map<String, FieldDesc> _descMap;
@@ -37,8 +41,8 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
   final _scrollController   = ScrollController();
 
-  final TextConstructorData _textConstructorData = TextConstructorData.fromMap(testTextConstructorJson);
-  final _constructorKey = GlobalKey<TextConstructorWidgetState>();
+  late TextConstructorData _textConstructorData;
+  var _constructorKey = GlobalKey<TextConstructorWidgetState>();
   TextConstructorWidgetState get _constructor => _constructorKey.currentState!;
 
   final _objectEditorKey = GlobalKey();
@@ -59,15 +63,55 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
   final _answerList = <AnswerTextConstructor>[];
 
+  final _markStylePanelKey = GlobalKey();
+
+  double _fontSize = 0;
+
   @override
   void initState() {
     super.initState();
     
     _panelColor = Colors.grey.shade200;
 
-    _json = <String, dynamic>{};
-
     _descMap = loadDescFromMap(textConstructorDescJson);
+
+    _jsonMap = jsonDecode(widget.jsonStr);
+
+    final Map<String, dynamic> setJsonMap = {};
+
+    for (var field in [
+      JrfTextConstructor.text,
+      JrfTextConstructor.objects,
+      JrfTextConstructor.styles,
+      JrfTextConstructor.markStyle,
+      JrfTextConstructor.basement,
+      JrfTextConstructor.answerList,
+      JrfTextConstructor.fontSize,
+      JrfTextConstructor.boxHeight,
+    ]) {
+      final value = _jsonMap[field];
+      if (value == null) continue;
+      setJsonMap[field] = value;
+    }
+
+    _textConstructorData = TextConstructorData.fromMap(setJsonMap);
+
+    _fontSize = _textConstructorData.fontSize;
+
+    // move default values back to _jsonMap if its was not set
+    final tcJson = _textConstructorData.toJson();
+    for (var tcEntry in tcJson.entries) {
+      if (tcEntry.value == null) continue;
+      if (_jsonMap[tcEntry.key] != null) continue;
+      _jsonMap[tcEntry.key] = tcEntry.value;
+    }
+
+    final answerList = _textConstructorData.answerList;
+    if (answerList != null) {
+      for (var answer in answerList) {
+        _addAnswer(answer);
+      }
+    }
 
     _styleJson[JrfTextConstructor.styles] = _convertStyleListIn(_textConstructorData.styles);
   }
@@ -106,6 +150,8 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
         _objectEditor(),
         Container(height: 6),
         _stylePanel(),
+        Container(height: 6),
+        _markStylePanel(),
         Container(height: 6),
         _answersPanel(),
         Container(height: 6),
@@ -179,7 +225,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                       IconButton(
                           onPressed: () {
                             _answerList.remove(answer);
-                            _answersPanelKey.currentState?.setState((){});
+                            _answersPanelRefresh();
                           },
                           icon: const Icon(Icons.delete, color: Colors.redAccent)
                       ),
@@ -219,12 +265,68 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     );
   }
 
+  void _answersPanelRebuild([Map<String, dynamic>? setJsonMap]) {
+    for (var answer in _answerList) {
+      if (setJsonMap != null) {
+        answer.textConstructorData.setFromMap(setJsonMap);
+        if (answer.key.currentState != null) {
+          answer.textConstructorData.text = answer.key.currentState!.panelController.text;
+        }
+      }
+      answer.key = GlobalKey();
+    }
+  }
+
+  void _answersPanelRefresh([Map<String, dynamic>? setJsonMap]) {
+    for (var answer in _answerList) {
+      if (setJsonMap != null) {
+        answer.textConstructorData.setFromMap(setJsonMap);
+      }
+      answer.key.currentState?.refresh();
+    }
+    _answersPanelKey.currentState?.setState(() {});
+  }
+
   Widget _optionsPanel() {
+    final fieldDesc = _descMap["options"]!;
+
     return Container(
       color: _panelColor,
       child: Padding(
         padding: const EdgeInsets.only(left: 16, right: 16),
-        child: TextConstructorOptionsWidget(json: _json, path: _rootPath, fieldDesc: _descMap["options"]!),
+        child: TextConstructorOptionsWidget(
+          json: _jsonMap,
+          path: _rootPath,
+          fieldDesc: fieldDesc,
+          onChange: (jsonMap){
+            final Map<String, dynamic> setJsonMap = {};
+
+            for (var field in [
+              JrfTextConstructor.fontSize,
+              JrfTextConstructor.boxHeight,
+            ]) {
+              final value = _jsonMap[field];
+              if (value == null) continue;
+              setJsonMap[field] = value;
+            }
+
+            _textConstructorData.setFromMap(setJsonMap);
+
+            if (_fontSize != _textConstructorData.fontSize) {
+              _fontSize != _textConstructorData.fontSize;
+              _textConstructorData.text = _constructor.panelController.text;
+              _constructorKey = GlobalKey();
+              _answersPanelRebuild(setJsonMap);
+              setState(() { });
+            } else {
+              _constructorKey.currentState?.refresh();
+              _objectEditorKey.currentState?.setState(() {});
+              _stylePanelKey.currentState?.setState(() {});
+
+              _answersPanelRefresh(setJsonMap);
+            }
+          },
+        ),
       ),
     );
   }
@@ -248,17 +350,54 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
           _selLabel = label;
           _selLabelInfo  =  LabelInfo(_selLabel);
           if (_selLabelInfo!.isObject){
-            final object = _constructor.textConstructorData.objects.firstWhere((object) => object.name == _selLabelInfo!.objectName);
+            final object = _textConstructorData.objects.firstWhere((object) => object.name == _selLabelInfo!.objectName);
             final viewIndex = _selLabelInfo!.viewIndex;
             final viewInfo = object.views[viewIndex];
             _selStyleIndex = viewInfo.styleIndex;
-            _selStyleInfo  = _constructor.textConstructorData.styles[_selStyleIndex];
+            _selStyleInfo  = _textConstructorData.styles[_selStyleIndex];
             _stylePanelKey.currentState?.setState(() {});
           }
 
           _objectEditorKey.currentState?.setState(() {});
         }
       },
+    );
+  }
+
+  Widget _dropdownStyle({
+    required String outStr,
+    required int styleIndex,
+    required void Function(int?) onChange,
+    Widget? noStyleItem
+  }) {
+    if (_constructorKey.currentState == null) return Container();
+
+    final styleItems = <DropdownMenuItem<int>>[];
+
+    styleItems.add(DropdownMenuItem<int>(
+      value: -1,
+      child: noStyleItem ?? _constructor.getObjectViewWidget(context,
+          label      : outStr,
+          styleIndex : -1
+      ),
+    ));
+
+    for (int styleIndex = 0; styleIndex < _textConstructorData.styles.length; styleIndex ++) {
+      styleItems.add(DropdownMenuItem<int>(
+        value: styleIndex,
+        child: _constructor.getObjectViewWidget(context,
+            label      : outStr,
+            styleIndex : styleIndex
+        ),
+      ));
+    }
+
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<int>(
+          value: styleIndex,
+          items: styleItems,
+          onChanged: onChange
+      ),
     );
   }
 
@@ -288,7 +427,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                   } else {
                     _replaceWordToObject();
                     _objectExpanded = true;
-                    _constructorKey.currentState?.setState(() {});
+                    _constructorKey.currentState?.refresh();
                   }
                   setState((){});
                 },
@@ -313,29 +452,6 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
             bool menuSwitchValue = menuText != ViewInfo.menuSkipText;
 
-            final styleItems = <DropdownMenuItem<int>>[];
-
-            styleItems.add(DropdownMenuItem<int>(
-              value: -1,
-              child: _constructor.getObjectViewWidget(context,
-                  objectName : object.name,
-                  label      : outStr,
-                  styleIndex : -1
-              ),
-            ));
-
-            for (int styleIndex = 0; styleIndex < _constructor.textConstructorData.styles.length; styleIndex ++) {
-              styleItems.add(DropdownMenuItem<int>(
-                value: styleIndex,
-                child: _constructor.getObjectViewWidget(context,
-                    objectName : object.name,
-                    label      : outStr,
-                    styleIndex : styleIndex
-                ),
-              ));
-            }
-
-
             children.add(Row(
               children: [
                 Expanded(
@@ -353,7 +469,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                           onPressed: () async {
                             if (! await _deleteObjectView(object!, viewIndex)) return;
                             setState((){});
-                            _constructorKey.currentState?.setState(() {});
+                            _constructorKey.currentState?.refresh();
                           },
                           icon: const Icon(Icons.delete, color: Colors.blue),
                         )
@@ -364,18 +480,16 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
                       _paramLabel(
                         title: 'Стиль',
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<int>(
-                              value: styleIndex,
-                              items: styleItems,
-                              onChanged: (value) {
-                                if (value == null) return;
-                                object!.views[viewIndex] = ViewInfo.formComponents(value, menuText, outStr);
-                                setState((){});
-                                _constructorKey.currentState?.setState(() {});
-                              }
-                          ),
-                        )
+                        child: _dropdownStyle(
+                          outStr: outStr,
+                          styleIndex: styleIndex,
+                          onChange: (value) {
+                            if (value == null) return;
+                            object!.views[viewIndex] = ViewInfo.fromComponents(value, menuText, outStr);
+                            setState((){});
+                            _constructorKey.currentState?.refresh();
+                          }
+                        ),
                       ),
 
                       // Текст
@@ -384,9 +498,9 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                         child: TextFormField(
                           initialValue: outStr,
                           onFieldSubmitted: (text){
-                            object!.views[viewIndex] = ViewInfo.formComponents(styleIndex, menuText, text);
+                            object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, menuText, text);
                             setState((){});
-                            _constructorKey.currentState?.setState(() {});
+                            _constructorKey.currentState?.refresh();
                           },
                         )
                       ),
@@ -403,9 +517,9 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                                   if (!value) {
                                     menuText = '-';
                                   }
-                                  object!.views[viewIndex] = ViewInfo.formComponents(styleIndex, menuText, outStr);
+                                  object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, menuText, outStr);
                                   setState((){});
-                                  _constructorKey.currentState?.setState(() {});
+                                  _constructorKey.currentState?.refresh();
                                 }
                             ),
 
@@ -414,9 +528,9 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                                 child: TextFormField(
                                   initialValue: outStr,
                                   onFieldSubmitted: (text){
-                                    object!.views[viewIndex] = ViewInfo.formComponents(styleIndex, text, outStr);
+                                    object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, text, outStr);
                                     setState((){});
-                                    _constructorKey.currentState?.setState(() {});
+                                    _constructorKey.currentState?.refresh();
                                   },
                                 ),
                               )
@@ -485,7 +599,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                     onPressed: _selStyleInfo == null ? null : () async {
                       if (! await _deleteSelStyle()) return;
                       _stylePanelKey.currentState?.setState(() {});
-                      _constructorKey.currentState?.setState(() {});
+                      _constructorKey.currentState?.refresh();
                       _objectEditorKey.currentState?.setState(() {});
                     },
                     icon: const Icon(Icons.delete)
@@ -529,7 +643,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       builder: (context, setState) {
         final children = <Widget>[];
 
-        for(int styleIndex = 0; styleIndex < _constructor.textConstructorData.styles.length; styleIndex ++) {
+        for(int styleIndex = 0; styleIndex < _textConstructorData.styles.length; styleIndex ++) {
           children.add(
             InkWell(
               child: Container(
@@ -549,7 +663,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
               onTap: () {
                 _selStyleIndex = styleIndex;
-                _selStyleInfo = _constructor.textConstructorData.styles[_selStyleIndex];
+                _selStyleInfo = _textConstructorData.styles[_selStyleIndex];
                 _stylePanelKey.currentState?.setState(() {});
               },
             ),
@@ -570,7 +684,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       fieldDesc: _descMap["style"]!,
       onChange: (newStyleStr){
         _selStyleInfo = StyleInfo.fromStyleStr(newStyleStr) ;
-        _constructor.textConstructorData.styles[_selStyleIndex] = _selStyleInfo!;
+        _textConstructorData.styles[_selStyleIndex] = _selStyleInfo!;
         _styleListKey.currentState?.setState(() {});
         _constructor.setState(() {});
       },
@@ -578,7 +692,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   }
 
   void _addStyleNew() {
-    _constructor.textConstructorData.styles.add(StyleInfo());
+    _textConstructorData.styles.add(StyleInfo());
   }
 
   Future<bool> _deleteSelStyle() async {
@@ -589,17 +703,17 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     )?? false;
     if (!dlgResult) return false;
 
-    for (var object in _constructor.textConstructorData.objects) {
+    for (var object in _textConstructorData.objects) {
       for (int viewIndex = 0; viewIndex < object.views.length; viewIndex ++) {
         final view = object.views[viewIndex];
         if (view.styleIndex == _selStyleIndex) {
-          final newView = ViewInfo.formComponents(-1, view.menuText, view.text);
+          final newView = ViewInfo.fromComponents(-1, view.menuText, view.text);
           object.views[viewIndex] = newView;
         }
       }
     }
 
-    _constructor.textConstructorData.styles.removeAt(_selStyleIndex);
+    _textConstructorData.styles.removeAt(_selStyleIndex);
 
     return true;
   }
@@ -614,12 +728,44 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     return result;
   }
 
+  Widget _markStylePanel() {
+    return StatefulBuilder(
+      key: _markStylePanelKey,
+      builder: (context, setState) {
+        return ListTile(
+          title: Row(
+            children: [
+              const Expanded(child: Text('Стиль для выделения')),
+              Expanded(
+                child: _dropdownStyle(
+                    outStr: 'Стиль',
+                    styleIndex: _textConstructorData.markStyle,
+                    noStyleItem: const Text('стиль не выбран'),
+                    onChange: (value) {
+                      if (value == null) return;
+                      _textConstructorData.markStyle = value;
+                      setState((){});
+                      _constructorKey.currentState?.refresh();
+                      _answersPanelRefresh();
+                    }
+                ),
+              )
+            ],
+          ),
+          contentPadding: const EdgeInsets.only(left: 16, right: 16),
+          tileColor: _panelColor,
+        );
+      }
+    );
+
+  }
+
   void _replaceWordToObject() {
     final pos = _constructor.panelController.getFocusPos();
     var word =  _constructor.panelController.getWord(pos);
     word = LabelInfo.unSelect(word);
 
-    _constructor.textConstructorData.objects.add(
+    _textConstructorData.objects.add(
         WordObject(name: word, nonRemovable: false, views: [ViewInfo('')])
     );
 
@@ -666,7 +812,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       }
     }
 
-    _constructor.textConstructorData.objects.remove(object);
+    _textConstructorData.objects.remove(object);
 
     _constructor.panelController.setFocusPos(focusPos);
   }
@@ -706,11 +852,11 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     return true;
   }
 
-  void _addAnswer() {
+  void _addAnswer([String? text]) {
     final textConstructorData = TextConstructorData(
-      text    : _constructor.panelController.text,
-      styles  : _constructor.textConstructorData.styles,
-      objects : _constructor.textConstructorData.objects,
+      text    : text ?? _constructor.panelController.text,
+      styles  : _textConstructorData.styles,
+      objects : _textConstructorData.objects,
       btnKeyboard: false,
       btnClear: false,
     );
@@ -740,8 +886,33 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     );
   }
 
-  void _startTest() {
+  String getResult() {
+    final jsonMap = _textConstructorData.toJson();
 
+    final fieldDesc = _descMap["options"]!;
+    for (var field in fieldDesc.subFields!.keys) {
+      final value = _jsonMap[field];
+      if (value == null) continue;
+      jsonMap[field] = value;
+    }
+
+    final answerList = <String>[];
+
+    for (var answer in _answerList) {
+      if (answer.key.currentState != null) {
+        answerList.add(answer.key.currentState!.panelController.text);
+      } else {
+        answerList.add(answer.textConstructorData.text);
+      }
+    }
+
+    jsonMap[JrfTextConstructor.answerList] = answerList;
+
+    return jsonEncode(jsonMap);
+  }
+
+  void _startTest() {
+    print(getResult());
   }
 
 

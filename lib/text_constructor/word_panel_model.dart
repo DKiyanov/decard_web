@@ -61,10 +61,10 @@ class LabelInfo {
     if (str.startsWith('#')){
       isObject = true;
       if (str.substring(2,3) == '|') {
-        _word = label.substring(3);
-        viewIndex = int.parse(label.substring(1,2));
+        _word = str.substring(3);
+        viewIndex = int.parse(str.substring(1,2));
       } else {
-        _word = label.substring(1);
+        _word = str.substring(1);
         viewIndex = 0;
       }
     } else {
@@ -113,16 +113,20 @@ class ViewInfo {
     }
   }
 
-  factory ViewInfo.formComponents(int styleIndex, String menuText, String text) {
+  factory ViewInfo.fromComponents(int styleIndex, String menuText, String text) {
     return ViewInfo(getViewStr(styleIndex, menuText, text));
   }
 
   static String getViewStr(int styleIndex, String menuText, String text){
     return '$styleIndex/$menuText|$text';
   }
+
+  String toJson() {
+    return viewStr;
+  }
 }
 
-class JrfStyleInfo{
+class JrfStyleInfo {
   static const charColor       = "charColor";
   static const backgroundColor = "backgroundColor";
   static const frameColor      = "frameColor";
@@ -336,6 +340,10 @@ class StyleInfo {
     if (color == null) return null;
     return colorKeyMap.entries.firstWhereOrNull((entry) => entry.value == color)?.key;
   }
+
+  String toJson() {
+    return toString();
+  }
 }
 
 class JrfSpecText {
@@ -352,32 +360,32 @@ class JrfWordObject {
 }
 
 class TextConstructorData {
-  final String text;
+  String text;
   final List<WordObject> objects;
   final List<StyleInfo> styles;
-  final int markStyle;
-  final String basement;
+  int markStyle;
+  String basement;
   final Map<String, String>? audioMap;
 
-  final bool canMoveWord;
-  final bool randomMixWord;
-  final bool randomDelWord;
-  final bool randomView;
-  final bool notDelFromBasement;
-  final bool noCursor;
-  final bool focusAsCursor;
+  bool canMoveWord;
+  bool randomMixWord;
+  bool randomDelWord;
+  bool randomView;
+  bool notDelFromBasement;
+  bool noCursor;
+  bool focusAsCursor;
 
   final List<String>? answerList;
 
-  final double fontSize ;
-  final double boxHeight;
+  double fontSize ;
+  double boxHeight;
 
-  final bool btnKeyboard ;
-  final bool btnUndo     ;
-  final bool btnRedo     ;
-  final bool btnBackspace;
-  final bool btnDelete   ;
-  final bool btnClear    ;
+  bool btnKeyboard ;
+  bool btnUndo     ;
+  bool btnRedo     ;
+  bool btnBackspace;
+  bool btnDelete   ;
+  bool btnClear    ;
 
   TextConstructorData({
     required this.text,
@@ -395,8 +403,8 @@ class TextConstructorData {
     this.focusAsCursor = true,
     this.answerList,
 
-    this.fontSize     = 40,
-    this.boxHeight    = 0,
+    this.fontSize     = 40.0,
+    this.boxHeight    = 0.0,
 
     this.btnKeyboard  = true,
     this.btnUndo      = true,
@@ -405,6 +413,31 @@ class TextConstructorData {
     this.btnDelete    = true,
     this.btnClear     = true,
   });
+
+  void setFromMap(Map<String, dynamic> jsonMap) {
+    for (var entry in jsonMap.entries) {
+      if (entry.value == null) continue;
+
+      if (entry.key == JrfTextConstructor.text              ) text               = entry.value??'';
+      if (entry.key == JrfTextConstructor.markStyle         ) markStyle          = entry.value??-1;
+      if (entry.key == JrfTextConstructor.basement          ) basement           = entry.value??'';
+      if (entry.key == JrfTextConstructor.randomMixWord     ) randomMixWord      = entry.value??false;
+      if (entry.key == JrfTextConstructor.randomDelWord     ) randomDelWord      = entry.value??false;
+      if (entry.key == JrfTextConstructor.randomView        ) randomView         = entry.value??false;
+      if (entry.key == JrfTextConstructor.notDelFromBasement) notDelFromBasement = entry.value??false;
+      if (entry.key == JrfTextConstructor.canMoveWord       ) canMoveWord        = entry.value??true;
+      if (entry.key == JrfTextConstructor.noCursor          ) noCursor           = entry.value??false;
+      if (entry.key == JrfTextConstructor.focusAsCursor     ) focusAsCursor      = entry.value??true;
+      if (entry.key == JrfTextConstructor.fontSize          ) fontSize           = entry.value??40.0;
+      if (entry.key == JrfTextConstructor.boxHeight         ) boxHeight          = entry.value??0.0;
+      if (entry.key == JrfTextConstructor.btnKeyboard       ) btnKeyboard        = entry.value??true;
+      if (entry.key == JrfTextConstructor.btnUndo           ) btnUndo            = entry.value??true;
+      if (entry.key == JrfTextConstructor.btnRedo           ) btnRedo            = entry.value??true;
+      if (entry.key == JrfTextConstructor.btnBackspace      ) btnBackspace       = entry.value??true;
+      if (entry.key == JrfTextConstructor.btnDelete         ) btnDelete          = entry.value??true;
+      if (entry.key == JrfTextConstructor.btnClear          ) btnClear           = entry.value??true;
+    }
+  }
 
   factory TextConstructorData.fromMap(Map<String, dynamic> json) {
     final Map<String, String> audioMap = {};
@@ -431,8 +464,8 @@ class TextConstructorData {
       focusAsCursor      : json[JrfTextConstructor.focusAsCursor]??true,
       answerList         : valueListFromMapList<String>(json[JrfTextConstructor.answerList]),
 
-      fontSize           : json[JrfTextConstructor.fontSize]??40,
-      boxHeight          : json[JrfTextConstructor.boxHeight]??0,
+      fontSize           : json[JrfTextConstructor.fontSize]??40.0,
+      boxHeight          : json[JrfTextConstructor.boxHeight]??0.0,
 
       btnKeyboard        : json[JrfTextConstructor.btnKeyboard ]??true,
       btnUndo            : json[JrfTextConstructor.btnUndo     ]??true,

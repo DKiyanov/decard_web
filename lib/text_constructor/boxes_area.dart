@@ -100,6 +100,7 @@ class _BoxesAreaState<T> extends State<BoxesArea<T>> {
 
     return LayoutBuilder(builder: (BuildContext context, BoxConstraints viewportConstraints) {
       WidgetsBinding.instance.addPostFrameCallback((_){
+        if (!mounted) return;
 
         if (_viewportSize.width != viewportConstraints.maxWidth || _viewportSize.height != viewportConstraints.maxHeight) {
           _viewportSize = Size(viewportConstraints.maxWidth, viewportConstraints.maxHeight);

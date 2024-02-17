@@ -1,39 +1,5 @@
 const textConstructorDescJson = {
 
-  "styles" : {
-    "title": "Стили объектов",
-    "body" : {
-      "bodyName" : {
-        "title": "Стиль объекта",
-      },
-      "charColor" : {
-        "title" : "Цвет текста"
-      },
-      "backgroundColor" : {
-        "title" : "Цвет фона"
-      },
-      "frameColor" : {
-        "title" : "Цвет рамки"
-      },
-      "fontBold" : {
-        "title" : "Жирный шрифт"
-      },
-      "fontItalic": {
-        "title" : "Курсив"
-      },
-
-      "linePos" : {
-        "title" : "Расположение линии"
-      },
-      "lineStyle" : {
-        "title" : "Стиль линии"
-      },
-      "lineColor" : {
-        "title" : "Цвет"
-      },
-    }
-  },
-
   "style" : {
     "title": "Стиль объекта",
     "body" : {
@@ -68,9 +34,6 @@ const textConstructorDescJson = {
   "options" : {
     "title": "Настройки",
     "body" : {
-      "markStyle" : {
-        "title": "Стиль для выделения"
-      },
       "randomMixWord" : {
         "title": "Перемешать слова случайным образом"
       },
@@ -135,6 +98,9 @@ const textConstructorDescJson = {
       "basement" : {
         "title": "Подвал"
       },
+      "markStyle" : {
+        "title": "Стиль для выделения"
+      },
     },
   }
 
@@ -151,11 +117,13 @@ const Map<String, Map<String, String>> textConstructorFieldValues = {
     "black"   : "Чёрный",
     "white"   : "Белый",
   },
+
   "linePos" : {
     "noValue"     : "не указано",
     "underline"   : "Под строкой",
     "lineThrough" : "Зачёркивание",
   },
+
   "lineStyle" :{
     "noValue": "не указано",
     "solid"  : "Одинарная",
@@ -188,6 +156,10 @@ const testTextConstructorJson = {
 
   "styles": ["i", "b", "ccr,bcb", "ccb,bcr,l~g"],
 //  "markStyle" : 3,
+
+  "answerList" : [
+    "начальный #объект-3 в конструкторе @keyboard #0|символ"
+  ],
 
   "randomMixWord" : false,
   "randomView" : false,

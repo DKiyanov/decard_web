@@ -68,7 +68,6 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
   late WordGridController  _basementController;
 
   final Color  _defaultTextColor  = Colors.white;
-  late  double _fontSize;
   final Color  _borderColor      = Colors.black;
   final double _borderWidth      = 1.0;
   final Color  _tapInProcessBorderColor  = Colors.green;
@@ -107,7 +106,6 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
     super.initState();
 
     textConstructorData = widget.textConstructor; //TextConstructorData.fromMap(jsonDecode(textConstructorJson));
-    _fontSize = textConstructorData.fontSize;
 
     var panelText = textConstructorData.text;
     var basementText = widget.textConstructor.basement;
@@ -219,6 +217,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
     super.build(context);
     return LayoutBuilder(builder: (BuildContext context, BoxConstraints viewportConstraints) {
       WidgetsBinding.instance.addPostFrameCallback((_){
+        if (!mounted) return;
         if (_starting) {
           setState(() {
             _starting = false;
@@ -602,13 +601,16 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
     }
 
     if (labelInfo.isObject) {
-
       final wordObject = textConstructorData.objects.firstWhereOrNull((wordObject) => wordObject.name == labelInfo.objectName);
       if (wordObject == null) return Container(); // its possible when object was removed in editor
 
       final viewInfo = wordObject.views[labelInfo.viewIndex];
 
       return getObjectViewWidget(context, objectName: labelInfo.objectName, viewInfo: viewInfo, styleIndex: styleIndex, spec: spec );
+    }
+
+    if (labelInfo.isSelected) {
+      label = LabelInfo.unSelect(label);
     }
 
     return getObjectViewWidget(context, label: label, styleIndex: styleIndex, spec : spec );
@@ -644,6 +646,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
     if (viewInfo != null) {
       outStr          = viewInfo.text;
       localStyleIndex = viewInfo.styleIndex;
+      menuText        = viewInfo.menuText;
     }
 
     if (objectName.isNotEmpty) {
@@ -722,7 +725,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
             decorationColor: lineColor,
             decorationStyle: lineStyle,
 
-            fontSize: _fontSize,
+            fontSize: textConstructorData.fontSize,
             fontWeight: textStyleBold? FontWeight.bold : null,
             fontStyle: textStyleItalic? FontStyle.italic : null,
           ),
@@ -902,6 +905,12 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
         ],
       ),
     );
+  }
+
+  void refresh() {
+    panelController.refreshPanel();
+    _basementController.refresh();
+    setState(() {});
   }
 }
 
