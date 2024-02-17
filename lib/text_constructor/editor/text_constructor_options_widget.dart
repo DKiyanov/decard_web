@@ -4,6 +4,15 @@ import '../../pack_editor/pack_widgets.dart';
 import '../word_panel_model.dart';
 
 class TextConstructorOptionsWidget extends StatelessWidget {
+  static const Map<String, IconData> _fieldIconMap = {
+    JrfTextConstructor.btnKeyboard : Icons.keyboard_alt_outlined,
+    JrfTextConstructor.btnUndo     : Icons.undo_outlined,
+    JrfTextConstructor.btnRedo     : Icons.redo_outlined,
+    JrfTextConstructor.btnBackspace: Icons.backspace_outlined,
+    JrfTextConstructor.btnDelete   : Icons.delete_outline,
+    JrfTextConstructor.btnClear    : Icons.clear_outlined,
+  };
+
   final Map<String, dynamic> json;
   final String path;
   final FieldDesc fieldDesc;
@@ -53,6 +62,7 @@ class TextConstructorOptionsWidget extends StatelessWidget {
       );
     }
 
+
     input ??= JsonTextField(
       json         : json,
       path         : path,
@@ -73,6 +83,11 @@ class TextConstructorOptionsWidget extends StatelessWidget {
       labelExpand  : labelExpand,
       labelPadding : labelPadding,
       child        : input,
+      labelDecorator : (child) {
+        final icon = _fieldIconMap[fieldName];
+        if (icon == null) return child;
+        return Expanded(child: Row(children: [child, Icon(icon), Container(width: 16)]));
+      },
     );
   }
 }

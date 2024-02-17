@@ -790,6 +790,8 @@ class JsonTitleRow extends StatefulWidget {
   final int labelFlex;
   final int childFlex;
   final Widget? titleWidget;
+  final Widget Function(Widget child)? labelDecorator;
+  final Widget Function(Widget child)? fieldDecorator;
 
   const JsonTitleRow({
     required this.path,
@@ -801,6 +803,8 @@ class JsonTitleRow extends StatefulWidget {
     this.labelFlex = 1,
     this.childFlex = 1,
     this.titleWidget,
+    this.labelDecorator,
+    this.fieldDecorator,
 
     Key? key
   }) : super(key: key);
@@ -860,13 +864,20 @@ class _JsonTitleRowState extends State<JsonTitleRow> {
       _jsonOwner?.confirmPathSelection(joinPath(widget.path, widget.fieldName), context);
     }
 
+    final labelDecorator = widget.labelDecorator ?? _defaultDecorator;
+    final fieldDecorator = widget.fieldDecorator ?? _defaultDecorator;
+
     return Container(
       color: _selected? Colors.yellow : null,
       child: Row(children: [
-        label,
-        Expanded(flex: widget.childFlex, child: widget.child),
+        labelDecorator(label),
+        Expanded(flex: widget.childFlex, child: fieldDecorator(widget.child)),
       ]),
     );
+  }
+
+  Widget _defaultDecorator(Widget child) {
+    return child;
   }
 }
 

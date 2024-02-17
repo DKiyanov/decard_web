@@ -406,7 +406,13 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       key: _objectEditorKey,
       builder: (context, setState) {
 
-        if (_selPos < 0) return Container();
+        if (_selPos < 0) {
+          return ListTile(
+            title: Text('Слово не выбрано'),
+            contentPadding: const EdgeInsets.only(left: 16),
+            tileColor: _panelColor,
+          );
+        }
 
         WordObject? object;
 
@@ -686,7 +692,10 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
         _selStyleInfo = StyleInfo.fromStyleStr(newStyleStr) ;
         _textConstructorData.styles[_selStyleIndex] = _selStyleInfo!;
         _styleListKey.currentState?.setState(() {});
-        _constructor.setState(() {});
+        _constructorKey.currentState?.refresh();
+        _objectEditorKey.currentState?.setState(() { });
+        _answersPanelKey.currentState?.setState(() { });
+        _markStylePanelKey.currentState?.setState(() { });
       },
     );
   }
