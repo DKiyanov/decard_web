@@ -370,6 +370,7 @@ class _WordGridState extends State<WordGrid> {
 
     return BoxesArea<GridBoxExt>(
       controller: _boxAreaController,
+      calcMinimalEmptyHeight: false,
 
       onRebuildLayout: (BoxConstraints viewportConstraints, List<DragBoxInfo<GridBoxExt>> boxInfoList) {
         if (_width != viewportConstraints.maxWidth) {
@@ -432,7 +433,7 @@ class _WordGridState extends State<WordGrid> {
   }
 
   void _setVisibleWords(String words) {
-    final wordList = words.split('\n');
+    final wordList = words.isEmpty ? [] : words.split('\n');
 
     for (var boxInfo in _boxInfoList) {
       bool newVisible = false;

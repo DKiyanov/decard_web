@@ -7,7 +7,6 @@ class JrfTextConstructor {
   static const String styles             = 'styles';
   static const String markStyle          = 'markStyle';
   static const String basement           = 'basement';
-  static const String audioMap           = 'audioMap';
   static const String randomMixWord      = 'randomMixWord';
   static const String randomDelWord      = 'randomDelWord';
   static const String randomView         = 'randomView';
@@ -79,6 +78,35 @@ class LabelInfo {
   }
 }
 
+class TextInfo{
+  late String text;
+  late String image;
+  late String audio;
+
+  TextInfo(String str) {
+    String partText  = '';
+    String partImage = '';
+    String partAudio = '';
+
+    final wordParts = str.split('|');
+    for (var part in wordParts) {
+      if (part.startsWith(JrfSpecText.imagePrefix)) {
+        partImage = part.substring(JrfSpecText.imagePrefix.length);
+        continue;
+      }
+      if (part.startsWith(JrfSpecText.audioPrefix)) {
+        partImage = part.substring(JrfSpecText.audioPrefix.length);
+        continue;
+      }
+      partText = part;
+    }
+
+    text  = partText;
+    image = partImage;
+    audio = partAudio;
+  }
+}
+
 class ViewInfo {
   static const String menuSkipText = '-';
 
@@ -90,23 +118,24 @@ class ViewInfo {
   bool get skipMenu => menuText == '-';
 
   ViewInfo(this.viewStr){
-    final viewSplit1 = viewStr.split('|');
-    if (viewSplit1.length == 1) {
-      text       = viewSplit1[0];
+    final pos = viewStr.indexOf('|');
+    if (pos == -1) {
+      text       = viewStr;
       styleIndex = -1;
       menuText   = '';
     } else {
-      text = viewSplit1[1];
+      text = viewStr.substring(pos + 1);
 
-      final viewSplit2 = viewSplit1[0].split('/');
-      final styleIndexStr = viewSplit2[0];
+      final pref = viewStr.substring(0, pos);
+      final viewSplit = pref.split('/');
+      final styleIndexStr = viewSplit[0];
       if (styleIndexStr.isNotEmpty) {
         styleIndex = int.parse(styleIndexStr);
       } else {
         styleIndex = -1;
       }
-      if (viewSplit2.length > 1) {
-        menuText = viewSplit2[1];
+      if (viewSplit.length > 1) {
+        menuText = viewSplit[1];
       } else {
         menuText = '';
       }
@@ -365,7 +394,6 @@ class TextConstructorData {
   final List<StyleInfo> styles;
   int markStyle;
   String basement;
-  final Map<String, String>? audioMap;
 
   bool canMoveWord;
   bool randomMixWord;
@@ -393,7 +421,6 @@ class TextConstructorData {
     required this.styles,
     this.markStyle = -1,
     this.basement = '',
-    this.audioMap,
     this.randomMixWord = false,
     this.randomDelWord = false,
     this.randomView = false,
@@ -440,21 +467,12 @@ class TextConstructorData {
   }
 
   factory TextConstructorData.fromMap(Map<String, dynamic> json) {
-    final Map<String, String> audioMap = {};
-    final audioList = valueListFromMapList<String>(json[JrfTextConstructor.audioMap]);
-    for (var str in audioList) {
-      final split = str.split('|');
-      if (split.length != 2) continue;
-      audioMap[split[0].trim()] = split[1].trim();
-    }
-
     return TextConstructorData(
-      text               : json[JrfTextConstructor.text],
+      text               : json[JrfTextConstructor.text]??'',
       objects            : objectListFromMapList<WordObject>(WordObject.fromMap, json[JrfTextConstructor.objects]),
       styles             : dynamicList(json[JrfTextConstructor.styles]).mapIndexed ((index, value) => StyleInfo.fromStyleStr(value, index)).toList(),
       markStyle          : json[JrfTextConstructor.markStyle]??-1,
       basement           : json[JrfTextConstructor.basement]??'',
-      audioMap           : audioMap,
       randomMixWord      : json[JrfTextConstructor.randomMixWord]??false,
       randomDelWord      : json[JrfTextConstructor.randomDelWord]??false,
       randomView         : json[JrfTextConstructor.randomView]??false,
@@ -483,7 +501,6 @@ class TextConstructorData {
     JrfTextConstructor.styles             :styles,
     JrfTextConstructor.markStyle          :markStyle,
     JrfTextConstructor.basement           :basement,
-    JrfTextConstructor.audioMap           :audioMap,
     JrfTextConstructor.randomMixWord      :randomMixWord,
     JrfTextConstructor.randomDelWord      :randomDelWord,
     JrfTextConstructor.randomView         :randomView,

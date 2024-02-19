@@ -12,7 +12,7 @@ import 'text_constructor_word_style_widget.dart';
 
 import '../../pack_editor/pack_widgets.dart';
 import '../word_panel_model.dart';
-
+import 'package:path/path.dart' as path_util;
 
 class AnswerTextConstructor {
   GlobalKey<TextConstructorWidgetState> key;
@@ -22,8 +22,10 @@ class AnswerTextConstructor {
 }
 
 class TextConstructorEditorPage extends StatefulWidget {
+  final String filename;
   final String jsonStr;
-  const TextConstructorEditorPage({required this.jsonStr, Key? key}) : super(key: key);
+  final void Function(String fileName, String? jsonStr) resultCallback;
+  const TextConstructorEditorPage({required this.filename, required this.jsonStr, required this.resultCallback, Key? key}) : super(key: key);
 
   @override
   State<TextConstructorEditorPage> createState() => _TextConstructorEditorPageState();
@@ -67,6 +69,9 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
   double _fontSize = 0;
 
+  bool _isStarting = true;
+  bool _shaker = false;
+
   @override
   void initState() {
     super.initState();
@@ -75,7 +80,11 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
     _descMap = loadDescFromMap(textConstructorDescJson);
 
-    _jsonMap = jsonDecode(widget.jsonStr);
+    if (widget.jsonStr.isNotEmpty) {
+      _jsonMap = jsonDecode(widget.jsonStr);
+    } else {
+      _jsonMap = {};
+    }
 
     final Map<String, dynamic> setJsonMap = {};
 
@@ -114,6 +123,22 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     }
 
     _styleJson[JrfTextConstructor.styles] = _convertStyleListIn(_textConstructorData.styles);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_isStarting) return;
+      _starting();
+    });
+  }
+
+  void _starting() {
+    _isStarting = false;
+    _shake();
+  }
+
+  void _shake() {
+    setState(() { // a strange issue with drawing
+      _shaker = !_shaker;
+    });
   }
 
   @override
@@ -126,14 +151,17 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Конструктор текстов'),
-        centerTitle: true,
+        title: Text(widget.filename),
+        leading: InkWell(
+          onTap: _returnResult,
+          child: const Icon(Icons.arrow_back_outlined),
+        ),
         actions: [
           IconButton(
               onPressed: () {
-                _startTest();
+                widget.resultCallback.call(widget.filename, null);
               },
-              icon: const Icon(Icons.ac_unit)
+              icon: Icon(Icons.cancel_outlined, color: Colors.red.shade900)
           )
         ],
       ),
@@ -147,6 +175,11 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       controller: _scrollController,
       children: [
         _textConstructor(),
+
+        if (_shaker) ...[
+          Container(height: 1),
+        ],
+
         _objectEditor(),
         Container(height: 6),
         _stylePanel(),
@@ -361,6 +394,9 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
           _objectEditorKey.currentState?.setState(() {});
         }
       },
+      onChangeHeight: (newHeight) {
+        _shake();
+      },
     );
   }
 
@@ -376,27 +412,34 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
     styleItems.add(DropdownMenuItem<int>(
       value: -1,
-      child: noStyleItem ?? _constructor.getObjectViewWidget(context,
-          label      : outStr,
-          styleIndex : -1
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: noStyleItem ?? _constructor.getObjectViewWidget(context,
+            label      : outStr,
+            styleIndex : -1
+        ),
       ),
     ));
 
     for (int styleIndex = 0; styleIndex < _textConstructorData.styles.length; styleIndex ++) {
       styleItems.add(DropdownMenuItem<int>(
         value: styleIndex,
-        child: _constructor.getObjectViewWidget(context,
-            label      : outStr,
-            styleIndex : styleIndex
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: _constructor.getObjectViewWidget(context,
+              label      : outStr,
+              styleIndex : styleIndex
+          ),
         ),
       ));
     }
 
     return DropdownButtonHideUnderline(
       child: DropdownButton<int>(
-          value: styleIndex,
-          items: styleItems,
-          onChanged: onChange
+        value: styleIndex,
+        items: styleItems,
+        onChanged: onChange,
+        isExpanded: true,
       ),
     );
   }
@@ -408,7 +451,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
         if (_selPos < 0) {
           return ListTile(
-            title: Text('Слово не выбрано'),
+            title: const Text('Слово не выбрано'),
             contentPadding: const EdgeInsets.only(left: 16),
             tileColor: _panelColor,
           );
@@ -421,11 +464,14 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
         }
 
         final title = Row(children: [
-          _constructor.labelWidget(context, _selLabel, DragBoxSpec.none),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: _constructor.labelWidget(context, _selLabel, DragBoxSpec.none),
+            ),
+          ),
 
           if (object == null || _objectExpanded) ...[
-            Expanded(child: Container()),
-
             IconButton(
                 onPressed: (){
                   if (object != null){
@@ -464,12 +510,15 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                   child: DkExpansionTile(
                     title: Row(
                       children: [
-                        _constructor.getObjectViewWidget(context,
-                            objectName: object.name,
-                            viewInfo: viewInfo
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: _constructor.getObjectViewWidget(context,
+                                objectName: object.name,
+                                viewInfo: viewInfo
+                            ),
+                          ),
                         ),
-
-                        Expanded(child: Container()),
 
                         IconButton(
                           onPressed: () async {
@@ -596,6 +645,26 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     return StatefulBuilder(
       key: _stylePanelKey,
       builder: (context, setState) {
+        if (_textConstructorData.styles.isEmpty) {
+          return ListTile(
+            title: Row(
+              children: [
+                const Expanded(child: Text('Стили')),
+                IconButton(
+                    onPressed: () {
+                      _addStyleNew();
+                      _styleExpanded = true;
+                      setState(() {});
+                    },
+                    icon: const Icon(Icons.add, color: Colors.blue)
+                )
+              ],
+            ),
+            contentPadding: const EdgeInsets.only(left: 16, right: 4),
+            tileColor: _panelColor,
+          );
+        }
+
         return DkExpansionTile(
           title: Row(
             children: [
@@ -604,7 +673,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                 IconButton(
                     onPressed: _selStyleInfo == null ? null : () async {
                       if (! await _deleteSelStyle()) return;
-                      _stylePanelKey.currentState?.setState(() {});
+                      setState(() {});
                       _constructorKey.currentState?.refresh();
                       _objectEditorKey.currentState?.setState(() {});
                     },
@@ -614,7 +683,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                 IconButton(
                     onPressed: (){
                       _addStyleNew();
-                      _stylePanelKey.currentState?.setState(() {});
+                      setState(() {});
                     },
                     icon: const Icon(Icons.add)
                 )
@@ -627,6 +696,8 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
             _stylePanelKey.currentState?.setState(() {});
           },
 
+          initiallyExpanded: _styleExpanded,
+
           collapsedBackgroundColor: _panelColor,
           backgroundColor: _panelColor,
 
@@ -634,7 +705,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
             Row(
               children: [
                 Expanded(flex: 1, child: _styleList()),
-                Expanded(flex: 2, child: _selStyleTuner(_selStyleInfo.toString()))
+                Expanded(flex: 2, child: _selStyleTuner(_selStyleIndex, _selStyleInfo.toString()))
               ],
             )
           ],
@@ -684,8 +755,10 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     );
   }
 
-  Widget _selStyleTuner(String styleStr) {
+  Widget _selStyleTuner(int styleIndex, String styleStr) {
+    if (_selStyleIndex < 0) return Container();
     return TextConstructorWordStyleWidget(
+      key: ValueKey(styleIndex),
       styleStr: styleStr,
       fieldDesc: _descMap["style"]!,
       onChange: (newStyleStr){
@@ -702,6 +775,8 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
   void _addStyleNew() {
     _textConstructorData.styles.add(StyleInfo());
+    _selStyleIndex = _textConstructorData.styles.length - 1;
+    _selStyleInfo = _textConstructorData.styles[_selStyleIndex];
   }
 
   Future<bool> _deleteSelStyle() async {
@@ -896,6 +971,9 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   }
 
   String getResult() {
+    _textConstructorData.text = _constructor.panelController.text;
+    //_textConstructorData.basement = _constructor.basementController.; TODO надо получить текст описывающий подвал
+
     final jsonMap = _textConstructorData.toJson();
 
     final fieldDesc = _descMap["options"]!;
@@ -920,9 +998,42 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     return jsonEncode(jsonMap);
   }
 
-  void _startTest() {
-    print(getResult());
+  Future<void> _returnResult() async {
+    final result = getResult();
+
+    String filename;
+
+    final baseName = path_util.basenameWithoutExtension(widget.filename);
+    if (baseName == 'new') {
+      if (_textConstructorData.text.isEmpty) {
+        widget.resultCallback.call(widget.filename, null);
+        return;
+      }
+
+      String newFilename = '';
+
+      final dlgResult = await simpleDialog(
+          context: context,
+          title: const Text('Введите имя для нового файла'),
+          content: StatefulBuilder(builder: (context, setState) {
+            return TextField(
+              onChanged: (value){
+                newFilename = value;
+              },
+            );
+          })
+      )??false;
+      if (!dlgResult) return;
+
+      filename = '${path_util.basenameWithoutExtension(newFilename)}${path_util.extension(widget.filename)}';
+      final fileDir = path_util.dirname(widget.filename);
+      if (fileDir.isNotEmpty && fileDir != '.') {
+        filename = path_util.join(fileDir, filename);
+      }
+    } else {
+      filename = widget.filename;
+    }
+
+    widget.resultCallback.call(filename, result);
   }
-
-
 }

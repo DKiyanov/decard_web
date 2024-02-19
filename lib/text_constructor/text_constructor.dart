@@ -29,6 +29,7 @@ class TextConstructorWidget extends StatefulWidget {
   final Decorator? toolbarDecorator;
   final Decorator? wordPanelDecorator;
   final Decorator? basementPanelDecorator;
+  final void Function(double)? onChangeHeight;
 
   const TextConstructorWidget({
     required this.textConstructor,
@@ -42,6 +43,7 @@ class TextConstructorWidget extends StatefulWidget {
     this.toolbarDecorator,
     this.wordPanelDecorator,
     this.basementPanelDecorator,
+    this.onChangeHeight,
 
     Key? key
   }) : super(key: key);
@@ -65,7 +67,7 @@ class _RandomDelWordResult {
 class TextConstructorWidgetState extends State<TextConstructorWidget> with AutomaticKeepAliveClientMixin<TextConstructorWidget> {
   late TextConstructorData textConstructorData;
   late WordPanelController panelController;
-  late WordGridController  _basementController;
+  late WordGridController  basementController;
 
   final Color  _defaultTextColor  = Colors.white;
   final Color  _borderColor      = Colors.black;
@@ -133,7 +135,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       focusAsCursor : textConstructorData.focusAsCursor,
     );
 
-    _basementController = WordGridController(basementText);
+    basementController = WordGridController(basementText);
   }
 
   @override
@@ -206,7 +208,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       return;
     }
 
-    final basementStr = _basementController.getVisibleWords();
+    final basementStr = basementController.getVisibleWords();
 
     _historyList.add(_HistData(panelStr, basementStr));
     _toolBarRefresh.send();
@@ -335,7 +337,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
   Widget _basement() {
     return WordGrid(
       key            : _basementKey,
-      controller     : _basementController,
+      controller     : basementController,
       onDragBoxBuild : _onBasementBoxBuild,
       onDragBoxTap   : _onBasementBoxTap,
       onChangeHeight : (double newHeight) {
@@ -345,6 +347,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
             _basementHeight = extHeight;
           });
         }
+        widget.onChangeHeight?.call(newHeight);
       },
     );
   }
@@ -390,7 +393,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
                         _historyRecordOn = false;
                         final histData = _historyList[_historyPos];
                         panelController.text = histData.panelStr;
-                        _basementController.setVisibleWords(histData.basementStr);
+                        basementController.setVisibleWords(histData.basementStr);
                         _historyRecordOn = true;
 
                         _toolBarRefresh.send();
@@ -406,7 +409,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
                         _historyRecordOn = false;
                         final histData = _historyList[_historyPos];
                         panelController.text = histData.panelStr;
-                        _basementController.setVisibleWords(histData.basementStr);
+                        basementController.setVisibleWords(histData.basementStr);
                         _historyRecordOn = true;
 
                         _toolBarRefresh.send();
@@ -490,7 +493,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       if (wordObject.nonRemovable) return;
     }
 
-    _basementController.addWord(wordInfo.word);
+    basementController.addWord(wordInfo.word);
 
     panelController.deleteWord(pos);
     panelController.refreshPanel();
@@ -501,17 +504,29 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
 
     widget.onTapLabel?.call(pos, label);
 
-    if (label == JrfSpecText.wordKeyboard) {
+    final labelInfo = LabelInfo(label);
+    String text;
+    if (labelInfo.isObject) {
+      final wordObject = textConstructorData.objects.firstWhereOrNull((wordObject) => wordObject.name == labelInfo.objectName);
+      if (wordObject == null) return null;
+      final viewInfo = wordObject.views[labelInfo.viewIndex];
+      text = viewInfo.text;
+    } else {
+      text = labelInfo.word;
+    }
+
+    final textInfo = TextInfo(text);
+
+    if (textInfo.audio.isNotEmpty) {
+      final filePath = widget.onPrepareFileUrl!(textInfo.audio);
+      await playAudio(filePath);
+    }
+
+    if (textInfo.text == JrfSpecText.wordKeyboard) {
+      if (!mounted) return null;
       final inputValue = await _wordInputDialog(context);
       if (inputValue.isEmpty) return null;
       return inputValue;
-    }
-
-    final boxWidget = child as _BoxWidget;
-    final fileName = textConstructorData.audioMap?[boxWidget.outStr];
-    if (fileName != null) {
-      final filePath = widget.onPrepareFileUrl!(fileName);
-      await playAudio(filePath);
     }
 
     if (textConstructorData.markStyle >= 0) {
@@ -639,20 +654,26 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
 
     var menuText = '';
 
-    var outStr = '';
+    var outText = '';
 
     var localStyleIndex = -1;
 
     if (viewInfo != null) {
-      outStr          = viewInfo.text;
+      outText         = viewInfo.text;
       localStyleIndex = viewInfo.styleIndex;
       menuText        = viewInfo.menuText;
     }
 
-    if (objectName.isNotEmpty) {
-      if (outStr.isEmpty) {
-        outStr = objectName;
-      }
+    if (outText.isEmpty && objectName.isNotEmpty) {
+      outText = objectName;
+    }
+
+    if (label.isNotEmpty) {
+      outText = label;
+    }
+
+    if (forPopup && menuText.isNotEmpty) {
+      outText = menuText;
     }
 
     if (styleIndex != null) {
@@ -681,14 +702,6 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       }
     }
 
-    if (label.isNotEmpty) {
-      outStr = label;
-    }
-
-    if (forPopup && menuText.isNotEmpty) {
-      outStr = menuText;
-    }
-
     if (spec == DragBoxSpec.move) {
       backgroundColor = _colorWordMove;
     }
@@ -704,9 +717,24 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       borderWidth = _focusBorderWidth;
     }
 
+    final textInfo = TextInfo(outText);
+
     Widget? retWidget;
 
-    retWidget = _extWidget(context, outStr, spec, textColor, backgroundColor);
+    if (retWidget == null && textInfo.image.isNotEmpty) {
+      final fileUrl = widget.onPrepareFileUrl!.call(textInfo.image);
+      retWidget = imageFromUrl(fileUrl);
+    }
+
+    if (retWidget == null && textInfo.audio.isNotEmpty && textInfo.text.isEmpty) {
+      final fileUrl = widget.onPrepareFileUrl!.call(textInfo.audio);
+      retWidget = audioButtonFromUrl(fileUrl, textColor);
+    }
+
+    if (retWidget == null && textInfo.text == JrfSpecText.wordKeyboard) {
+      retWidget = Icon(Icons.keyboard_alt_outlined, color: textColor);
+    }
+
     if (retWidget != null) {
       retWidget = SizedBox(
           height : _internalBoxHeight(),
@@ -717,7 +745,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
     retWidget ??= Container(
         color: backgroundColor,
         child: Text(
-          outStr,
+          textInfo.text,
           style: TextStyle(
             color: textColor,
 
@@ -734,7 +762,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
 
     if (forPopup) {
       return _BoxWidget(
-        outStr: outStr,
+        outStr: textInfo.text,
         menuText: menuText,
         child: _makeDecoration(
           child           : retWidget,
@@ -746,7 +774,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
     }
 
     return _BoxWidget(
-      outStr: outStr,
+      outStr: textInfo.text,
       menuText: menuText,
       child: _makeDecoration(
         child           : retWidget,
@@ -755,28 +783,6 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
         backgroundColor : backgroundColor,
       ),
     );
-  }
-
-  Widget? _extWidget(BuildContext context, String outStr, DragBoxSpec spec, Color textColor, Color backgroundColor) {
-    if (outStr.indexOf(JrfSpecText.imagePrefix) == 0) {
-      final imagePath = outStr.substring(JrfSpecText.imagePrefix.length);
-
-      final fileUrl = widget.onPrepareFileUrl!.call(imagePath);
-      return imageFromUrl(fileUrl);
-    }
-
-    if (outStr.indexOf(JrfSpecText.audioPrefix) == 0) {
-      final audioPath = outStr.substring(JrfSpecText.audioPrefix.length);
-      final fileUrl = widget.onPrepareFileUrl!.call(audioPath);
-
-      return audioButtonFromUrl(fileUrl, textColor);
-    }
-
-    if (outStr == JrfSpecText.wordKeyboard) {
-      return Icon(Icons.keyboard_alt_outlined, color: textColor);
-    }
-
-    return null;
   }
 
   Widget _makeDecoration({
@@ -839,7 +845,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
   void _onBasementBoxTap(DragBoxInfo<GridBoxExt> boxInfo, Offset position) {
     if (!textConstructorData.notDelFromBasement){
       boxInfo.setState(visible: false);
-      _basementController.refresh();
+      basementController.refresh();
     }
 
     final curPos = panelController.getCursorPos(lastPostIfNot: true);
@@ -909,7 +915,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
 
   void refresh() {
     panelController.refreshPanel();
-    _basementController.refresh();
+    basementController.refresh();
     setState(() {});
   }
 }

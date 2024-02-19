@@ -16,6 +16,7 @@ import '../loader.dart';
 import '../parse_class_info.dart';
 import '../parse_pack_info.dart';
 import 'pack_file_source.dart';
+import 'pack_file_source_editor.dart';
 import 'pack_head_widget.dart';
 import 'pack_quality_level_widget.dart';
 import 'pack_style_widget.dart';
@@ -88,6 +89,9 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   final _packErrorList = <DbValidatorResult>[];
   final _validatePackResultPanelKey = GlobalKey();
   DbValidatorResult? _selectedPackError;
+
+  String _editableSourceFile = '';
+  String _editableSourceUrl  = '';
 
   @override
   void initState() {
@@ -275,7 +279,12 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
             },
 
             child: Row(children: [
-              Expanded(child: _editor()),
+              if (_editableSourceFile.isEmpty) ...[
+                Expanded(child: _editor()),
+              ],
+              if (_editableSourceFile.isNotEmpty) ...[
+                Expanded(child: _sourceFileEditorPanel()),
+              ],
               Expanded(child: _rightPanel()),
             ]),
           ),
@@ -287,6 +296,34 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
         ),
       ],
     );
+  }
+
+  void editSourceFile(String filename, String url) {
+    setState(() {
+      _editableSourceFile = filename;
+      _editableSourceUrl  = url;
+    });
+  }
+
+  Widget _sourceFileEditorPanel() {
+    return Column(children: [
+      Expanded(
+        child: SourceFileEditor(
+          packId: widget.packId,
+          rootPath: packRootPath,
+          filename: _editableSourceFile,
+          url: _editableSourceUrl,
+          onAddNewFile: (filePath, url) {
+            _fileSourceKey.currentState?.addNewFile(filePath, url);
+          },
+          tryExitCallback: (){
+            setState((){
+              _editableSourceFile = '';
+            });
+          }
+        ),
+      )
+    ]);
   }
 
   Widget _editor() {

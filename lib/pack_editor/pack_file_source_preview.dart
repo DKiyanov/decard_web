@@ -1,9 +1,9 @@
 import 'package:decard_web/media_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:path/path.dart' as path_util;
 
 import '../card_model.dart';
+import '../text_constructor/editor/text_constructor_preview_page.dart';
 
 class PackFileSourcePreview extends StatefulWidget {
   final String fileName;
@@ -31,7 +31,7 @@ class _PackFileSourcePreviewState extends State<PackFileSourcePreview> {
   }
 
   void _starting() async {
-    fileExt = path_util.extension(widget.fileName).toLowerCase().substring(1);
+    fileExt = FileExt.getFileExt(widget.fileName);
     content = "";
     
     if (FileExt.txtExtList.contains(fileExt)) {
@@ -53,7 +53,11 @@ class _PackFileSourcePreviewState extends State<PackFileSourcePreview> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isStarting) return Container();
+    if (_isStarting) return const Center(child: CircularProgressIndicator());
+
+    if (fileExt == FileExt.contentTextConstructor) {
+      return TextConstructorPreview(jsonStr: content);
+    }
 
     if (fileExt == FileExt.contentMarkdown) {
       return MarkdownBody(data: content);

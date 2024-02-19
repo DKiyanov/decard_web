@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../card_model.dart';
 import '../parse_pack_info.dart';
 import '../simple_dialog.dart';
+import '../simple_menu.dart';
 import 'pack_editor.dart';
 import 'pack_file_source_preview.dart';
 import 'pack_file_source_upload.dart';
@@ -224,6 +225,32 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
                 );
               }
             ),
+
+            Tooltip(
+              message: 'Редактировать файл',
+              child: IconButton(
+                onPressed: (){
+                  if (_selectController.checkboxPaths.isNotEmpty) return;
+                  if (!_selectController.isFile) return;
+                  final url = widget.fileUrlMap[_selectController.selectedPath]!;
+                  widget.editor.editSourceFile(_selectController.selectedPath, url);
+                },
+                icon: const Icon(Icons.edit),
+              ),
+            ),
+
+            popupMenu(
+              icon: const Icon(Icons.menu),
+              menuItemList: [
+                SimpleMenuItem(
+                  child: const Text('Создать конструктор'),
+                  onPress: () {
+                    final filename = path_util.join(_selectController.selectedDir, 'new.${FileExt.contentTextConstructor}');
+                    widget.editor.editSourceFile(filename, '');
+                  },
+                )
+              ],
+            ),
         ]),
 
         if (_mode == _PackFileSourceMode.preview) ...[
@@ -266,16 +293,7 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
         return result;
       },
       onFileUpload: (filePath, url){
-        _selectController.multiSelPaths.remove(filePath);
-        if (!_selectController.fileList.contains(filePath)) {
-          _selectController.fileList.add(filePath);
-        }
-        widget.fileUrlMap[filePath] = url;
-        widget.dbSource.tabFileUrlMap.insertRow(jsonFileID: widget.jsonFileID, fileName: filePath, url: url);
-        //_folderController.onChangeSelection.send();
-        JsonWidgetChangeListener.of(context)?.setChanged();
-
-        setState(() {});
+        addNewFile(filePath, url);
       },
       onClearFileUploadList: (){
         _selectController.multiSelPaths.clear();
@@ -285,6 +303,19 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
         setState(() {});
       },
     );
+  }
+
+  void addNewFile(String filePath, String url) {
+    _selectController.multiSelPaths.remove(filePath);
+    if (!_selectController.fileList.contains(filePath)) {
+      _selectController.fileList.add(filePath);
+    }
+    widget.fileUrlMap[filePath] = url;
+    widget.dbSource.tabFileUrlMap.insertRow(jsonFileID: widget.jsonFileID, fileName: filePath, url: url);
+    //_folderController.onChangeSelection.send();
+    JsonWidgetChangeListener.of(context)?.setChanged();
+
+    setState(() {});
   }
 
   Future<void> _deleteFileFromPack() async {

@@ -77,7 +77,7 @@ RouteMap _buildRouteMapIn(BuildContext context) {
 
     routes: {
       '/': (route) {
-        return NoAnimationPage(child: TextConstructorEditorPage(jsonStr: jsonEncode(testTextConstructorJson), )); // TODO for debug
+        //return NoAnimationPage(child: TextConstructorEditorPage(jsonStr: jsonEncode(testTextConstructorJson), )); // TODO for debug
 
         if (appState.serverConnect.isLoggedIn) {
           return TabPage(

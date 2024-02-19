@@ -16,6 +16,13 @@ import 'parse_class_info.dart';
 import 'loader.dart';
 import 'local_pack_load.dart';
 
+const String textUrlPrefix = 'text:';
+
+//text URL format: text:<packId>|<path>
+String buildTextUrl(int packId, String path) {
+  return '$textUrlPrefix$packId|$path';
+}
+
 class WebPackInfo {
   final int    packId        ;
   final String title         ;
@@ -117,8 +124,6 @@ class WebPackListResult{
     required this.targetAgeHigh,
   });
 }
-
-
 
 class WebPackListManager {
   final _webPackInfoList = <WebPackInfo>[];
@@ -286,7 +291,7 @@ Future<Map<String, String>?> _getPackSourceWeb(int packId) async {
     String url;
 
     if (isText) {
-      url = 'text:$packId|$path';
+      url = buildTextUrl(packId, path);
     } else {
       if (kIsWeb) {
         url = source.get<ParseWebFile>(ParseWebPackSubFile.file)!.url!;
@@ -302,8 +307,8 @@ Future<Map<String, String>?> _getPackSourceWeb(int packId) async {
 }
 
 Future<String?> getTextFromParseTextUrl(String fileUrl) async {
-  if (!fileUrl.startsWith('text:')) return null;
-  final url = fileUrl.substring(5);
+  if (!fileUrl.startsWith(textUrlPrefix)) return null;
+  final url = fileUrl.substring(textUrlPrefix.length);
   final parts = url.split('|');
 
   final packId = int.parse(parts.first);
@@ -401,9 +406,30 @@ Future<Map<String, String>?> _getPackSourceApp(int packId) async {
   return dirSource;
 }
 
+Future<String> addTextFileToPack(int packId, String filePath, String fileContent) async {
+  final query = QueryBuilder<ParseObject>(ParseObject(ParseWebPackSubFile.className));
+  query.whereEqualTo(ParseWebPackSubFile.packId, packId);
+  query.whereEqualTo(ParseWebPackSubFile.path, filePath);
+
+  final serverFile = await query.first();
+  if (serverFile != null) {
+    serverFile.set<String>(ParseWebPackSubFile.textContent, fileContent);
+    await serverFile.save();
+    return buildTextUrl(packId, filePath);
+  }
+
+  final newServerFile = ParseObject(ParseWebPackSubFile.className);
+  newServerFile.set<bool>(ParseWebPackSubFile.isText, true);
+  newServerFile.set<String>(ParseWebPackSubFile.textContent, fileContent);
+  newServerFile.set<String>(ParseWebPackSubFile.path, filePath);
+  newServerFile.set<int>(ParseWebPackSubFile.packId, packId);
+  await newServerFile.save();
+  return buildTextUrl(packId, filePath);
+}
+
 Future<String> addFileToPack(int packId, String filePath, Uint8List fileContent) async {
   final query = QueryBuilder<ParseObject>(ParseObject(ParseWebPackSubFile.className));
-  query.whereEqualTo(ParseWebPackHead.packId, packId);
+  query.whereEqualTo(ParseWebPackSubFile.packId, packId);
   query.whereEqualTo(ParseWebPackSubFile.path, filePath);
 
   {

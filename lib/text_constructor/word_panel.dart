@@ -354,7 +354,7 @@ class WordPanelState extends State<WordPanel> {
       }
 
       nextPosition = Offset(position.dx + boxInfo.size.width, position.dy);
-      if (nextPosition.dx >= width){
+      if (nextPosition.dx >= width && position.dx > 0){
         position = Offset(0, position.dy + _wordBoxHeight + widget.lineSpacing);
         nextPosition = Offset(position.dx + boxInfo.size.width, position.dy);
       }
@@ -530,6 +530,7 @@ class WordPanelState extends State<WordPanel> {
 
     return BoxesArea<PanelBoxExt>(
       controller: _boxAreaController,
+      calcMinimalEmptyHeight: true,
 
       onRebuildLayout: (BoxConstraints viewportConstraints, List<DragBoxInfo<PanelBoxExt>> boxInfoList) {
         if (_width != viewportConstraints.maxWidth) {

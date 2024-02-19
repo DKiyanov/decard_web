@@ -98,7 +98,7 @@ class CardSource {
 
 class FileExt {
   static const String textFile = "text:";
-  static const txtExtList    = <String>['txt', 'md', 'html'];
+  static const txtExtList    = <String>[contentTxt, contentMarkdown, contentHtml, contentTextConstructor];
   static const imageExtList  = <String>['apng', 'avif', 'gif', 'jpg', 'jpeg', 'jfif', 'pjpeg', 'pjp', 'png', 'svg', 'webp', 'bmp', 'tif', 'tiff'];
   static const audioExtList  = <String>['m4a', 'flac', 'mp3', 'mp4', 'wav', 'wma', 'aac'];
   static const videoExtList  = <String>['mp4'];
@@ -110,7 +110,7 @@ class FileExt {
   static const contentVideo    = 'video';
   static const contentHtml     = 'html';
   static const contentMarkdown = 'md';
-  static const contentTextConstructor = 'decardtc';
+  static const contentTextConstructor = 'dtc';
   static const contentTxt      = 'txt'; // text file
   static const contentText     = 'text'; // text in field
   static const contentValues    = <String>[contentImage, contentAudio, contentVideo, contentHtml, contentMarkdown, contentTxt, contentText];
@@ -119,7 +119,7 @@ class FileExt {
   static String getFileExt(String fileName) {
     final fileExt = path_util.extension(fileName);
     if (fileExt.isEmpty) return '';
-    if (fileExt.length > 6) return '';
+    if (fileExt.length > 9) return '';
 
     final extension = fileExt.toLowerCase().substring(1);
 
