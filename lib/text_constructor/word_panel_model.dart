@@ -79,23 +79,24 @@ class LabelInfo {
 }
 
 class TextInfo{
+  final String string;
   late String text;
   late String image;
   late String audio;
 
-  TextInfo(String str) {
+  TextInfo(this.string) {
     String partText  = '';
     String partImage = '';
     String partAudio = '';
 
-    final wordParts = str.split('|');
+    final wordParts = string.split('|');
     for (var part in wordParts) {
       if (part.startsWith(JrfSpecText.imagePrefix)) {
         partImage = part.substring(JrfSpecText.imagePrefix.length);
         continue;
       }
       if (part.startsWith(JrfSpecText.audioPrefix)) {
-        partImage = part.substring(JrfSpecText.audioPrefix.length);
+        partAudio = part.substring(JrfSpecText.audioPrefix.length);
         continue;
       }
       partText = part;
@@ -104,6 +105,22 @@ class TextInfo{
     text  = partText;
     image = partImage;
     audio = partAudio;
+  }
+
+  String getStringWith({String? text, String? image, String? audio}) {
+    return getString(
+      text : text??this.text,
+      image: image??this.image,
+      audio: audio??this.audio,
+    );
+  }
+
+  static String getString({String text = '', String image = '', String audio = ''}) {
+    final resList = <String>[];
+    if (text.isNotEmpty) resList.add(text);
+    if (image.isNotEmpty) resList.add('${JrfSpecText.imagePrefix}$image');
+    if (audio.isNotEmpty) resList.add('${JrfSpecText.audioPrefix}$audio');
+    return resList.join('|');
   }
 }
 

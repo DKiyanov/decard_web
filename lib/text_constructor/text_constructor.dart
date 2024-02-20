@@ -9,12 +9,11 @@ import 'package:flutter/material.dart';
 
 import 'package:simple_events/simple_events.dart';
 
-import '../audio_button.dart';
 import '../common.dart';
 import 'drag_box_widget.dart';
 
 typedef RegisterAnswer = void Function(String answerValue, List<String>? answerList);
-typedef PrepareFilePath = String Function(String fileName);
+typedef PrepareFilePath = String? Function(String fileName);
 typedef Decorator = Widget Function(Widget child);
 
 class TextConstructorWidget extends StatefulWidget {
@@ -519,7 +518,9 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
 
     if (textInfo.audio.isNotEmpty) {
       final filePath = widget.onPrepareFileUrl!(textInfo.audio);
-      await playAudio(filePath);
+      if (filePath != null) {
+        await playAudioUrl(filePath);
+      }
     }
 
     if (textInfo.text == JrfSpecText.wordKeyboard) {
@@ -723,12 +724,16 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
 
     if (retWidget == null && textInfo.image.isNotEmpty) {
       final fileUrl = widget.onPrepareFileUrl!.call(textInfo.image);
-      retWidget = imageFromUrl(fileUrl);
+      if (fileUrl != null) {
+        retWidget = imageFromUrl(fileUrl);
+      }
     }
 
     if (retWidget == null && textInfo.audio.isNotEmpty && textInfo.text.isEmpty) {
       final fileUrl = widget.onPrepareFileUrl!.call(textInfo.audio);
-      retWidget = audioButtonFromUrl(fileUrl, textColor);
+      if (fileUrl != null) {
+        retWidget = audioButtonFromUrl(fileUrl, textColor);
+      }
     }
 
     if (retWidget == null && textInfo.text == JrfSpecText.wordKeyboard) {
@@ -830,6 +835,10 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
           padding: EdgeInsets.zero,
           child: Center(child: popupItemWidget)
       ));
+    }
+
+    if (popupItems.length < 2) {
+      return null;
     }
 
     final value = await showMenu<String>(

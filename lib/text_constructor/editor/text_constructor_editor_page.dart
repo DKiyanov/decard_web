@@ -4,6 +4,8 @@ import 'package:decard_web/dk_expansion_tile.dart';
 import 'package:decard_web/text_constructor/editor/text_constructor_options_widget.dart';
 import 'package:flutter/material.dart';
 
+import '../../card_model.dart';
+import '../../pack_editor/pack_editor.dart';
 import '../../simple_dialog.dart';
 import '../text_constructor.dart';
 import '../word_panel.dart';
@@ -24,8 +26,16 @@ class AnswerTextConstructor {
 class TextConstructorEditorPage extends StatefulWidget {
   final String filename;
   final String jsonStr;
+  final String? Function(String fileName) onPrepareFileUrl;
   final void Function(String fileName, String? jsonStr) resultCallback;
-  const TextConstructorEditorPage({required this.filename, required this.jsonStr, required this.resultCallback, Key? key}) : super(key: key);
+  const TextConstructorEditorPage({
+    required this.filename,
+    required this.jsonStr,
+    required this.onPrepareFileUrl,
+    required this.resultCallback,
+
+    Key? key
+  }) : super(key: key);
 
   @override
   State<TextConstructorEditorPage> createState() => _TextConstructorEditorPageState();
@@ -72,6 +82,15 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   bool _isStarting = true;
   bool _shaker = false;
 
+  final _objectTextInputController = TextEditingController();
+  final _menuTextInputController = TextEditingController();
+
+  final _imageInputController = TextEditingController();
+  final _imageInputFocus = FocusNode();
+
+  final _audioInputController = TextEditingController();
+  final _audioInputFocus = FocusNode();
+  
   @override
   void initState() {
     super.initState();
@@ -124,6 +143,26 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
     _styleJson[JrfTextConstructor.styles] = _convertStyleListIn(_textConstructorData.styles);
 
+    _imageInputFocus.addListener(() {
+      final packEditor = PackEditor.of(context);
+      if (packEditor == null) return;
+
+      if (_imageInputFocus.hasFocus && _imageInputController.text.isNotEmpty) {
+        packEditor.setSelectedFileSource(_imageInputController.text);
+      }
+      packEditor.setNeedFileSourceController(_imageInputController, _imageInputFocus.hasFocus, FileExt.imageExtList);
+    });
+
+    _audioInputFocus.addListener(() {
+      final packEditor = PackEditor.of(context);
+      if (packEditor == null) return;
+
+      if (_audioInputFocus.hasFocus && _audioInputController.text.isNotEmpty) {
+        packEditor.setSelectedFileSource(_audioInputController.text);
+      }
+      packEditor.setNeedFileSourceController(_audioInputController, _audioInputFocus.hasFocus, FileExt.audioExtList);
+    });    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_isStarting) return;
       _starting();
@@ -144,6 +183,10 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _imageInputController.dispose();
+    _imageInputFocus.dispose();
+    _audioInputController.dispose();
+    _audioInputFocus.dispose();
     super.dispose();
   }
 
@@ -262,7 +305,8 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                           },
                           icon: const Icon(Icons.delete, color: Colors.redAccent)
                       ),
-                    ],
+                  ],
+                  onPrepareFileUrl: widget.onPrepareFileUrl,
                 ),
               );
 
@@ -387,7 +431,9 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
             final viewIndex = _selLabelInfo!.viewIndex;
             final viewInfo = object.views[viewIndex];
             _selStyleIndex = viewInfo.styleIndex;
-            _selStyleInfo  = _textConstructorData.styles[_selStyleIndex];
+            if (_selStyleIndex >= 0) {
+              _selStyleInfo = _textConstructorData.styles[_selStyleIndex];
+            }
             _stylePanelKey.currentState?.setState(() {});
           }
 
@@ -397,6 +443,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       onChangeHeight: (newHeight) {
         _shake();
       },
+      onPrepareFileUrl: widget.onPrepareFileUrl,
     );
   }
 
@@ -494,13 +541,24 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
           for (int viewIndex = 0; viewIndex < object.views.length; viewIndex ++) {
             final viewInfo = object.views[viewIndex];
 
-            String outStr     = viewInfo.text;
+            String str        = viewInfo.text;
             String menuText   = viewInfo.menuText;
             int    styleIndex = viewInfo.styleIndex;
 
-            if (outStr.isEmpty) {
-              outStr = object.name;
+            if (str.isEmpty) {
+              str = object.name;
             }
+
+            final textInfo = TextInfo(str);
+
+            if (menuText.isEmpty) {
+              menuText = textInfo.text;
+            }
+
+            _objectTextInputController.text = textInfo.text;
+            _menuTextInputController.text   = menuText;
+            _imageInputController.text      = textInfo.image;
+            _audioInputController.text      = textInfo.audio;
 
             bool menuSwitchValue = menuText != ViewInfo.menuSkipText;
 
@@ -536,11 +594,11 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                       _paramLabel(
                         title: 'Стиль',
                         child: _dropdownStyle(
-                          outStr: outStr,
+                          outStr: textInfo.string,
                           styleIndex: styleIndex,
-                          onChange: (value) {
-                            if (value == null) return;
-                            object!.views[viewIndex] = ViewInfo.fromComponents(value, menuText, outStr);
+                          onChange: (newStyleIndex) {
+                            if (newStyleIndex == null) return;
+                            object!.views[viewIndex] = ViewInfo.fromComponents(newStyleIndex, menuText, textInfo.string);
                             setState((){});
                             _constructorKey.currentState?.refresh();
                           }
@@ -550,10 +608,10 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                       // Текст
                       _paramLabel(
                         title: 'Текст',
-                        child: TextFormField(
-                          initialValue: outStr,
-                          onFieldSubmitted: (text){
-                            object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, menuText, text);
+                        child: TextField(
+                          controller: _objectTextInputController,
+                          onSubmitted: (newText){
+                            object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, menuText, textInfo.getStringWith(text: newText));
                             setState((){});
                             _constructorKey.currentState?.refresh();
                           },
@@ -562,41 +620,75 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
                       //Текст меню
                       _paramLabel(
-                          title : 'Текст в меню',
-                          help  : 'Текст отображемый в выпадающем меню, иногда нужно что бы он отличался от значения которое будет выведено после выбора этого пункта меню',
-                          child : Row( children: [
-                            Switch(
-                                value: menuSwitchValue,
-                                onChanged: (value){
-                                  String menuText = '';
-                                  if (!value) {
-                                    menuText = '-';
-                                  }
-                                  object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, menuText, outStr);
+                        title : 'Текст в меню',
+                        help  : 'Текст отображемый в выпадающем меню, иногда нужно что бы он отличался от значения которое будет выведено после выбора этого пункта меню',
+                        child : Row( children: [
+                          Switch(
+                              value: menuSwitchValue,
+                              onChanged: (value){
+                                String menuText = '';
+                                if (!value) {
+                                  menuText = '-';
+                                }
+                                object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, menuText, textInfo.string);
+                                setState((){});
+                                _constructorKey.currentState?.refresh();
+                              }
+                          ),
+
+                          if (menuSwitchValue) ...[
+                            Expanded(
+                              child: TextField(
+                                controller: _menuTextInputController,
+                                //initialValue: outStr,
+                                onSubmitted: (newMenuText){
+                                  object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, newMenuText, textInfo.string);
                                   setState((){});
                                   _constructorKey.currentState?.refresh();
-                                }
-                            ),
-
-                            if (menuSwitchValue) ...[
-                              Expanded(
-                                child: TextFormField(
-                                  initialValue: outStr,
-                                  onFieldSubmitted: (text){
-                                    object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, text, outStr);
-                                    setState((){});
-                                    _constructorKey.currentState?.refresh();
-                                  },
-                                ),
-                              )
-                            ] else ...[
-                              const Expanded(child: Center(child: Text('в выпадающем меню этот пункт не выводится')))
-                            ]
-                          ])
+                                },
+                              ),
+                            )
+                          ] else ...[
+                            const Expanded(child: Center(child: Text('в выпадающем меню этот пункт не выводится')))
+                          ]
+                        ])
                       ),
+
+                      //Путь к файлу картики
+                      _paramLabel(
+                        title: 'Картинка',
+                        child: TextField(
+                          controller: _imageInputController,
+                          focusNode: _imageInputFocus,
+                          onSubmitted: (newImage){
+                            object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, menuText, textInfo.getStringWith(image: newImage));
+                            setState((){});
+
+                            _constructorKey.currentState?.refresh();
+                            Future.delayed(const Duration(milliseconds: 20), (){ // needs additional refresh when image changed
+                              _constructorKey.currentState?.refresh();
+                            });
+                          },
+                        )
+                      ),
+
+                      //Путь к аудио файлу
+                      _paramLabel(
+                          title: 'Аудио файл',
+                          child: TextField(
+                            controller: _audioInputController,
+                            focusNode: _audioInputFocus,
+                            onSubmitted: (newAudio){
+                              object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, menuText, textInfo.getStringWith(audio: newAudio));
+                              setState((){});
+                              _constructorKey.currentState?.refresh();
+                            },
+                          )
+                      ),
+                      
+                      Container(height: 4),
+
                     ],
-
-
                   ),
                 ),
               ],

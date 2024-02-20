@@ -11,6 +11,7 @@ class SourceFileEditor extends StatefulWidget {
   final String rootPath;
   final String filename;
   final String url;
+  final String? Function(String fileName) onPrepareFileUrl;
   final VoidCallback tryExitCallback;
   final void Function(String filename, String url) onAddNewFile;
 
@@ -19,6 +20,7 @@ class SourceFileEditor extends StatefulWidget {
     required this.rootPath,
     required this.filename,
     required this.url,
+    required this.onPrepareFileUrl,
     required this.tryExitCallback,
     required this.onAddNewFile,
 
@@ -86,6 +88,7 @@ class _SourceFileEditorState extends State<SourceFileEditor> {
 
         widget.tryExitCallback.call();
       },
+      onPrepareFileUrl: widget.onPrepareFileUrl,
     );
   }
 }

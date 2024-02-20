@@ -50,17 +50,9 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
 
   var _mode = _PackFileSourceMode.none;
 
-  final _previewPanelKey = GlobalKey();
-
   late PackFileSourceController _selectController;
-  late event.Listener _selectControllerListener;
 
   bool _moveButtonVisible = false;
-  final _moveButtonKey = GlobalKey();
-
-  late event.Listener _questionDataFocusListener;
-
-  final _resultButtonKey = GlobalKey();
 
   @override
   bool get wantKeepAlive => true;
@@ -79,34 +71,12 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
       }
     }
 
-    _selectController = PackFileSourceController(fileList, (){
-      _calcMoveButtonVisible();
-    });
-
-    _selectControllerListener = _selectController.onChange.subscribe((listener, data) {
-      _previewPanelKey.currentState?.setState(() {});
-      _calcMoveButtonVisible();
-      _resultButtonKey.currentState?.setState(() {});
-    });
-
-    _questionDataFocusListener = widget.editor.onCardBodyQuestionDataManualInputFocusChanged.subscribe((listener, data) {
-      _resultButtonKey.currentState?.setState(() {});
-    });
-  }
-
-  void _calcMoveButtonVisible() {
-    final newMoveButtonVisible = _selectController.checkboxPaths.isNotEmpty && _selectController.selectedPath.isNotEmpty;
-    if (_moveButtonVisible != newMoveButtonVisible) {
-      _moveButtonVisible = newMoveButtonVisible;
-      _moveButtonKey.currentState?.setState(() {});
-    }
+    _selectController = PackFileSourceController(fileList);
   }
 
   @override
   void dispose() {
     _scrollbarController.dispose();
-    _selectControllerListener.dispose();
-    _questionDataFocusListener.dispose();
     super.dispose();
   }
 
@@ -128,21 +98,35 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
       children: [
         Row( mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            StatefulBuilder(
-              key: _resultButtonKey,
-              builder: (context, setState) {
-                if (widget.editor.selectedCardBodyQuestionDataManualInputController == null) return Container();
+
+            event.EventReceiverWidget(
+              builder: (context){
+                if (widget.editor.needFileSourceController == null) return Container();
+
+                bool retPossible = false;
+                if (_selectController.isFile) {
+                  if (widget.editor.needFileExtList.isEmpty) {
+                    retPossible = true;
+                  } else {
+                    final fileExt = FileExt.getFileExt(_selectController.selectedPath);
+                    retPossible = widget.editor.needFileExtList.contains(fileExt);
+                  }
+                }
 
                 return Tooltip(
-                  message: 'Вставить в тело карточки',
+                  message: 'Вставить файл',
                   child: IconButton(
-                      onPressed: !_selectController.isFile ? null : (){
-                        widget.editor.selectedCardBodyQuestionDataManualInputController!.text = _selectController.selectedPath;
+                      onPressed: !retPossible ? null : (){
+                        widget.editor.needFileSourceController!.text = _selectController.selectedPath;
                       },
-                      icon: Icon(Icons.arrow_back_sharp, color: _selectController.isFile? Colors.blue : Colors.grey)
+                      icon: Icon(Icons.arrow_back_sharp, color: retPossible? Colors.blue : Colors.grey)
                   ),
                 );
-              }
+              },
+              events: [
+                _selectController.onChange,
+                widget.editor.onNeedFileSourceControllerChanged,
+              ],
             ),
 
             Tooltip(
@@ -207,36 +191,24 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
               ),
             ),
 
-            StatefulBuilder(
-              key: _moveButtonKey,
-              builder: (context, setState) {
-                if (!_moveButtonVisible) {
-                  return Container();
-                }
+            event.EventReceiverWidget(
+              builder: (context) {
+                final editPossible = _selectController.checkboxPaths.isEmpty
+                  && _selectController.isFile
+                  && [FileExt.contentTextConstructor].contains(FileExt.getFileExt(_selectController.selectedPath));
 
                 return Tooltip(
-                  message: 'Переместить выбранные файлы в выбранный каталог',
+                  message: 'Редактировать файл',
                   child: IconButton(
-                    onPressed: (){
-                      _moveFilesToFolder();
+                    onPressed: !editPossible? null : (){
+                      final url = widget.fileUrlMap[_selectController.selectedPath]!;
+                      widget.editor.editSourceFile(_selectController.selectedPath, url);
                     },
-                    icon: const Icon(Icons.move_down),
+                    icon: const Icon(Icons.edit),
                   ),
                 );
-              }
-            ),
-
-            Tooltip(
-              message: 'Редактировать файл',
-              child: IconButton(
-                onPressed: (){
-                  if (_selectController.checkboxPaths.isNotEmpty) return;
-                  if (!_selectController.isFile) return;
-                  final url = widget.fileUrlMap[_selectController.selectedPath]!;
-                  widget.editor.editSourceFile(_selectController.selectedPath, url);
-                },
-                icon: const Icon(Icons.edit),
-              ),
+              },
+              events: [_selectController.onChange],
             ),
 
             popupMenu(
@@ -251,6 +223,37 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
                 )
               ],
             ),
+
+            event.EventReceiverWidget(
+              builder: (context){
+                if (!_moveButtonVisible) {
+                  return Container();
+                }
+
+                return Tooltip(
+                  message: 'Переместить выбранные файлы в выбранный каталог',
+                  child: IconButton(
+                    onPressed: (){
+                      _moveFilesToFolder();
+                    },
+                    icon: const Icon(Icons.move_down),
+                  ),
+                );
+              },
+              events: [
+                _selectController.onChange,
+                _selectController.onCheckboxChanged,
+              ],
+              onEventCallback: (listener, object){
+                final newMoveButtonVisible = _selectController.checkboxPaths.isNotEmpty && _selectController.selectedPath.isNotEmpty;
+                if (_moveButtonVisible != newMoveButtonVisible) {
+                  _moveButtonVisible = newMoveButtonVisible;
+                  return true;
+                }
+                return false;
+              },
+            ),
+
         ]),
 
         if (_mode == _PackFileSourceMode.preview) ...[
@@ -364,9 +367,8 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
   }
 
   Widget _previewPanel() {
-    return StatefulBuilder(
-      key: _previewPanelKey,
-      builder: (context, setState) {
+    return event.EventReceiverWidget(
+      builder: (context){
         if (!_selectController.isFile) return Container();
         final url = widget.fileUrlMap[_selectController.selectedPath]!;
 
@@ -378,6 +380,7 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
           ),
         );
       },
+      events: [_selectController.onChange],
     );
   }
 
@@ -490,9 +493,8 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
 
 class PackFileSourceController {
   final List<String> fileList;
-  final VoidCallback onCheckboxChanged;
 
-  PackFileSourceController(this.fileList, this.onCheckboxChanged);
+  PackFileSourceController(this.fileList);
 
   String _selectedPath = "";
   String get selectedPath => _selectedPath;
@@ -511,6 +513,7 @@ class PackFileSourceController {
   final checkboxPaths = <String>[];
 
   final onChange = event.SimpleEvent();
+  final onCheckboxChanged = event.SimpleEvent();
 
   void setSelection(String path, bool isFile) {
     _selectedPath = path;
@@ -545,7 +548,7 @@ class PackFileSourceController {
       onChange.send();
     }
 
-    onCheckboxChanged.call();
+    onCheckboxChanged.send();
   }
 }
 

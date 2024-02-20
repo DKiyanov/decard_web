@@ -82,7 +82,7 @@ class _PackCardBodyWidgetState extends State<PackCardBodyWidget> {
         wrap      : false,
         reorderIcon : false,
         onManualInputFocusChange: (controller, hasFocus) {
-          PackEditor.of(context)?.setCardBodyQuestionDataManualInputFocus(controller, hasFocus);
+          PackEditor.of(context)?.setNeedFileSourceController(controller, hasFocus, []);
         },
         onItemPressed: (value){
           PackEditor.of(context)?.setSelectedFileSource(value);

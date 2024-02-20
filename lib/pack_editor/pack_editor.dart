@@ -320,7 +320,10 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
             setState((){
               _editableSourceFile = '';
             });
-          }
+          },
+          onPrepareFileUrl: (String fileName) {
+            return _fileUrlMap[fileName];
+          },
         ),
       )
     ]);
@@ -535,19 +538,23 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
     }
   }
 
-  final onCardBodyQuestionDataManualInputFocusChanged = event.SimpleEvent<TextEditingController>();
-  TextEditingController? selectedCardBodyQuestionDataManualInputController;
+  final onNeedFileSourceControllerChanged = event.SimpleEvent<TextEditingController>();
+  TextEditingController? needFileSourceController;
+  final needFileExtList = <String>[];
 
-  void setCardBodyQuestionDataManualInputFocus(TextEditingController controller, bool hasFocus) {
-    if (selectedCardBodyQuestionDataManualInputController == controller && !hasFocus) {
-      selectedCardBodyQuestionDataManualInputController = null;
-      onCardBodyQuestionDataManualInputFocusChanged.send();
+  void setNeedFileSourceController(TextEditingController controller, bool hasFocus, List<String> fileExtList ) {
+    if (needFileSourceController == controller && !hasFocus) {
+      needFileSourceController = null;
+      needFileExtList.clear();
+      onNeedFileSourceControllerChanged.send();
       return;
     }
 
-    if (selectedCardBodyQuestionDataManualInputController != controller && hasFocus) {
-      selectedCardBodyQuestionDataManualInputController = controller;
-      onCardBodyQuestionDataManualInputFocusChanged.send(selectedCardBodyQuestionDataManualInputController);
+    if (needFileSourceController != controller && hasFocus) {
+      needFileSourceController = controller;
+      needFileExtList.clear();
+      needFileExtList.addAll(fileExtList);
+      onNeedFileSourceControllerChanged.send(needFileSourceController);
       return;
     }
   }
