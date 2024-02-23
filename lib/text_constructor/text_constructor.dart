@@ -22,13 +22,16 @@ class TextConstructorWidget extends StatefulWidget {
   final PrepareFilePath? onPrepareFileUrl;
   final int? randomPercent;
   final bool viewOnly; // no edit panel + no basement + no empty space row at bottom + no moving + no menu
+  final bool noBasement;
   final void Function(int pos, String label)? onTapLabel;
+  final GridDragBoxTap? onBasementTap;
   final List<Widget>? toolbarLeading;
   final List<Widget>? toolbarTrailing;
   final Decorator? toolbarDecorator;
   final Decorator? wordPanelDecorator;
   final Decorator? basementPanelDecorator;
   final void Function(double)? onChangeHeight;
+  final VoidCallback? onChangeBasement;
 
   const TextConstructorWidget({
     required this.textConstructor,
@@ -36,13 +39,16 @@ class TextConstructorWidget extends StatefulWidget {
     this.onPrepareFileUrl,
     this.randomPercent,
     this.viewOnly = false,
+    this.noBasement = false,
     this.onTapLabel,
+    this.onBasementTap,
     this.toolbarLeading,
     this.toolbarTrailing,
     this.toolbarDecorator,
     this.wordPanelDecorator,
     this.basementPanelDecorator,
     this.onChangeHeight,
+    this.onChangeBasement,
 
     Key? key
   }) : super(key: key);
@@ -66,7 +72,7 @@ class _RandomDelWordResult {
 class TextConstructorWidgetState extends State<TextConstructorWidget> with AutomaticKeepAliveClientMixin<TextConstructorWidget> {
   late TextConstructorData textConstructorData;
   late WordPanelController panelController;
-  late WordGridController  basementController;
+  late WordGridController?  basementController;
 
   final Color  _defaultTextColor  = Colors.white;
   final Color  _borderColor      = Colors.black;
@@ -134,7 +140,12 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       focusAsCursor : textConstructorData.focusAsCursor,
     );
 
-    basementController = WordGridController(basementText);
+    if (!widget.noBasement && !widget.viewOnly) {
+      basementController = WordGridController(basementText);
+    } else {
+      basementController = null;
+    }
+
   }
 
   @override
@@ -207,7 +218,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       return;
     }
 
-    final basementStr = basementController.getVisibleWords();
+    final basementStr = basementController?.getVisibleWords()??'';
 
     _historyList.add(_HistData(panelStr, basementStr));
     _toolBarRefresh.send();
@@ -245,6 +256,24 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
           height: _panelHeight,
           child: _wordPanel()
         )
+      );
+    }
+
+    if (widget.noBasement) {
+      return Column(
+        children: [
+
+          _toolbarDecorator(
+              _toolbar()
+          ),
+
+          _wordPanelDecorator(
+              SizedBox(
+                  height: _panelHeight,
+                  child: _wordPanel()
+              )
+          ),
+        ],
       );
     }
 
@@ -305,10 +334,12 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
           child: _wordPanel(),
         ),
 
-        SizedBox(
-            height: 100,
-            child: _basement()
-        ),
+        if (!widget.noBasement && !widget.viewOnly) ...[
+          SizedBox(
+              height: 100,
+              child: _basement()
+          ),
+        ],
 
       ],
     );
@@ -336,9 +367,11 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
   Widget _basement() {
     return WordGrid(
       key            : _basementKey,
-      controller     : basementController,
+      controller     : basementController!,
       onDragBoxBuild : _onBasementBoxBuild,
-      onDragBoxTap   : _onBasementBoxTap,
+      onDragBoxTap   : widget.onBasementTap??_onBasementBoxTap,
+      onDragBoxLongPress: _onBasementBoxLongPress,
+      onChangeBasement: widget.onChangeBasement,
       onChangeHeight : (double newHeight) {
         final extHeight = newHeight;
         if (_basementHeight != extHeight) {
@@ -392,7 +425,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
                         _historyRecordOn = false;
                         final histData = _historyList[_historyPos];
                         panelController.text = histData.panelStr;
-                        basementController.setVisibleWords(histData.basementStr);
+                        basementController?.setVisibleWords(histData.basementStr);
                         _historyRecordOn = true;
 
                         _toolBarRefresh.send();
@@ -408,7 +441,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
                         _historyRecordOn = false;
                         final histData = _historyList[_historyPos];
                         panelController.text = histData.panelStr;
-                        basementController.setVisibleWords(histData.basementStr);
+                        basementController?.setVisibleWords(histData.basementStr);
                         _historyRecordOn = true;
 
                         _toolBarRefresh.send();
@@ -492,7 +525,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       if (wordObject.nonRemovable) return;
     }
 
-    basementController.addWord(wordInfo.word);
+    basementController?.addWord(wordInfo.word);
 
     panelController.deleteWord(pos);
     panelController.refreshPanel();
@@ -588,7 +621,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       return _basementGroupHead(context, ext.label);
     }
 
-    return labelWidget(context, ext.label, DragBoxSpec.none);
+    return labelWidget(context, ext.label, ext.spec);
   }
 
   double _internalBoxHeight() {
@@ -673,10 +706,6 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       outText = label;
     }
 
-    if (forPopup && menuText.isNotEmpty) {
-      outText = menuText;
-    }
-
     if (styleIndex != null) {
       localStyleIndex = styleIndex;
     }
@@ -718,7 +747,11 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       borderWidth = _focusBorderWidth;
     }
 
-    final textInfo = TextInfo(outText);
+    var textInfo = TextInfo(outText);
+
+    if (forPopup && menuText.isNotEmpty && menuText != textInfo.text) {
+      textInfo = TextInfo(menuText);
+    }
 
     Widget? retWidget;
 
@@ -796,9 +829,15 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
     required double borderWidth,
     required Color  backgroundColor,
   }){
+    double addPadding = 0;
+
+    if (borderWidth < 2) {
+      addPadding = 2 - borderWidth;
+    }
+
     return  Container(
-      height:  textConstructorData.boxHeight > 0 ? textConstructorData.boxHeight : null,
-      padding: const EdgeInsets.only(left: 10, right: 10),
+      height: textConstructorData.boxHeight > 0 ? textConstructorData.boxHeight : null,
+      padding: EdgeInsets.only(left: 10 + addPadding, right: 10 + addPadding, top: addPadding, bottom: addPadding),
       decoration: BoxDecoration(
         border: Border.all(
           color: borderColor,
@@ -833,7 +872,10 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       popupItems.add( PopupMenuItem(
           value: '#$i|${labelInfo.objectName}',
           padding: EdgeInsets.zero,
-          child: Center(child: popupItemWidget)
+          child: Center(child: Padding(
+            padding: const EdgeInsets.only(top: 1, bottom: 1),
+            child: popupItemWidget,
+          ))
       ));
     }
 
@@ -851,16 +893,22 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
     return value;
   }
 
-  void _onBasementBoxTap(DragBoxInfo<GridBoxExt> boxInfo, Offset position) {
+  void _onBasementBoxTap(DragBoxInfo<GridBoxExt> boxInfo, int boxInfoIndex, Offset position, Offset globalPosition) {
     if (!textConstructorData.notDelFromBasement){
       boxInfo.setState(visible: false);
-      basementController.refresh();
+      basementController?.refresh();
     }
 
     final curPos = panelController.getCursorPos(lastPostIfNot: true);
     panelController.saveCursor();
     panelController.insertWord(curPos, boxInfo.data.ext.label);
     panelController.refreshPanel();
+  }
+
+  _onBasementBoxLongPress(DragBoxInfo<GridBoxExt> boxInfo, int boxInfoIndex, Offset position, Offset globalPosition) async {
+    final newLabel = await _showPopupMenu(boxInfo.data.ext.label, globalPosition);
+    if (newLabel == null || newLabel.isEmpty) return;
+    basementController!.setLabel(boxInfoIndex, newLabel);
   }
 
   Future<String> _wordInputDialog(BuildContext context) async {
@@ -924,7 +972,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
 
   void refresh() {
     panelController.refreshPanel();
-    basementController.refresh();
+    basementController?.refresh();
     setState(() {});
   }
 }

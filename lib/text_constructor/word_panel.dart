@@ -8,15 +8,7 @@ import 'drag_box_widget.dart';
 typedef DragBoxTap = Future<String?> Function(String label, Widget child, int pos, Offset position, Offset globalPosition);
 typedef OnChangeHeight = void Function(double newHeight);
 
-enum DragBoxSpec {
-  none,
-  move,
-  canDrop,
-  tapInProcess,
-  focus,
-  insertPos,
-  editPos,
-}
+
 
 class PanelBoxExt{
   String label;
@@ -177,6 +169,13 @@ class WordPanelController {
     _panelState!._deleteWord(fromPos, count);
   }
 
+  void deleteWordEverywhere(String word) {
+    if (_panelState == null) return;
+    if (!_panelState!.mounted) return;
+
+    _panelState!._deleteWordEverywhere(word);
+  }
+
   void insertText(int pos, String text) {
     if (_panelState == null) return;
     if (!_panelState!.mounted) return;
@@ -189,6 +188,13 @@ class WordPanelController {
     if (!_panelState!.mounted) return;
 
     _panelState!._insertWord(pos, word);
+  }
+
+  void appendWord(String word) {
+    if (_panelState == null) return;
+    if (!_panelState!.mounted) return;
+
+    _panelState!._appendWord(word);
   }
 
   void refreshPanel() {
@@ -422,6 +428,11 @@ class WordPanelState extends State<WordPanel> {
     widget.controller.onChange?.call();
   }
 
+  void _deleteWordEverywhere(String word) {
+    _boxInfoList.removeWhere((boxInfo) => boxInfo.data.ext.label == word);
+    widget.controller.onChange?.call();
+  }
+
   void _insertText(int pos, String text){
     _boxInfoList.insertAll(pos, _splitText(text));
     widget.controller.onChange?.call();
@@ -429,6 +440,11 @@ class WordPanelState extends State<WordPanel> {
 
   void _insertWord(int pos, String word) {
     _boxInfoList.insert(pos, _createDragBoxInfo(label: word));
+    widget.controller.onChange?.call();
+  }
+
+  void _appendWord(String word) {
+    _boxInfoList.add(_createDragBoxInfo(label: word));
     widget.controller.onChange?.call();
   }
 

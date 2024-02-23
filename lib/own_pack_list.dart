@@ -395,9 +395,9 @@ class _OwnPackListState extends State<OwnPackList> {
     final result = await simpleDialog(
         context: context,
         title: Text(newVersion ? 'Создать новую версию пакета' : 'Создать копию пакет')
-    );
+    )??false;
 
-    if (result == null || !result) return;
+    if (!result) return;
 
     final copyPackFunction = ParseCloudFunction('copyPackage');
     final response = await copyPackFunction.execute(parameters: {ParseWebPackHead.packId : packId, 'newVersion' : newVersion});

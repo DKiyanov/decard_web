@@ -1,20 +1,22 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:decard_web/dk_expansion_tile.dart';
+import 'package:decard_web/text_constructor/drag_box_widget.dart';
 import 'package:decard_web/text_constructor/editor/text_constructor_options_widget.dart';
 import 'package:flutter/material.dart';
 
 import '../../card_model.dart';
 import '../../pack_editor/pack_editor.dart';
+import '../../pack_editor/pack_file_source_editor.dart';
 import '../../simple_dialog.dart';
 import '../text_constructor.dart';
-import '../word_panel.dart';
+import '../word_grid.dart';
 import 'text_constructor_desc_json.dart';
 import 'text_constructor_word_style_widget.dart';
 
 import '../../pack_editor/pack_widgets.dart';
 import '../word_panel_model.dart';
-import 'package:path/path.dart' as path_util;
 
 class AnswerTextConstructor {
   GlobalKey<TextConstructorWidgetState> key;
@@ -41,6 +43,37 @@ class TextConstructorEditorPage extends StatefulWidget {
   State<TextConstructorEditorPage> createState() => _TextConstructorEditorPageState();
 }
 
+class _ObjectControllers {
+  final objectTextInputController = TextEditingController();
+  final menuTextInputController = TextEditingController();
+  final imageInputController = TextEditingController();
+  final imageInputFocus = FocusNode();
+  final audioInputController = TextEditingController();
+  final audioInputFocus = FocusNode();
+
+  _ObjectControllers(PackEditorState packEditor) {
+    imageInputFocus.addListener(() {
+      if (imageInputFocus.hasFocus && imageInputController.text.isNotEmpty) {
+        packEditor.setSelectedFileSource(imageInputController.text);
+      }
+      packEditor.setNeedFileSourceController(imageInputController, imageInputFocus.hasFocus, FileExt.imageExtList);
+    });
+
+    audioInputFocus.addListener(() {
+      if (audioInputFocus.hasFocus && audioInputController.text.isNotEmpty) {
+        packEditor.setSelectedFileSource(audioInputController.text);
+      }
+      packEditor.setNeedFileSourceController(audioInputController, audioInputFocus.hasFocus, FileExt.audioExtList);
+    });
+  }
+
+  void dispose() {
+    imageInputController.dispose();
+    imageInputFocus.dispose();
+    audioInputController.dispose();
+    audioInputFocus.dispose();
+  }}
+
 class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   late Color _panelColor;
   
@@ -63,6 +96,11 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   int    _selPos = -1;
   bool _objectExpanded = false;
 
+  final _basementTunerPanelKey = GlobalKey();
+  bool _basementTunerExpanded = false;
+  final _basementWordList = <WordGridInfo>[];
+  int _selBasmentIndex = -1;
+
   final _styleListKey = GlobalKey();
 
   final _stylePanelKey = GlobalKey();
@@ -82,14 +120,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   bool _isStarting = true;
   bool _shaker = false;
 
-  final _objectTextInputController = TextEditingController();
-  final _menuTextInputController = TextEditingController();
-
-  final _imageInputController = TextEditingController();
-  final _imageInputFocus = FocusNode();
-
-  final _audioInputController = TextEditingController();
-  final _audioInputFocus = FocusNode();
+  final _controllersList = <_ObjectControllers>[];
   
   @override
   void initState() {
@@ -143,26 +174,6 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
 
     _styleJson[JrfTextConstructor.styles] = _convertStyleListIn(_textConstructorData.styles);
 
-    _imageInputFocus.addListener(() {
-      final packEditor = PackEditor.of(context);
-      if (packEditor == null) return;
-
-      if (_imageInputFocus.hasFocus && _imageInputController.text.isNotEmpty) {
-        packEditor.setSelectedFileSource(_imageInputController.text);
-      }
-      packEditor.setNeedFileSourceController(_imageInputController, _imageInputFocus.hasFocus, FileExt.imageExtList);
-    });
-
-    _audioInputFocus.addListener(() {
-      final packEditor = PackEditor.of(context);
-      if (packEditor == null) return;
-
-      if (_audioInputFocus.hasFocus && _audioInputController.text.isNotEmpty) {
-        packEditor.setSelectedFileSource(_audioInputController.text);
-      }
-      packEditor.setNeedFileSourceController(_audioInputController, _audioInputFocus.hasFocus, FileExt.audioExtList);
-    });    
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_isStarting) return;
       _starting();
@@ -183,10 +194,9 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   @override
   void dispose() {
     _scrollController.dispose();
-    _imageInputController.dispose();
-    _imageInputFocus.dispose();
-    _audioInputController.dispose();
-    _audioInputFocus.dispose();
+    for (var objectControllers in _controllersList) {
+      objectControllers.dispose();
+    }
     super.dispose();
   }
 
@@ -224,6 +234,8 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
         ],
 
         _objectEditor(),
+        Container(height: 6),
+        _basementTunerPanel(),
         Container(height: 6),
         _stylePanel(),
         Container(height: 6),
@@ -414,6 +426,9 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       textConstructor : _textConstructorData,
       wordPanelDecorator: _wordPanelDefaultDecorator,
       basementPanelDecorator: _basementPanelDefaultDecorator,
+      onChangeBasement: () {
+        _getBasementList();
+      },
       onTapLabel: (pos, label) {
         label = LabelInfo.unSelect(label);
 
@@ -423,28 +438,54 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
           _selPos   = pos;
         }
 
-        if (_selLabel != label) {
-          _selLabel = label;
-          _selLabelInfo  =  LabelInfo(_selLabel);
-          if (_selLabelInfo!.isObject){
-            final object = _textConstructorData.objects.firstWhere((object) => object.name == _selLabelInfo!.objectName);
-            final viewIndex = _selLabelInfo!.viewIndex;
-            final viewInfo = object.views[viewIndex];
-            _selStyleIndex = viewInfo.styleIndex;
-            if (_selStyleIndex >= 0) {
-              _selStyleInfo = _textConstructorData.styles[_selStyleIndex];
-            }
-            _stylePanelKey.currentState?.setState(() {});
-          }
-
-          _objectEditorKey.currentState?.setState(() {});
-        }
+        _selectLabel(label);
       },
       onChangeHeight: (newHeight) {
         _shake();
+        _getBasementList();
       },
       onPrepareFileUrl: widget.onPrepareFileUrl,
+      onBasementTap: (boxInfo, boxInfoIndex, pos, globalPos) {
+        _constructor.basementController!.setFocus(boxInfoIndex);
+        _selectLabel(boxInfo.data.ext.label);
+        _selBasmentIndex = boxInfoIndex;
+        _basementTunerPanelKey.currentState?.setState(() {});
+      },
     );
+  }
+
+  void _getBasementList() {
+    _basementWordList.clear();
+    _basementWordList.addAll(_constructor.basementController!.getWordList()??[]);
+    _basementTunerPanelKey.currentState?.setState(() {});
+  }
+
+  void _selectLabel(String label) {
+    if (_selLabel == label) return;
+    _selLabel = label;
+
+    if (_selLabel.isEmpty) {
+      _selLabelInfo = null;
+      _selPos = -1;
+      _objectExpanded = false;
+      _stylePanelKey.currentState?.setState(() {});
+      _objectEditorKey.currentState?.setState(() {});
+      return;
+    }
+
+    _selLabelInfo  =  LabelInfo(_selLabel);
+    if (_selLabelInfo!.isObject){
+      final object = _textConstructorData.objects.firstWhere((object) => object.name == _selLabelInfo!.objectName);
+      final viewIndex = _selLabelInfo!.viewIndex;
+      final viewInfo = object.views[viewIndex];
+      _selStyleIndex = viewInfo.styleIndex;
+      if (_selStyleIndex >= 0) {
+        _selStyleInfo = _textConstructorData.styles[_selStyleIndex];
+      }
+      _stylePanelKey.currentState?.setState(() {});
+    }
+
+    _objectEditorKey.currentState?.setState(() {});
   }
 
   Widget _dropdownStyle({
@@ -496,7 +537,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       key: _objectEditorKey,
       builder: (context, setState) {
 
-        if (_selPos < 0) {
+        if (_selLabel.isEmpty) {
           return ListTile(
             title: const Text('Слово не выбрано'),
             contentPadding: const EdgeInsets.only(left: 16),
@@ -516,6 +557,26 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
               scrollDirection: Axis.horizontal,
               child: _constructor.labelWidget(context, _selLabel, DragBoxSpec.none),
             ),
+          ),
+
+          IconButton(
+              onPressed: () {
+                _basementWordList.add(WordGridInfo(label: _selLabel, isGroup: false, visible: true));
+                _basementTunerExpanded = true;
+                _constructor.basementController!.setWordList(_basementWordList);
+              },
+              icon: Transform.rotate(
+                angle: math.pi,
+                child: const Icon(Icons.upload),
+              ),
+          ),
+
+          IconButton(
+              onPressed: () {
+                _constructor.panelController.appendWord(_selLabel);
+                _constructor.refresh();
+              },
+              icon: const Icon(Icons.upload)
           ),
 
           if (object == null || _objectExpanded) ...[
@@ -541,6 +602,13 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
           for (int viewIndex = 0; viewIndex < object.views.length; viewIndex ++) {
             final viewInfo = object.views[viewIndex];
 
+            if (_controllersList.length == viewIndex) {
+              final packEditor = PackEditor.of(context)!;
+              _controllersList.add(_ObjectControllers(packEditor));
+            }
+
+            final objectControllers = _controllersList[viewIndex];
+
             String str        = viewInfo.text;
             String menuText   = viewInfo.menuText;
             int    styleIndex = viewInfo.styleIndex;
@@ -555,10 +623,10 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
               menuText = textInfo.text;
             }
 
-            _objectTextInputController.text = textInfo.text;
-            _menuTextInputController.text   = menuText;
-            _imageInputController.text      = textInfo.image;
-            _audioInputController.text      = textInfo.audio;
+            objectControllers.objectTextInputController.text = textInfo.text;
+            objectControllers.menuTextInputController.text   = menuText;
+            objectControllers.imageInputController.text      = textInfo.image;
+            objectControllers.audioInputController.text      = textInfo.audio;
 
             bool menuSwitchValue = menuText != ViewInfo.menuSkipText;
 
@@ -609,7 +677,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                       _paramLabel(
                         title: 'Текст',
                         child: TextField(
-                          controller: _objectTextInputController,
+                          controller: objectControllers.objectTextInputController,
                           onSubmitted: (newText){
                             object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, menuText, textInfo.getStringWith(text: newText));
                             setState((){});
@@ -639,7 +707,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                           if (menuSwitchValue) ...[
                             Expanded(
                               child: TextField(
-                                controller: _menuTextInputController,
+                                controller: objectControllers.menuTextInputController,
                                 //initialValue: outStr,
                                 onSubmitted: (newMenuText){
                                   object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, newMenuText, textInfo.string);
@@ -658,8 +726,8 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                       _paramLabel(
                         title: 'Картинка',
                         child: TextField(
-                          controller: _imageInputController,
-                          focusNode: _imageInputFocus,
+                          controller: objectControllers.imageInputController,
+                          focusNode: objectControllers.imageInputFocus,
                           onSubmitted: (newImage){
                             object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, menuText, textInfo.getStringWith(image: newImage));
                             setState((){});
@@ -676,8 +744,8 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
                       _paramLabel(
                           title: 'Аудио файл',
                           child: TextField(
-                            controller: _audioInputController,
-                            focusNode: _audioInputFocus,
+                            controller: objectControllers.audioInputController,
+                            focusNode: objectControllers.audioInputFocus,
                             onSubmitted: (newAudio){
                               object!.views[viewIndex] = ViewInfo.fromComponents(styleIndex, menuText, textInfo.getStringWith(audio: newAudio));
                               setState((){});
@@ -731,6 +799,158 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
       Expanded(child: label),
       Expanded(child: child)
     ]);
+  }
+
+  Widget _basementTunerPanel() {
+    if (_constructorKey.currentState == null) return Container();
+
+    return StatefulBuilder(
+      key: _basementTunerPanelKey,
+      builder: (context, setState) {
+        if (_basementWordList.isEmpty) {
+          return ListTile(
+            title: const Text('Настройка подвала (пусто)'),
+            contentPadding: const EdgeInsets.only(left: 16, right: 4),
+            tileColor: _panelColor,
+          );
+        }
+
+        return DkExpansionTile(
+          title: Row(
+            children: [
+              const Expanded(child: Text('Настройка подвала')),
+              if (_basementTunerExpanded) ...[
+                IconButton(
+                    onPressed: () {
+                      _basementAddWordFromKeyboard();
+                    },
+                    icon: const Icon(Icons.keyboard_alt_outlined)
+                ),
+                IconButton(
+                    onPressed: () async {
+                      if (_selBasmentIndex < 0) return;
+
+                      final dlgResult = await simpleDialog(
+                        context: context,
+                        title: const Text('Удалить выбанное слово из подвала?'),
+                        barrierDismissible: true,
+                      ) ?? false;
+                      if (!dlgResult) return;
+
+                      _basementWordList.removeAt(_selBasmentIndex);
+                      _constructor.basementController!.setWordList(_basementWordList);
+                      _selBasmentIndex = -1;
+                      setState((){});
+                      _constructorKey.currentState?.setState(() {});
+                    },
+                    icon: const Icon(Icons.delete)
+                ),
+              ]
+            ],
+          ),
+          initiallyExpanded: false,
+
+          collapsedBackgroundColor: _panelColor,
+          backgroundColor: _panelColor,
+
+          onExpansionChanged: (expanded) {
+            _basementTunerExpanded = expanded;
+            setState(() {});
+          },
+
+          children: [
+            _basementItemsList()
+          ],
+        );
+
+      }
+    );
+  }
+
+  Widget _basementItemsList() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final children = <Widget>[];
+
+    for (int index = 0; index < _basementWordList.length; index ++) {
+      final wordInfo = _basementWordList[index];
+
+      if (wordInfo.isGroup) {
+        children.add(
+          Padding(
+            key: ValueKey(index),
+            padding: const EdgeInsets.all(8.0),
+            child: Center(child: Text(wordInfo.label, style: Theme.of(context).textTheme.headline6)),
+          )
+        );
+        continue;
+      }
+
+      children.add(
+        Padding(
+          key: ValueKey(index),
+
+          padding: const EdgeInsets.only(left: 16, right: 4, bottom: 4),
+          child: Container(
+            color: _selBasmentIndex != index ? null : Colors.yellow,
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: _constructor.labelWidget(context, wordInfo.label, DragBoxSpec.none),
+                    ),
+                    onTap: () {
+                      _selBasmentIndex = index;
+                      _constructor.basementController!.setFocus(index);
+                      _basementTunerPanelKey.currentState?.setState(() {});
+                    },
+                  ),
+                ),
+                Checkbox(
+                  value: wordInfo.visible,
+                  onChanged: (newVisible) {
+                    if (newVisible == null) return;
+                    wordInfo.visible = newVisible;
+
+                    final visibleWords = _basementWordList.where((wordInfo) => wordInfo.visible).map((wordInfo) => wordInfo.label).toList().join('\n');
+
+                    _constructor.basementController!.setVisibleWords(visibleWords);
+
+                    _getBasementList();
+                  }
+                )
+              ]
+            ),
+          ),
+        )
+      );
+    }
+
+    return LimitedBox(
+      maxHeight: screenHeight * 2 / 3,
+      child: Scrollbar(
+        child: Padding(
+          padding: const EdgeInsets.only(right: 10),
+          child: ReorderableListView(
+              shrinkWrap: true,
+              onReorder: (int oldIndex, int newIndex) {
+                if (oldIndex < newIndex) {
+                  newIndex -= 1;
+                }
+                final item = _basementWordList.removeAt(oldIndex);
+                _basementWordList.insert(newIndex, item);
+                _selBasmentIndex = -1;
+
+                _basementTunerPanelKey.currentState?.setState(() {});
+                _constructor.basementController!.setWordList(_basementWordList);
+
+              },
+              children: children
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _stylePanel() {
@@ -1062,9 +1282,61 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
     );
   }
 
+  void _basementAddWordFromKeyboard() async {
+    String text = '';
+    bool isGroup = false;
+
+    final dlgResult = await simpleDialog(
+      context: context,
+      title: const Text('Добавление слова или группы в подвал'),
+      content: StatefulBuilder(builder: (context, setState) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Expanded(child: Text('Текст')),
+                Expanded(
+                  child: TextField(
+                    onChanged: (value){
+                      text = value;
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            Row(children: [
+              const Expanded(child: Text('Это группа')),
+              Switch(
+                value: isGroup,
+                onChanged: (newValue) {
+                  isGroup = newValue;
+                  setState((){});
+                }
+              )
+            ])
+          ],
+        );
+      })
+    ) ?? false;
+
+    if (!dlgResult) return;
+
+    _basementWordList.add(WordGridInfo(label: text, isGroup: isGroup, visible: true));
+    _constructor.basementController!.setWordList(_basementWordList);
+  }
+
   String getResult() {
     _textConstructorData.text = _constructor.panelController.text;
-    //_textConstructorData.basement = _constructor.basementController.; TODO надо получить текст описывающий подвал
+    _textConstructorData.basement = _constructor.basementController!.getText()!;
+
+    if (_textConstructorData.text.isEmpty &&
+        _textConstructorData.basement.isEmpty &&
+        _textConstructorData.objects.isEmpty &&
+        _textConstructorData.styles.isEmpty &&
+        _answerList.isEmpty
+    ) return '';
 
     final jsonMap = _textConstructorData.toJson();
 
@@ -1091,41 +1363,6 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
   }
 
   Future<void> _returnResult() async {
-    final result = getResult();
-
-    String filename;
-
-    final baseName = path_util.basenameWithoutExtension(widget.filename);
-    if (baseName == 'new') {
-      if (_textConstructorData.text.isEmpty) {
-        widget.resultCallback.call(widget.filename, null);
-        return;
-      }
-
-      String newFilename = '';
-
-      final dlgResult = await simpleDialog(
-          context: context,
-          title: const Text('Введите имя для нового файла'),
-          content: StatefulBuilder(builder: (context, setState) {
-            return TextField(
-              onChanged: (value){
-                newFilename = value;
-              },
-            );
-          })
-      )??false;
-      if (!dlgResult) return;
-
-      filename = '${path_util.basenameWithoutExtension(newFilename)}${path_util.extension(widget.filename)}';
-      final fileDir = path_util.dirname(widget.filename);
-      if (fileDir.isNotEmpty && fileDir != '.') {
-        filename = path_util.join(fileDir, filename);
-      }
-    } else {
-      filename = widget.filename;
-    }
-
-    widget.resultCallback.call(filename, result);
+    SourceFileEditor.returnResult(widget.filename, getResult(), context, widget.resultCallback);
   }
 }

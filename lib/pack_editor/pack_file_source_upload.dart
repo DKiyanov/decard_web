@@ -11,6 +11,9 @@ import '../parse_pack_info.dart';
 import 'pack_file_source.dart';
 import 'package:simple_events/simple_events.dart' as event;
 
+// import 'package:pasteboard/pasteboard.dart';
+// import 'package:clipboard_all_types/clipboard_all_types.dart';
+
 class _FileInfo {
   final dynamic file;
   final String filename;
@@ -131,28 +134,28 @@ class _PackFileSourceUploadState extends State<PackFileSourceUpload> {
             child: const Icon(Icons.clear, color: Colors.red,),
           )
         ]),
-
-        if (kIsWeb) ...[
-          LimitedBox(
-            maxHeight: 150,
-            child: ListView(
-              shrinkWrap: true,
-              children: children,
-            ),
-          ),
-
-          Expanded( child: _dropZoneWidget() ),
-        ],
-
-        if (!kIsWeb) ...[
-          Expanded(
-            child: ListView(
-              children: children,
-            ),
-          ),
-        ],
-
       ],
+
+      if (kIsWeb) ...[
+        LimitedBox(
+          maxHeight: 150,
+          child: ListView(
+            shrinkWrap: true,
+            children: children,
+          ),
+        ),
+
+        Expanded( child: _dropZoneWidget() ),
+      ],
+
+      if (!kIsWeb) ...[
+        Expanded(
+          child: ListView(
+            children: children,
+          ),
+        ),
+      ],
+
     ]);
   }
 
@@ -188,13 +191,36 @@ class _PackFileSourceUploadState extends State<PackFileSourceUpload> {
           ),
 
           Center(
-            child: ElevatedButton(
-              onPressed: () async {
-                final fileList = await _dzController.pickFiles();
-                await _dropZoneAddFiles(fileList);
-                setState(() {});
-              },
-              child: const Text('Выбирите файлы'),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  onPressed: () async {
+                    final fileList = await _dzController.pickFiles();
+                    await _dropZoneAddFiles(fileList);
+                    setState(() {});
+                  },
+                  child: const Text('Выбирать файлы'),
+                ),
+
+                // ClipboardsAllTypes(
+                //   callback: (ClipboardFiles clipboardFiles) async {
+                //     print('file ${clipboardFiles.fileName} ${clipboardFiles.size}');
+                //     print(clipboardFiles.file?.length);
+                //   },
+                //   child: const Text('test ClipboardsAllTypes'),
+                // ),
+                //
+                // ElevatedButton(
+                //   onPressed: () async {
+                //     final image = await Pasteboard.image;
+                //     print(image?.length);
+                //     // final files = await Pasteboard.files();
+                //     // print(files.length);
+                //   },
+                //   child: const Text('Вставить из буфера обмена'),
+                // ),
+              ],
             ),
           )
 

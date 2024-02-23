@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 
 typedef DragBoxBuilder<T> = Widget Function(BuildContext context, T ext);
 
+enum DragBoxSpec {
+  none,
+  move,
+  canDrop,
+  tapInProcess,
+  focus,
+  insertPos,
+  editPos,
+}
 
 class DragBoxData<T>{
   Offset position;

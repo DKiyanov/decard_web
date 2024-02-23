@@ -8,8 +8,14 @@ import '../text_constructor/editor/text_constructor_preview_page.dart';
 class PackFileSourcePreview extends StatefulWidget {
   final String fileName;
   final String url;
+  final String? Function(String fileName) onPrepareFileUrl;
+  const PackFileSourcePreview({
+    required this.fileName,
+    required this.url,
+    required this.onPrepareFileUrl,
 
-  const PackFileSourcePreview({required this.fileName, required this.url, Key? key}) : super(key: key);
+    Key? key
+  }) : super(key: key);
 
   @override
   State<PackFileSourcePreview> createState() => _PackFileSourcePreviewState();
@@ -56,7 +62,7 @@ class _PackFileSourcePreviewState extends State<PackFileSourcePreview> {
     if (_isStarting) return const Center(child: CircularProgressIndicator());
 
     if (fileExt == FileExt.contentTextConstructor) {
-      return TextConstructorPreview(jsonStr: content);
+      return TextConstructorPreview(jsonStr: content, onPrepareFileUrl: widget.onPrepareFileUrl);
     }
 
     if (fileExt == FileExt.contentMarkdown) {

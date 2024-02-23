@@ -7,7 +7,13 @@ import '../word_panel_model.dart';
 
 class TextConstructorPreview extends StatefulWidget {
   final String jsonStr;
-  const TextConstructorPreview({required this.jsonStr, Key? key}) : super(key: key);
+  final String? Function(String fileName) onPrepareFileUrl;
+  const TextConstructorPreview({
+    required this.jsonStr,
+    required this.onPrepareFileUrl,
+
+    Key? key
+  }) : super(key: key);
 
   @override
   State<TextConstructorPreview> createState() => _TextConstructorPreviewState();
@@ -30,6 +36,7 @@ class _TextConstructorPreviewState extends State<TextConstructorPreview> {
     return TextConstructorWidget(
       textConstructor: _textConstructorData,
       viewOnly: true,
+      onPrepareFileUrl: widget.onPrepareFileUrl,
     );
   }
 }

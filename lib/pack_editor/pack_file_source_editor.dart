@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../card_model.dart';
 import '../media_widgets.dart';
 import '../parse_pack_info.dart';
+import '../simple_dialog.dart';
+import '../simple_text_editor_page.dart';
 import '../text_constructor/editor/text_constructor_editor_page.dart';
 import 'package:path/path.dart' as path_util;
 
@@ -29,6 +31,43 @@ class SourceFileEditor extends StatefulWidget {
 
   @override
   State<SourceFileEditor> createState() => _SourceFileEditorState();
+
+  static Future<void> returnResult(String inFileName, String result, BuildContext context, void Function(String fileName, String? jsonStr) resultCallback) async {
+    String filename;
+
+    final baseName = path_util.basenameWithoutExtension(inFileName);
+    if (baseName == 'new') {
+      if (result.isEmpty) {
+        resultCallback.call(inFileName, null);
+        return;
+      }
+
+      String newFilename = '';
+
+      final dlgResult = await simpleDialog(
+          context: context,
+          title: const Text('Введите имя для нового файла'),
+          content: StatefulBuilder(builder: (context, setState) {
+            return TextField(
+              onChanged: (value){
+                newFilename = value;
+              },
+            );
+          })
+      )??false;
+      if (!dlgResult) return;
+
+      filename = '${path_util.basenameWithoutExtension(newFilename)}${path_util.extension(inFileName)}';
+      final fileDir = path_util.dirname(inFileName);
+      if (fileDir.isNotEmpty && fileDir != '.') {
+        filename = path_util.join(fileDir, filename);
+      }
+    } else {
+      filename = inFileName;
+    }
+
+    resultCallback.call(filename, result);
+  }
 }
 
 class _SourceFileEditorState extends State<SourceFileEditor> {
@@ -69,6 +108,9 @@ class _SourceFileEditorState extends State<SourceFileEditor> {
     if (fileExt == FileExt.contentTextConstructor) {
       return _textConstructor(content);
     }
+    if (fileExt == FileExt.contentTxt) {
+      return _simpleTextEditor(content);
+    }
 
     return Container();
   }
@@ -77,10 +119,10 @@ class _SourceFileEditorState extends State<SourceFileEditor> {
     return TextConstructorEditorPage(
       jsonStr        : jsonStr,
       filename       : widget.filename,
-      resultCallback : (saveFilename, jsonStr) async {
-        if (jsonStr != null) {
+      resultCallback : (saveFilename, newJsonStr) async {
+        if (newJsonStr != null) {
           final path = path_util.join(widget.rootPath, saveFilename);
-          final url = await addTextFileToPack(widget.packId, path, jsonStr);
+          final url = await addTextFileToPack(widget.packId, path, newJsonStr);
           if (isNew) {
             widget.onAddNewFile.call(saveFilename, url);
           }
@@ -89,6 +131,24 @@ class _SourceFileEditorState extends State<SourceFileEditor> {
         widget.tryExitCallback.call();
       },
       onPrepareFileUrl: widget.onPrepareFileUrl,
+    );
+  }
+
+  Widget _simpleTextEditor(String content) {
+    return SimpleTextEditor(
+      content        : content,
+      filename       : widget.filename,
+      resultCallback : (saveFilename, newContent) async {
+        if (newContent != null) {
+          final path = path_util.join(widget.rootPath, saveFilename);
+          final url = await addTextFileToPack(widget.packId, path, newContent);
+          if (isNew) {
+            widget.onAddNewFile.call(saveFilename, url);
+          }
+        }
+
+        widget.tryExitCallback.call();
+      },
     );
   }
 }

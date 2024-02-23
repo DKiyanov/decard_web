@@ -46,6 +46,11 @@ enum _PackFileSourceMode{
 }
 
 class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveClientMixin<PackFileSource> {
+  static const Map<String, String> _createFileMap = {
+    FileExt.contentTextConstructor : 'Создать файл конструктор текстов',
+    FileExt.contentTxt             : 'Создать простой текстовый файл',
+  };
+
   final _scrollbarController = ScrollController();
 
   var _mode = _PackFileSourceMode.none;
@@ -195,7 +200,7 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
               builder: (context) {
                 final editPossible = _selectController.checkboxPaths.isEmpty
                   && _selectController.isFile
-                  && [FileExt.contentTextConstructor].contains(FileExt.getFileExt(_selectController.selectedPath));
+                  && _createFileMap.keys.contains(FileExt.getFileExt(_selectController.selectedPath));
 
                 return Tooltip(
                   message: 'Редактировать файл',
@@ -213,15 +218,15 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
 
             popupMenu(
               icon: const Icon(Icons.menu),
-              menuItemList: [
-                SimpleMenuItem(
-                  child: const Text('Создать конструктор'),
-                  onPress: () {
-                    final filename = path_util.join(_selectController.selectedDir, 'new.${FileExt.contentTextConstructor}');
-                    widget.editor.editSourceFile(filename, '');
-                  },
-                )
-              ],
+              menuItemList: _createFileMap.entries.map((entry) {
+                return  SimpleMenuItem(
+                    child: Text(entry.value),
+                    onPress: () {
+                      final filename = path_util.join(_selectController.selectedDir, 'new.${entry.key}');
+                      widget.editor.editSourceFile(filename, '');
+                    },
+                  );
+              }).toList(),
             ),
 
             event.EventReceiverWidget(
@@ -377,6 +382,9 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
           child: PackFileSourcePreview(
             fileName : _selectController.selectedPath,
             url      : url,
+            onPrepareFileUrl: (fileName) {
+              return widget.fileUrlMap[fileName];
+            },
           ),
         );
       },
@@ -397,9 +405,9 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
           },
         );
       })
-    );
+    )??false;
 
-    if (result == null || !result || folderName.isEmpty) return;
+    if (!result || folderName.isEmpty) return;
 
     final path = path_util.join(_selectController.selectedDir, folderName, '.');
     _selectController.fileList.add(path);
