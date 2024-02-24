@@ -123,7 +123,7 @@ RouteMap _buildRouteMapIn(BuildContext context) {
 
       '/child_pack_tune': (route) => NoAnimationPage(child: RegulatorCardSetPage(
           childID : route.queryParameters['id']!,
-          fileGuid: route.queryParameters['packGuid']!,
+          packId  : route.queryParameters['packId']!,
       )),
     },
   );

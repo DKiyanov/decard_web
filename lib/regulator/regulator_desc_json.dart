@@ -98,6 +98,9 @@ const regulatorDescJson = {
   "difficultyList" : {
     "title" : "Список уровней сложности",
     "body"  : {
+      "bodyName" : {
+        "title" : "Уровень сложности"
+      },
 
       "cost": {
         "title" : "Стоимость",

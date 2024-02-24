@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:decard_web/common.dart';
 import 'package:flutter/material.dart';
 
 import 'package:collection/collection.dart';
@@ -100,7 +101,7 @@ class WebPackInfo {
   }
 
   Widget getSubtitle(BuildContext context) {
-    final subtitle = 'возраст: $targetAgeLow-$targetAgeHigh; теги: $tags';
+    final subtitle = 'возраст: $targetAgeLow-$targetAgeHigh; ${tags.isEmpty ? 'теги отсутствуют' : 'теги: $tags'}; ${publicationMoment == null? 'не опубликовано' : 'опубликовано: ${dateToStr(publicationMoment!)}' }';
     return Text(subtitle);
   }
 

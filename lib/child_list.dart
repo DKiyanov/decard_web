@@ -97,7 +97,7 @@ class _ChildListState extends State<ChildList> {
                 trailing: InkWell(
                   child: const Icon(Icons.tune),
                   onTap: () {
-                    Routemaster.of(context).push('/child_pack_tune', queryParameters: {'id' : child.childID, 'packGuid' : packInfo.guid});
+                    Routemaster.of(context).push('/child_pack_tune', queryParameters: {'id' : child.childID, 'packId' : '${packInfo.packId}'});
                   },
                 )
             )).toList(),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../db_mem.dart';
 import '../decardj.dart';
 import '../pack_editor/pack_widgets.dart';
 import '../pack_editor/values_json.dart';
@@ -10,8 +11,19 @@ class RegulatorCardSetWidget extends StatelessWidget {
   final String path;
   final FieldDesc fieldDesc;
   final OwnerDelegate? ownerDelegate;
+  final DbSourceMem  dbSource;
+  final int jsonFileID;
 
-  const RegulatorCardSetWidget({required this.json, required this.path, required this.fieldDesc, this.ownerDelegate, Key? key}) : super(key: key);
+  const RegulatorCardSetWidget({
+    required this.json,
+    required this.path,
+    required this.fieldDesc,
+    this.ownerDelegate,
+    required this.dbSource,
+    required this.jsonFileID,
+
+    Key? key
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -155,27 +167,22 @@ class RegulatorCardSetWidget extends StatelessWidget {
   }
 
   Future<List<String>> getTagList(BuildContext context) async {
-    // TODO getTagList
-    return [];
+    return dbSource.tabCardTag.getFileTagList(jsonFileID: jsonFileID);
   }
 
   Future<List<String>> getCardIdList(BuildContext context) async {
-    // TODO getCardIdList
-    return [];
+    return dbSource.tabCardHead.getFileCardKeyList(jsonFileID: jsonFileID);
   }
 
   Future<List<String>> getCardGroupList(BuildContext context) async {
-    // TODO getCardIdList
-    return [];
+    return dbSource.tabCardHead.getFileGroupList(jsonFileID: jsonFileID);
   }
 
   Future<List<String>> getDifficultyLevelList(BuildContext context) async {
-    // TODO getDifficultyLevelList
-    return [];
+    return getJsonFieldValues(DjfCard.difficulty).keys.toList();
   }
 
   Future<List<String>> getStyleList(BuildContext context) async {
-    // TODO getStyleList
-    return [];
+    return dbSource.tabCardStyle.getStyleKeyList(jsonFileID: jsonFileID);
   }
 }

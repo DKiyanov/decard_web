@@ -107,65 +107,68 @@ class _OwnPackListState extends State<OwnPackList> {
     return ListView(
       children: _webPackList.map((packInfo) {
         return packInfo.getListTile(context,
-            trailing: popupMenu(
-                icon: const Icon(Icons.menu),
-                menuItemList: [
-                  if (!packInfo.published) ...[
-                    SimpleMenuItem(
-                        child: const Text('Изменить'),
-                        onPress: () {
-                          Routemaster.of(context).push('/pack_editor/${packInfo.packId}').result.then((value) async {
-                            if (!mounted) return;
-                            await _refresh();
-                            setState(() {});
-                          });
-
-                        }
-                    )
-                  ],
-
-                  if (packInfo.userID == widget.user.objectId) ...[
-                    SimpleMenuItem(
-                        child: const Text('Создать новую версию'),
-                        onPress: () {
-                          _copyPackage(packInfo.packId, newVersion : true);
-                        }
-                    ),
-                  ],
-
-                  SimpleMenuItem(
-                      child: const Text('Создать копию'),
-                      onPress: () {
-                        _copyPackage(packInfo.packId, newVersion : false);
-                      }
-                  ),
-
-                  SimpleMenuItem(
-                      child: const Text('Назначит пакет детям'),
-                      onPress: () {
-                        _addPackForChildDialog(packInfo);
-                      }
-                  ),
-
-                  SimpleMenuItem(
-                      child: const Text('Удалить пакет'),
-                      onPress: () {
-                        _deletePackage(packInfo.packId);
-                      }
-                  ),
-
-                  SimpleMenuItem(
-                      child: const Text('Опубликовать пакет'),
-                      onPress: () {
-                        _publishPackage(packInfo.packId);
-                      }
-                  ),
-
-                ]
-
-            ),
+          trailing: _packActionMenu(packInfo),
         );
       }).toList(),
+    );
+  }
+
+  Widget _packActionMenu(WebPackInfo packInfo) {
+    return popupMenu(
+        icon: const Icon(Icons.menu),
+        menuItemList: [
+          if (!packInfo.published) ...[
+            SimpleMenuItem(
+                child: const Text('Изменить'),
+                onPress: () {
+                  Routemaster.of(context).push('/pack_editor/${packInfo.packId}').result.then((value) async {
+                    if (!mounted) return;
+                    await _refresh();
+                    setState(() {});
+                  });
+
+                }
+            )
+          ],
+
+          if (packInfo.userID == widget.user.objectId) ...[
+            SimpleMenuItem(
+                child: const Text('Создать новую версию'),
+                onPress: () {
+                  _copyPackage(packInfo.packId, newVersion : true);
+                }
+            ),
+          ],
+
+          SimpleMenuItem(
+              child: const Text('Создать копию'),
+              onPress: () {
+                _copyPackage(packInfo.packId, newVersion : false);
+              }
+          ),
+
+          SimpleMenuItem(
+              child: const Text('Назначит пакет детям'),
+              onPress: () {
+                _addPackForChildDialog(packInfo);
+              }
+          ),
+
+          SimpleMenuItem(
+              child: const Text('Удалить пакет'),
+              onPress: () {
+                _deletePackage(packInfo.packId);
+              }
+          ),
+
+          SimpleMenuItem(
+              child: const Text('Опубликовать пакет'),
+              onPress: () {
+                _publishPackage(packInfo.packId);
+              }
+          ),
+
+        ]
     );
   }
 
@@ -378,12 +381,12 @@ class _OwnPackListState extends State<OwnPackList> {
 
     if (!result) return;
 
-    // TODO нужно реализовать функционал на сервере
     final publishPackFunction = ParseCloudFunction('publishPackage');
     final response = await publishPackFunction.execute(parameters: {ParseWebPackHead.packId : packId});
 
     if (!response.success) {
-
+      final errCode = response.result?["errCode"];
+      Fluttertoast.showToast(msg: errCode);
       return;
     }
 
@@ -432,6 +435,7 @@ class _OwnPackListState extends State<OwnPackList> {
     final result = await simpleDialog(
       context: context,
       title: Text('Назначить пакет детям\n${packInfo.title}'),
+      barrierDismissible: true,
       content: StatefulBuilder(builder: (context, setState) {
         return SingleChildScrollView(
           child: ListBody(

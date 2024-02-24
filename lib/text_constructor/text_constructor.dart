@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
@@ -754,11 +755,21 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
     }
 
     Widget? retWidget;
+    bool setHeight = true;
 
     if (retWidget == null && textInfo.image.isNotEmpty) {
       final fileUrl = widget.onPrepareFileUrl!.call(textInfo.image);
       if (fileUrl != null) {
         retWidget = imageFromUrl(fileUrl);
+        if (retWidget is Image && forPopup) {
+          setHeight = false;
+          final screenSize =  MediaQuery.of(context).size;
+          retWidget = LimitedBox(
+            maxHeight: screenSize.height / 3,
+            maxWidth: screenSize.width - 100,
+            child: retWidget,
+          );
+        }
       }
     }
 
@@ -773,7 +784,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
       retWidget = Icon(Icons.keyboard_alt_outlined, color: textColor);
     }
 
-    if (retWidget != null) {
+    if (retWidget != null && setHeight) {
       retWidget = SizedBox(
           height : _internalBoxHeight(),
           child  : retWidget
@@ -829,6 +840,14 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
     required double borderWidth,
     required Color  backgroundColor,
   }){
+    double hPadding = 10;
+    double cRadius = 8;
+
+    //hPadding = 0; // это для обрезки картики без отступов
+    if (hPadding == 0) {
+      cRadius = 20;
+    }
+
     double addPadding = 0;
 
     if (borderWidth < 2) {
@@ -837,7 +856,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
 
     return  Container(
       height: textConstructorData.boxHeight > 0 ? textConstructorData.boxHeight : null,
-      padding: EdgeInsets.only(left: 10 + addPadding, right: 10 + addPadding, top: addPadding, bottom: addPadding),
+      padding: EdgeInsets.only(left: hPadding + addPadding, right: hPadding + addPadding, top: addPadding, bottom: addPadding),
       decoration: BoxDecoration(
         border: Border.all(
           color: borderColor,
@@ -847,7 +866,7 @@ class TextConstructorWidgetState extends State<TextConstructorWidget> with Autom
         color: backgroundColor,
       ),
       child: ClipRRect(
-          borderRadius: const BorderRadius.all(Radius.circular(8)),
+          borderRadius: BorderRadius.all(Radius.circular(cRadius)),
           child: child
       ),
     );

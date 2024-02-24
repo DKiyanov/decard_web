@@ -157,7 +157,7 @@ class WebChildListManager {
 
       final device = deviceList.firstWhereOrNull((device) => device.sourcePath == sourcePath);
       if (device == null) {
-        final newDevice = WebChildDevice(parseDevice.objectId!, child.childName, deviceName, sourcePath);
+        final newDevice = WebChildDevice(deviceChildID, child.childName, deviceName, sourcePath);
         deviceList.add(newDevice);
         _changed = true;
       } else {
@@ -203,27 +203,27 @@ class WebChildListManager {
       }
     }
 
-    for (var child in deviceList) {
+    for (var device in deviceList) {
       final localPackInfoList = <WebPackInfo>[];
-      localPackInfoList.addAll(child.packInfoList);
+      localPackInfoList.addAll(device.packInfoList);
 
       for (var source in sourceList) {
         final sourcePath = source.get<String>(ParseWebChildSource.path)!;
-        if (sourcePath != child.sourcePath) continue;
+        if (sourcePath != device.sourcePath) continue;
 
         final packId = int.parse(source.get<String>(ParseWebChildSource.addInfo)!);
         final packInfo = _packInfoList.firstWhere((packInfo) => packInfo.packId == packId);
 
-        if (child.packInfoList.contains(packInfo)) {
+        if (device.packInfoList.contains(packInfo)) {
           localPackInfoList.remove(packInfo);
         } else {
-          child.packInfoList.add(packInfo);
+          device.packInfoList.add(packInfo);
           _changed = true;
         }
       }
 
       for (var packInfo in localPackInfoList) {
-        child.packInfoList.remove(packInfo);
+        device.packInfoList.remove(packInfo);
         _changed = true;
       }
     }
