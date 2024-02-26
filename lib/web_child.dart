@@ -13,11 +13,13 @@ import 'parse_class_info.dart';
 import 'package:simple_events/simple_events.dart' as event;
 
 class WebChild{
+  final String userID;
   final String childID;
   final String childName; 
 
   Regulator? _regulator;
   Regulator get regulator => _regulator!;
+  ParseObject? regulatorParseObject;
 
 
   ChildTestResults? _testResults;
@@ -28,7 +30,7 @@ class WebChild{
     return _testResults!;
   }
 
-  WebChild(this.childID, this.childName, String? regulatorJson) {
+  WebChild(this.userID, this.childID, this.childName, String? regulatorJson, this.regulatorParseObject) {
     if (regulatorJson != null) {
       _regulator = Regulator.fromMap(jsonDecode(regulatorJson));
     } else {
@@ -39,6 +41,20 @@ class WebChild{
   
   Future<void> regulatorChange(Map<String, dynamic> json) async {
     _regulator = Regulator.fromMap(json);
+
+    final jsonStr = jsonEncode(json);
+
+    if (regulatorParseObject == null) {
+      regulatorParseObject = ParseObject(ParseWebChildSource.className);
+      regulatorParseObject!.set(ParseWebChildSource.userID     , userID);
+      regulatorParseObject!.set(ParseWebChildSource.path       , childName);
+      regulatorParseObject!.set(ParseWebChildSource.sourceType , ParseWebChildSource.sourceTypeRegulator);
+      regulatorParseObject!.set(ParseWebChildSource.fileName   , ParseWebChildSource.sourceTypeRegulator);
+    }
+
+    regulatorParseObject!.set(ParseWebChildSource.textContent, jsonStr);
+    regulatorParseObject!.set(ParseWebChildSource.size       , jsonStr.length);
+    await regulatorParseObject!.save();
   }
   
   /// load last test results from server
@@ -132,7 +148,7 @@ class WebChildListManager {
           regulatorJson = parseRegulator.get<String>(ParseWebChildSource.textContent)!;
         }
 
-        final newChild = WebChild(parseChild.objectId!, childName, regulatorJson);
+        final newChild = WebChild(userID, parseChild.objectId!, childName, regulatorJson, parseRegulator);
         childList.add(newChild);
         _changed = true;
       } else {

@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../db_mem.dart';
 import '../decardj.dart';
+import '../pack_editor/desc_json.dart';
+import '../pack_editor/pack_style_widget.dart';
 import '../pack_editor/pack_widgets.dart';
 import '../pack_editor/values_json.dart';
 import 'regulator.dart';
 
-class RegulatorCardSetWidget extends StatelessWidget {
+class RegulatorCardSetWidget extends StatefulWidget {
   final Map<String, dynamic> json;
   final String path;
   final FieldDesc fieldDesc;
@@ -26,14 +28,30 @@ class RegulatorCardSetWidget extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<RegulatorCardSetWidget> createState() => _RegulatorCardSetWidgetState();
+}
+
+class _RegulatorCardSetWidgetState extends State<RegulatorCardSetWidget> {
+  late Map<String, String>  difficultyMap;
+  late Map<String, FieldDesc> _descMap;
+
+  @override
+  void initState() {
+    super.initState();
+
+    difficultyMap = getJsonFieldValues(DjfCard.difficulty);
+    _descMap = loadDescFromMap(descJson);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return JsonExpansionFieldGroup(
-      json             : json,
-      path             : path,
+      json             : widget.json,
+      path             : widget.path,
       fieldName        : '',
-      fieldDesc        : fieldDesc,
+      fieldDesc        : widget.fieldDesc,
       onJsonFieldBuild : buildSubFiled,
-      ownerDelegate    : ownerDelegate,
+      ownerDelegate    : widget.ownerDelegate,
     );
   }
 
@@ -54,6 +72,15 @@ class RegulatorCardSetWidget extends StatelessWidget {
     FixBuilder? prefix;
     FixBuilder? suffix;
 
+    if (['cardFilter', 'setValues'].contains(fieldName)) {
+      return JsonExpansionFieldGroup(
+        json: json,
+        path: path,
+        fieldName: fieldName,
+        fieldDesc: fieldDesc,
+        onJsonFieldBuild: buildSubFiled,
+      );
+    }
 
     if (fieldName == DrfCardSet.cards) {
       input = JsonMultiValueField(
@@ -106,7 +133,9 @@ class RegulatorCardSetWidget extends StatelessWidget {
         fieldName : fieldName,
         fieldDesc : fieldDesc,
         wrap      : true,
-        valuesGetterAsync: (context)=> getDifficultyLevelList(context),
+        itemFieldType: FieldType.int,
+        valuesGetter: (context)=> difficultyMap.keys.toList(),
+        itemOut: (key)=> Text(difficultyMap[key]!),
       );
     }
 
@@ -127,20 +156,21 @@ class RegulatorCardSetWidget extends StatelessWidget {
         fieldDesc         : fieldDesc,
         fieldType         : FieldType.int,
         defaultValue      : "0",
-        possibleValuesMap : getJsonFieldValues(DjfCard.difficulty),
+        possibleValuesMap : difficultyMap,
         colorIfEmpty      : JsonTheme.colorIfEmpty,
       );
     }
 
     if (fieldName == DrfCardSet.style) {
-      input = JsonMultiValueField(
-        json      : json,
-        path      : path,
-        fieldName : fieldName,
-        fieldDesc : fieldDesc,
-        wrap      : false,
-        singleValueSelect: true,
-        valuesGetterAsync: (context)=> getStyleList(context),
+      if (json[DrfCardSet.style] == null) {
+        json[DrfCardSet.style] = <String, dynamic> {};
+      }
+
+      return PackStyleWidget(
+        json        : json[DrfCardSet.style],
+        path        : '$path/$fieldName',
+        fieldDesc   : _descMap['cardStyle']!,
+        hideIdField : true
       );
     }
 
@@ -167,22 +197,18 @@ class RegulatorCardSetWidget extends StatelessWidget {
   }
 
   Future<List<String>> getTagList(BuildContext context) async {
-    return dbSource.tabCardTag.getFileTagList(jsonFileID: jsonFileID);
+    return widget.dbSource.tabCardTag.getFileTagList(jsonFileID: widget.jsonFileID);
   }
 
   Future<List<String>> getCardIdList(BuildContext context) async {
-    return dbSource.tabCardHead.getFileCardKeyList(jsonFileID: jsonFileID);
+    return widget.dbSource.tabCardHead.getFileCardKeyList(jsonFileID: widget.jsonFileID);
   }
 
   Future<List<String>> getCardGroupList(BuildContext context) async {
-    return dbSource.tabCardHead.getFileGroupList(jsonFileID: jsonFileID);
-  }
-
-  Future<List<String>> getDifficultyLevelList(BuildContext context) async {
-    return getJsonFieldValues(DjfCard.difficulty).keys.toList();
+    return widget.dbSource.tabCardHead.getFileGroupList(jsonFileID: widget.jsonFileID);
   }
 
   Future<List<String>> getStyleList(BuildContext context) async {
-    return dbSource.tabCardStyle.getStyleKeyList(jsonFileID: jsonFileID);
+    return widget.dbSource.tabCardStyle.getStyleKeyList(jsonFileID: widget.jsonFileID);
   }
 }

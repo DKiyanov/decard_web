@@ -692,7 +692,7 @@ class _JsonDropdownState extends State<JsonDropdown> {
   void initState() {
     super.initState();
 
-    _value = widget.json[widget.fieldName]??widget.defaultValue;
+    _value = widget.json[widget.fieldName]?.toString()??widget.defaultValue;
 
     if (widget.possibleValues != null){
       _values.addAll(widget.possibleValues!);
@@ -899,8 +899,10 @@ class JsonMultiValueField extends StatefulWidget {
   final Color? color;
   final Color? colorIfEmpty;
   final String? separator;
-  final InputOutputConverter? converter;
-  final bool wrap;
+  final InputOutputConverter? converter; // convert json value to values array and back
+  final FieldType? itemFieldType;
+  final Widget Function(String value)? itemOut;
+  final bool wrap; // displays result items in multiple horizontal runs
   final StringValueListGetter? valuesGetter;
   final StringValueListGetterAsync? valuesGetterAsync;
   final bool valuesGetOnce;
@@ -926,6 +928,8 @@ class JsonMultiValueField extends StatefulWidget {
     this.colorIfEmpty,
     this.separator,
     this.converter,
+    this.itemFieldType,
+    this.itemOut,
     this.wrap = true,
     this.valuesGetter,
     this.valuesGetterAsync,
@@ -1039,7 +1043,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
       assert(!_valueIsString);
 
       for (var value in values) {
-        _valueList.add(value);
+        _valueList.add(value.toString());
       }
       return;
     }
@@ -1063,7 +1067,12 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
       return;
     }
 
-    widget.json[widget.fieldName] = _valueList;
+
+    if (widget.itemFieldType == null || widget.itemFieldType == FieldType.text) {
+      widget.json[widget.fieldName] = _valueList;
+    } else {
+      widget.json[widget.fieldName] = _valueList.map((value) => getJsonValue(widget.itemFieldType!, value)).toList();
+    }
 
     JsonWidgetChangeListener.of(context)?.setChanged();
   }
@@ -1107,7 +1116,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
       title = Text(widget.fieldDesc.hint!);
     }
 
-    if (title == null && _checkBoxListOn) {
+    if (title == null && _checkBoxListOn && !_wrap) {
       title = _checkBoxListWidget();
     }
 
@@ -1148,11 +1157,15 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
           }
 
           if (expanded) {
-            if (_valueList.isEmpty && _checkBoxListGetterOn){
+            if (_checkBoxValueList.isEmpty && _checkBoxListGetterOn){
               _checkBoxListOn = true;
               await _getCheckBoxValueList();
               _noCheckBoxValues = _checkBoxValueList.isEmpty;
               setStateNeed = true;
+            } else {
+              if (_checkBoxValueList.isNotEmpty) {
+                _checkBoxListOn = true;
+              }
             }
           }
 
@@ -1175,7 +1188,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
         title: title,
 
         children: [
-          if (!_wrap && !_checkBoxListOn && !_readOnly && _checkBoxListGetterOn) ...[
+          if (!_wrap && !_checkBoxListOn && !_readOnly && _checkBoxListGetterOn && _expanded) ...[
             _buttonShowCheckBoxList(),
           ],
 
@@ -1212,6 +1225,10 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
     return result;
   }
 
+  Widget _getValueWidget(String value) {
+    return widget.itemOut == null? Text(value) : widget.itemOut!.call(value);
+  }
+
   Widget _getChip(String value, {bool readOnly = false}) {
     if (widget.itemBuilder != null) {
       return widget.itemBuilder!.call(context, value, _readOnly, ()=> _onDeleteItem(value), (newValue)=> _onChangeItemValue(value, newValue));
@@ -1220,7 +1237,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
     if (_readOnly || readOnly) {
       return InkWell(
         child: Chip(
-          label: Text(value),
+          label: _getValueWidget(value),
         ),
         onTap: () {
           widget.onItemPressed?.call(value);
@@ -1229,7 +1246,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
     }
 
     return InputChip(
-      label: Text(value),
+      label: _getValueWidget(value),
       onDeleted: ()=> _onDeleteItem(value),
       onPressed: () {
         widget.onItemPressed?.call(value);
@@ -1403,6 +1420,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
                     final index = _valueList.indexOf(_editableValue!);
                     _valueList.removeAt(index);
                     _valueList.insert(index,  newValue);
+                    _setResult();
 
                     _editableValue = null;
                     _manualInputTextController.clear();
@@ -1459,6 +1477,7 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
                             } else {
                               _valueList.add(value);
                             }
+                            _setResult();
                             setState(() {});
                           }
                       ),
@@ -1472,12 +1491,13 @@ class _JsonMultiValueFieldState extends State<JsonMultiValueField> {
                           if (value == null) return;
                           _valueList.clear();
                           _valueList.add(value);
+                          _setResult();
                           setState(() {});
                         }
                       )
                     ],
 
-                    Text(value),
+                    _getValueWidget(value),
                   ]);
                 }).toList()
             ),

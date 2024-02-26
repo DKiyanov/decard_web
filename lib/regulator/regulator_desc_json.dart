@@ -68,30 +68,46 @@ const regulatorDescJson = {
   "setList" : {
     "title" : "Настройка пакета карточек",
     "body"  : {
-      "cards" : {
-        "title" : "Идентификаторы карточек"
+      "bodyName" : {
+        "title" : "Настройка набора карточек",
       },
-      "groups" : {
-        "title" : "Группы"
+
+      "cardFilter" : {
+        "title" : "Условия отбора карточек",
+        "body"  : {
+          "cards" : {
+            "title" : "Идентификаторы карточек"
+          },
+          "groups" : {
+            "title" : "Группы"
+          },
+          "tags" : {
+            "title" : "Теги"
+          },
+          "andTags" : {
+            "title" : "Теги через И"
+          },
+          "difficultyLevels" : {
+            "title" : "Уровни сложности"
+          },
+        }
       },
-      "tags" : {
-        "title" : "Теги"
-      },
-      "andTags" : {
-        "title" : "Теги через И"
-      },
-      "difficultyLevels" : {
-        "title" : "Уровни сложности"
-      },
-      "exclude" : {
-        "title" : "Исключить"
-      },
-      "difficultyLevel" : {
-        "title" : "Сложность"
-      },
-      "style" : {
-        "title" : "Стиль"
-      },
+
+      "setValues": {
+        "title" : "Установить значения",
+        "body"  : {
+          "exclude" : {
+            "title" : "Исключить"
+          },
+          "difficultyLevel" : {
+            "title" : "Сложность"
+          },
+          "style" : {
+            "title" : "Стиль"
+          },
+        }
+      }
+
     }
   },
 

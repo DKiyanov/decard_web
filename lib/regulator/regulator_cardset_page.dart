@@ -4,6 +4,7 @@ import 'package:decard_web/web_child.dart';
 import 'package:flutter/material.dart';
 
 import '../common.dart';
+import '../decardj.dart';
 import '../db_mem.dart';
 import '../pack_editor/pack_widgets.dart';
 import '../parse_pack_info.dart';
@@ -34,6 +35,7 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
 
   late DbSourceMem  _dbSource;
   late int _jsonFileID;
+  late String _packTitle;
 
   @override
   void initState() {
@@ -56,6 +58,9 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
     final packId = int.parse(widget.packId);
 
     _jsonFileID = (await loadWebPack(_dbSource, packId))!;
+
+    final packInfoData = (await _dbSource.tabJsonFile.getRow(jsonFileID: _jsonFileID))!;
+    _packTitle = packInfoData[DjfFile.title]!;
 
     setState(() {
       _isStarting = false;
@@ -89,7 +94,7 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
       child: Scaffold(
         appBar: AppBar(
           centerTitle: true,
-          title: const Text('Настройка файл'),
+          title: Text('Настройка пакета "$_packTitle" \nдля ${_child.childName}', textAlign: TextAlign.center),
         ),
         body: _body(),
       ),
