@@ -13,6 +13,7 @@ import 'package:decard_web/text_constructor/editor/text_constructor_editor_page.
 import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
 import 'package:url_strategy/url_strategy.dart';
+import 'child_statistics.dart';
 import 'pack_editor/pack_editor.dart';
 import 'login_email.dart';
 import 'login_page.dart';
@@ -124,6 +125,10 @@ RouteMap _buildRouteMapIn(BuildContext context) {
       '/child_pack_tune': (route) => NoAnimationPage(child: RegulatorCardSetPage(
           childID : route.queryParameters['id']!,
           packId  : route.queryParameters['packId']!,
+      )),
+
+      '/child_stat': (route) => NoAnimationPage(child: ChildStatistics(
+        childID : route.queryParameters['id']!,
       )),
     },
   );

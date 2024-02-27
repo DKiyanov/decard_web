@@ -1,3 +1,4 @@
+import 'package:decard_web/parse_pack_info.dart';
 import 'package:decard_web/web_child.dart';
 
 import 'child_test_results.dart';
@@ -55,7 +56,6 @@ class _ChildResultsReportState extends State<ChildResultsReport> {
   void _starting() async {
     _reportMode = widget.reportMode;
 
-    await widget.child.updateTestResultFromServer();
     _childTestResults = await widget.child.testResults;
 
     await _refreshData();
@@ -80,28 +80,27 @@ class _ChildResultsReportState extends State<ChildResultsReport> {
 
       _resultList.add(testResult);
 
-      // TODO remake it
-      // final jsonFileID = widget.child.dbSource.tabJsonFile.fileGuidToJsonFileId(testResult.fileGuid)!;
-      // final cardID     = (await widget.child.dbSource.tabCardHead.getCardIdFromKey(jsonFileID: jsonFileID, cardKey: testResult.cardID))!;
-      // _resultCardIDMap[testResult] = cardID;
-      //
-      // CardData? card;
-      // card = _cardMap[cardID];
-      //
-      // if (card == null) {
-      //   card = await CardData.create(widget.child.dbSource, widget.child.regulator, jsonFileID, cardID, bodyNum: testResult.bodyNum);
-      //   await card.fillTags();
-      //   _cardMap[cardID] = card;
-      // }
-      //
-      // for (var tag in card.tagList) {
-      //   int? tagCount = tagMap[tag];
-      //   if (tagCount == null) {
-      //     tagMap[tag] = 1;
-      //   } else {
-      //     tagMap[tag] = tagCount + 1;
-      //   }
-      // }
+      final jsonFileID = (await widget.child.loadPack(fileGuid : testResult.fileGuid, fileVersion: testResult.fileVersion))!;
+      final cardID     = (await widget.child.dbSource.tabCardHead.getCardIdFromKey(jsonFileID: jsonFileID, cardKey: testResult.cardID))!;
+      _resultCardIDMap[testResult] = cardID;
+
+      CardData? card;
+      card = _cardMap[cardID];
+
+      if (card == null) {
+        card = await CardData.create(widget.child.dbSource, widget.child.regulator, jsonFileID, cardID, bodyNum: testResult.bodyNum);
+        await card.fillTags();
+        _cardMap[cardID] = card;
+      }
+
+      for (var tag in card.tagList) {
+        int? tagCount = tagMap[tag];
+        if (tagCount == null) {
+          tagMap[tag] = 1;
+        } else {
+          tagMap[tag] = tagCount + 1;
+        }
+      }
 
     }
 

@@ -203,6 +203,7 @@ class TabJsonFileMem extends TabJsonFile {
       TabJsonFile.kEmail        : jsonMap[TabJsonFile.kEmail   ],
       TabJsonFile.kLicense      : jsonMap[TabJsonFile.kLicense ],
       TabJsonFile.kRootPath     : rootPath,
+      TabJsonFile.kLoadTime     : DateTime.now().millisecondsSinceEpoch,
     };
 
     db.insertRow(jsonFileID, TabJsonFile.tabName, jsonFileID, row);

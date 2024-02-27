@@ -5,9 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../common.dart';
 import '../decardj.dart';
-import '../db_mem.dart';
 import '../pack_editor/pack_widgets.dart';
-import '../parse_pack_info.dart';
 import 'regulator.dart';
 import 'regulator_cardset_widget.dart';
 
@@ -33,7 +31,6 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
 
   bool _changed = false;
 
-  late DbSourceMem  _dbSource;
   late int _jsonFileID;
   late String _packTitle;
 
@@ -53,13 +50,11 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
 
     _descMap = loadDescFromMap(regulatorDescJson);
 
-    _dbSource = DbSourceMem.create();
-
     final packId = int.parse(widget.packId);
 
-    _jsonFileID = (await loadWebPack(_dbSource, packId))!;
+    _jsonFileID = (await _child.loadPack(packId : packId))!;
 
-    final packInfoData = (await _dbSource.tabJsonFile.getRow(jsonFileID: _jsonFileID))!;
+    final packInfoData = (await _child.dbSource.tabJsonFile.getRow(jsonFileID: _jsonFileID))!;
     _packTitle = packInfoData[DjfFile.title]!;
 
     setState(() {
@@ -136,7 +131,7 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
       FieldDesc fieldDesc,
       OwnerDelegate? ownerDelegate,
       ){
-    return RegulatorCardSetWidget(json: json, path: path, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate, dbSource: _dbSource, jsonFileID: _jsonFileID);
+    return RegulatorCardSetWidget(json: json, path: path, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate, dbSource: _child.dbSource, jsonFileID: _jsonFileID);
   }
 
   Future<void> _save() async {

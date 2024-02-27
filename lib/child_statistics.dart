@@ -1,6 +1,7 @@
 import 'package:decard_web/regulator/regulator.dart';
 import 'package:decard_web/web_child.dart';
 
+import 'app_state.dart';
 import 'child_test_results.dart';
 import 'simple_menu.dart';
 import 'package:flutter/material.dart';
@@ -20,13 +21,9 @@ class QualityRange {
 }
 
 class ChildStatistics extends StatefulWidget {
-  static Future<Object?> navigatorPush(BuildContext context, WebChild child) async {
-    return Navigator.push(context, MaterialPageRoute( builder: (_) => ChildStatistics(child: child)));
-  }
+  final String childID;
 
-  final WebChild child;
-
-  const ChildStatistics({required this.child, Key? key}) : super(key: key);
+  const ChildStatistics({required this.childID, Key? key}) : super(key: key);
 
   @override
   State<ChildStatistics> createState() => _ChildStatisticsState();
@@ -34,6 +31,8 @@ class ChildStatistics extends StatefulWidget {
 
 class _ChildStatisticsState extends State<ChildStatistics> {
   bool _isStarting = true;
+
+  late WebChild _child;
 
   late ChildTestResults _childTestResults;
 
@@ -54,8 +53,11 @@ class _ChildStatisticsState extends State<ChildStatistics> {
   }
 
   void _starting() async {
-    await widget.child.updateTestResultFromServer();
-    _childTestResults = await widget.child.testResults;
+    if (!_isStarting) return;
+
+    _child = appState.childManager!.childList.firstWhere((child) => child.childID == widget.childID);
+
+    _childTestResults = await _child.testResults;
 
     _initQualityRanges();
 
@@ -75,13 +77,13 @@ class _ChildStatisticsState extends State<ChildStatistics> {
         title: TextConst.txtRodCardStudyGroupActive,
         color: Colors.yellow,
         low  : 0,
-        high : widget.child.regulator.options.hotCardQualityTopLimit,
+        high : _child.regulator.options.hotCardQualityTopLimit,
       ),
 
       QualityRange(
         title: TextConst.txtRodCardStudyGroupStudied,
         color: Colors.grey,
-        low  : widget.child.regulator.options.hotCardQualityTopLimit + 1,
+        low  : _child.regulator.options.hotCardQualityTopLimit + 1,
         high : Regulator.maxQuality,
       ),
     ]);
@@ -160,7 +162,7 @@ class _ChildStatisticsState extends State<ChildStatistics> {
           ),
 
           IconButton(icon: const Icon(Icons.nearby_error ), onPressed: () async {
-            await ChildResultsReport.navigatorPush(context, widget.child);
+            await ChildResultsReport.navigatorPush(context, _child);
             _refreshChartList();
             setState(() {});
           }),

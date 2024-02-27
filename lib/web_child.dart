@@ -21,6 +21,38 @@ class WebChild{
   Regulator get regulator => _regulator!;
   ParseObject? regulatorParseObject;
 
+  final dbSource = DbSourceMem.create();
+
+  Future<int?> loadPack({int? packId, String? fileGuid, int? fileVersion }) async {
+    Map<String, dynamic>? row;
+
+    if (packId == null) {
+      assert(fileGuid != null);
+      final fileList = await dbSource.tabJsonFile.getRowByGuid(fileGuid!, version: fileVersion);
+      row = fileList[0];
+    }
+
+    if (packId != null) {
+      row = await dbSource.tabJsonFile.getRowBySourceID(sourceFileID: getWebPackFileSourceID(packId));
+    }
+
+    if (row != null) {
+      final jsonFileID = row[TabJsonFile.kJsonFileID] as int;
+      final loadTime = row[TabJsonFile.kLoadTime] as int;
+      final timeDif = DateTime.now().millisecondsSinceEpoch - loadTime;
+      if (timeDif < (20 * 60 * 1000) ) {
+        return jsonFileID;
+      }
+
+      await dbSource.deleteJsonFile(jsonFileID);
+    }
+
+    packId ??= await getPackIdByGuid(fileGuid: fileGuid!, fileVersion: fileVersion!);
+    if (packId == null) return null;
+
+    final jsonFileID = await loadWebPack(dbSource, packId);
+    return jsonFileID!;
+  }
 
   ChildTestResults? _testResults;
   Future<ChildTestResults> get testResults async {
@@ -55,36 +87,6 @@ class WebChild{
     regulatorParseObject!.set(ParseWebChildSource.textContent, jsonStr);
     regulatorParseObject!.set(ParseWebChildSource.size       , jsonStr.length);
     await regulatorParseObject!.save();
-  }
-  
-  /// load last test results from server
-  Future<void> updateTestResultFromServer() async {
-    // TODO correct it
-    // final from = await dbSource.tabTestResult.getLastTime();
-    // final to   = dateTimeToInt(DateTime.now());
-    //
-    // final testResultList = await serverConnect.getTestsResultsFromServer(this, from, to);
-    //
-    // for (var testResult in testResultList) {
-    //   dbSource.tabTestResult.insertRow(testResult);
-    // }
-    //
-    // await updateStatFromServer();
-  }
-
-  /// load stat data from server
-  /// to download statistics to the parent device
-  /// to download statistics to the child's device when installing the application
-  Future<void> updateStatFromServer() async {
-    // TODO correct it
-    // final curDate = dateToInt(DateTime.now());
-    // if (_lastStatDate >= curDate) return;
-    //
-    // final newLastDate = await serverConnect.updateStatFromServer(this, _lastStatDate);
-    // if (newLastDate == 0) return;
-    //
-    // _lastStatDate = newLastDate;
-    // await prefs.setInt(_kLastStatDate, _lastStatDate);
   }
 }
 

@@ -33,6 +33,7 @@ abstract class TabJsonFile {
   static const String kJsonFileID   = 'jsonFileID';
   static const String kSourceFileID = 'sourceFileID';
   static const String kRootPath     = 'rootPath';
+  static const String kLoadTime     = 'loadTime';
   static const String kTitle        = DjfFile.title;
   static const String kGuid         = DjfFile.guid;
   static const String kVersion      = DjfFile.version;

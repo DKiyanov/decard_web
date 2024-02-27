@@ -255,6 +255,10 @@ class WebPackListManager {
   }
 }
 
+String getWebPackFileSourceID(int packId) {
+  return 'WebPack:$packId';
+}
+
 Future<int?> loadWebPack(DbSource dbSource, int packId, {LoadPackAddInfoCallback? addInfoCallback, bool putFilesIntoLocalStore = false}) async {
   Map<String, String>? fileUrlMap;
 
@@ -266,7 +270,7 @@ Future<int?> loadWebPack(DbSource dbSource, int packId, {LoadPackAddInfoCallback
 
   if (fileUrlMap == null) return null;
 
-  return await loadPack(dbSource, 'WebPack:$packId', fileUrlMap, addInfoCallback : addInfoCallback);
+  return await loadPack(dbSource, getWebPackFileSourceID(packId), fileUrlMap, addInfoCallback : addInfoCallback);
 }
 
 Future<Map<String, String>?> getPackSource(int packId, {bool putFilesIntoLocalStore = false}) async {
@@ -513,4 +517,15 @@ Future<bool> addPackForChild(int packId, String userID, String sourcePath) async
   newSource.set(ParseWebChildSource.size       , fileSize);
   await newSource.save();
   return true;
+}
+
+Future<int?> getPackIdByGuid({required String fileGuid, required int fileVersion}) async {
+  final query = QueryBuilder<ParseObject>(ParseObject(ParseWebPackHead.className));
+  query.whereEqualTo(DjfFile.guid    , fileGuid);
+  query.whereEqualTo(DjfFile.version , fileVersion);
+  query.keysToReturn([ParseWebPackHead.packId]);
+  final packInfo = await query.first();
+  if (packInfo == null) return null;
+  final packId = packInfo.get<int>(ParseWebPackHead.packId);
+  return packId;
 }

@@ -1,10 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:decard_web/web_child.dart';
+import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 
 import 'common.dart';
 import 'db.dart';
 
+class ParseTestResult {
+  static const String className = 'DecardTestResult';
+
+  static const String userID    = 'UserID';
+  static const String childID   = 'ChildID';
+  static const String dateTime  = 'dateTime';
+}
+
 class ChildTestResults {
+  Future<void> updateBdFromServer() async {
+    final from = await child.dbSource.tabTestResult.getLastTime();
+    final to   = dateTimeToInt(DateTime.now());
+
+    final testResultList = await _getTestsResultsFromServer(from, to);
+
+    for (var testResult in testResultList) {
+      child.dbSource.tabTestResult.insertRow(testResult);
+    }
+  }
+
+  Future<List<TestResult>> _getTestsResultsFromServer(int from, int to) async {
+    final result = <TestResult>[];
+
+    final query =  QueryBuilder<ParseObject>(ParseObject(ParseTestResult.className));
+    query.whereEqualTo(ParseTestResult.userID                 , child.userID);
+    query.whereEqualTo(ParseTestResult.childID                , child.childID);
+    query.whereGreaterThanOrEqualsTo(ParseTestResult.dateTime , from);
+    query.whereLessThanOrEqualTo(ParseTestResult.dateTime     , to);
+
+    final resultList = await query.find();
+
+    for (var row in resultList) {
+      final json = row.toJson();
+      final testResult = TestResult.fromMap(json);
+      result.add(testResult);
+    }
+
+    return result;
+  }
+
   static const int _statDayCount = 10;
 
   final WebChild child;
@@ -26,22 +66,23 @@ class ChildTestResults {
   ChildTestResults(this.child);
 
   Future<void> init() async {
+    await updateBdFromServer();
+
     final now = DateTime.now();
 
-    //TODO remake it
-    // _firstTime = await child.dbSource.tabTestResult.getFirstTime();
-    // if (_firstTime > 0) {
-    //   firstDate = intDateTimeToDateTime(_firstTime);
-    // } else {
-    //   firstDate = now;
-    // }
-    //
-    // _lastTime = await child.dbSource.tabTestResult.getLastTime();
-    // if (_lastTime > 0) {
-    //   lastDate = intDateTimeToDateTime(_lastTime);
-    // } else {
-    //   lastDate = now;
-    // }
+    _firstTime = await child.dbSource.tabTestResult.getFirstTime();
+    if (_firstTime > 0) {
+      firstDate = intDateTimeToDateTime(_firstTime);
+    } else {
+      firstDate = now;
+    }
+
+    _lastTime = await child.dbSource.tabTestResult.getLastTime();
+    if (_lastTime > 0) {
+      lastDate = intDateTimeToDateTime(_lastTime);
+    } else {
+      lastDate = now;
+    }
 
     final prev = now.add(const Duration(days: - _statDayCount));
 
@@ -68,8 +109,7 @@ class ChildTestResults {
     _toDate = toDate;
 
     resultList.clear();
-    //TODO remake it
-    //resultList.addAll( await child.dbSource.tabTestResult.getForPeriod(_fromDate, _toDate) );
+    resultList.addAll( await child.dbSource.tabTestResult.getForPeriod(_fromDate, _toDate) );
   }
 
   Future<bool> pickedFromDate (BuildContext context) async {
