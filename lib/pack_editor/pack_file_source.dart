@@ -2,6 +2,7 @@ import 'package:decard_web/db.dart';
 import 'package:decard_web/dk_expansion_tile.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:multi_split_view/multi_split_view.dart';
 
 import '../card_model.dart';
 import '../parse_pack_info.dart';
@@ -101,215 +102,262 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row( mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
+        Container(
+          decoration: BoxDecoration(
+              border: Border(bottom: BorderSide( color: Colors.grey.shade300))
+          ),
 
-            event.EventReceiverWidget(
-              builder: (context){
-                if (widget.editor.needFileSourceController == null) return Container();
+          child: Row( mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
 
-                bool retPossible = false;
-                if (_selectController.isFile) {
-                  if (widget.editor.needFileExtList.isEmpty) {
-                    retPossible = true;
-                  } else {
-                    final fileExt = FileExt.getFileExt(_selectController.selectedPath);
-                    retPossible = widget.editor.needFileExtList.contains(fileExt);
+              event.EventReceiverWidget(
+                builder: (context){
+                  if (widget.editor.needFileSourceController == null) return Container();
+
+                  bool retPossible = false;
+                  if (_selectController.isFile) {
+                    if (widget.editor.needFileExtList.isEmpty) {
+                      retPossible = true;
+                    } else {
+                      final fileExt = FileExt.getFileExt(_selectController.selectedPath);
+                      retPossible = widget.editor.needFileExtList.contains(fileExt);
+                    }
                   }
-                }
 
-                return Tooltip(
-                  message: 'Вставить файл',
-                  child: IconButton(
-                      onPressed: !retPossible ? null : (){
-                        widget.editor.needFileSourceController!.text = _selectController.selectedPath;
-                      },
-                      icon: Icon(Icons.arrow_back_sharp, color: retPossible? Colors.blue : Colors.grey)
-                  ),
-                );
-              },
-              events: [
-                _selectController.onChange,
-                widget.editor.onNeedFileSourceControllerChanged,
-              ],
-            ),
-
-            Tooltip(
-              message: 'Удалить',
-              child: IconButton(
-                  onPressed: (){
-                    if (_selectController.checkboxPaths.isNotEmpty) {
-                      _deleteSelectedFilesFromPack();
-                      return;
-                    }
-
-                    if (_selectController.isDir) {
-                      _deleteFolder(_selectController.selectedDir);
-                      return;
-                    }
-
-                    _deleteFileFromPack();
-                  },
-                  icon: const Icon(Icons.delete_outline),
-              ),
-            ),
-
-            Tooltip(
-              message: 'Загрузить',
-              child: IconButton(
-                  onPressed: (){
-                    if (_mode == _PackFileSourceMode.upload) {
-                      _mode = _PackFileSourceMode.none;
-                    } else {
-                      _mode = _PackFileSourceMode.upload;
-                    }
-
-                    setState(() {});
-                  },
-                  icon: Icon(kIsWeb? Icons.upload_outlined : Icons.folder_special_outlined, color: _mode == _PackFileSourceMode.upload ? Colors.green : null )
-              ),
-            ),
-
-            Tooltip(
-              message: 'Предварительный просмотр',
-              child: IconButton(
-                  onPressed: (){
-                    if (_mode == _PackFileSourceMode.preview) {
-                      _mode = _PackFileSourceMode.none;
-                    } else {
-                      _mode = _PackFileSourceMode.preview;
-                    }
-
-                    setState(() {});
-                  },
-                  icon: Icon(Icons.image_outlined, color: _mode == _PackFileSourceMode.preview ? Colors.green : null)
-              ),
-            ),
-
-            Tooltip(
-              message: 'Создать каталог',
-              child: IconButton(
-                onPressed: (){
-                  _createFolder();
-                },
-                icon: const Icon(Icons.create_new_folder_outlined),
-              ),
-            ),
-
-            event.EventReceiverWidget(
-              builder: (context) {
-                final editPossible = _selectController.checkboxPaths.isEmpty
-                  && _selectController.isFile
-                  && _createFileMap.keys.contains(FileExt.getFileExt(_selectController.selectedPath));
-
-                return Tooltip(
-                  message: 'Редактировать файл',
-                  child: IconButton(
-                    onPressed: !editPossible? null : (){
-                      final url = widget.fileUrlMap[_selectController.selectedPath]!;
-                      widget.editor.editSourceFile(_selectController.selectedPath, url);
-                    },
-                    icon: const Icon(Icons.edit),
-                  ),
-                );
-              },
-              events: [_selectController.onChange],
-            ),
-
-            popupMenu(
-              icon: const Icon(Icons.menu),
-              menuItemList: _createFileMap.entries.map((entry) {
-                return  SimpleMenuItem(
-                    child: Text(entry.value),
-                    onPress: () {
-                      final filename = path_util.join(_selectController.selectedDir, 'new.${entry.key}');
-                      widget.editor.editSourceFile(filename, '');
-                    },
+                  return Tooltip(
+                    message: 'Вставить файл',
+                    child: IconButton(
+                        onPressed: !retPossible ? null : (){
+                          widget.editor.needFileSourceController!.text = _selectController.selectedPath;
+                        },
+                        icon: Icon(Icons.arrow_back_sharp, color: retPossible? Colors.blue : Colors.grey)
+                    ),
                   );
-              }).toList(),
-            ),
+                },
+                events: [
+                  _selectController.onChange,
+                  widget.editor.onNeedFileSourceControllerChanged,
+                ],
+              ),
 
-            event.EventReceiverWidget(
-              builder: (context){
-                if (!_moveButtonVisible) {
-                  return Container();
-                }
-
-                return Tooltip(
-                  message: 'Переместить выбранные файлы в выбранный каталог',
-                  child: IconButton(
+              Tooltip(
+                message: 'Удалить',
+                child: IconButton(
                     onPressed: (){
-                      _moveFilesToFolder();
+                      if (_selectController.checkboxPaths.isNotEmpty) {
+                        _deleteSelectedFilesFromPack();
+                        return;
+                      }
+
+                      if (_selectController.isDir) {
+                        _deleteFolder(_selectController.selectedDir);
+                        return;
+                      }
+
+                      _deleteFileFromPack();
                     },
-                    icon: const Icon(Icons.move_down),
-                  ),
-                );
-              },
-              events: [
-                _selectController.onChange,
-                _selectController.onCheckboxChanged,
-              ],
-              onEventCallback: (listener, object){
-                final newMoveButtonVisible = _selectController.checkboxPaths.isNotEmpty && _selectController.selectedPath.isNotEmpty;
-                if (_moveButtonVisible != newMoveButtonVisible) {
-                  _moveButtonVisible = newMoveButtonVisible;
-                  return true;
-                }
-                return false;
-              },
-            ),
+                    icon: const Icon(Icons.delete_outline),
+                ),
+              ),
 
-        ]),
+              Tooltip(
+                message: 'Загрузить',
+                child: IconButton(
+                    onPressed: (){
+                      if (_mode == _PackFileSourceMode.upload) {
+                        _mode = _PackFileSourceMode.none;
+                      } else {
+                        _mode = _PackFileSourceMode.upload;
+                      }
 
-        if (_mode == _PackFileSourceMode.preview) ...[
-          Expanded(child: _previewPanel()),
-        ],
+                      setState(() {});
+                    },
+                    icon: Icon(kIsWeb? Icons.upload_outlined : Icons.folder_special_outlined, color: _mode == _PackFileSourceMode.upload ? Colors.green : null )
+                ),
+              ),
 
-        Expanded(child: _filePanel() ),
+              Tooltip(
+                message: 'Предварительный просмотр',
+                child: IconButton(
+                    onPressed: (){
+                      if (_mode == _PackFileSourceMode.preview) {
+                        _mode = _PackFileSourceMode.none;
+                      } else {
+                        _mode = _PackFileSourceMode.preview;
+                      }
 
-        if (_mode == _PackFileSourceMode.upload) ...[
-          Expanded(child: _uploadPanel()),
-        ]
+                      setState(() {});
+                    },
+                    icon: Icon(Icons.image_outlined, color: _mode == _PackFileSourceMode.preview ? Colors.green : null)
+                ),
+              ),
+
+              Tooltip(
+                message: 'Создать каталог',
+                child: IconButton(
+                  onPressed: (){
+                    _createFolder();
+                  },
+                  icon: const Icon(Icons.create_new_folder_outlined),
+                ),
+              ),
+
+              event.EventReceiverWidget(
+                builder: (context) {
+                  final editPossible = _selectController.checkboxPaths.isEmpty
+                    && _selectController.isFile
+                    && _createFileMap.keys.contains(FileExt.getFileExt(_selectController.selectedPath));
+
+                  return Tooltip(
+                    message: 'Редактировать файл',
+                    child: IconButton(
+                      onPressed: !editPossible? null : (){
+                        final url = widget.fileUrlMap[_selectController.selectedPath]!;
+                        widget.editor.editSourceFile(_selectController.selectedPath, url);
+                      },
+                      icon: const Icon(Icons.edit),
+                    ),
+                  );
+                },
+                events: [_selectController.onChange],
+              ),
+
+              popupMenu(
+                icon: const Icon(Icons.menu),
+                menuItemList: _createFileMap.entries.map((entry) {
+                  return  SimpleMenuItem(
+                      child: Text(entry.value),
+                      onPress: () {
+                        final filename = path_util.join(_selectController.selectedDir, 'new.${entry.key}');
+                        widget.editor.editSourceFile(filename, '');
+                      },
+                    );
+                }).toList(),
+              ),
+
+              event.EventReceiverWidget(
+                builder: (context){
+                  if (!_moveButtonVisible) {
+                    return Container();
+                  }
+
+                  return Tooltip(
+                    message: 'Переместить выбранные файлы в выбранный каталог',
+                    child: IconButton(
+                      onPressed: (){
+                        _moveFilesToFolder();
+                      },
+                      icon: const Icon(Icons.move_down),
+                    ),
+                  );
+                },
+                events: [
+                  _selectController.onChange,
+                  _selectController.onCheckboxChanged,
+                ],
+                onEventCallback: (listener, object){
+                  final newMoveButtonVisible = _selectController.checkboxPaths.isNotEmpty && _selectController.selectedPath.isNotEmpty;
+                  if (_moveButtonVisible != newMoveButtonVisible) {
+                    _moveButtonVisible = newMoveButtonVisible;
+                    return true;
+                  }
+                  return false;
+                },
+              ),
+
+          ]),
+        ),
+
+        Expanded(
+          child: Container(
+            color: Colors.grey,
+            child: _panelsCombinations(),
+          ),
+        ),
+
       ],
     );
   }
 
+  Widget _panelsCombinations() {
+    if (_mode == _PackFileSourceMode.none) {
+      return _filePanel();
+    }
+
+    if (_mode == _PackFileSourceMode.preview) {
+      return MultiSplitView(
+        key: const ValueKey(_PackFileSourceMode.preview),
+        axis: Axis.vertical,
+        initialAreas: [
+          Area(weight: 0.3)
+        ],
+        children: [
+          _previewPanel(),
+          _filePanel(),
+        ]
+      );
+    }
+
+    if (_mode == _PackFileSourceMode.upload) {
+      return MultiSplitView(
+        key: const ValueKey(_PackFileSourceMode.upload),
+        axis: Axis.vertical,
+        initialAreas: [
+          Area(),
+          Area(size: 150),
+        ],
+        children: [
+          _filePanel(),
+          _uploadPanel(),
+        ]
+      );
+    }
+
+    return Container();
+  }
+
   Widget _filePanel() {
-    return Scrollbar(
-      controller: _scrollbarController,
-      child: SingleChildScrollView(
+    return Container(
+      color: Colors.white,
+      child: Scrollbar(
         controller: _scrollbarController,
-        child: _Folder(
-          controller: _selectController,
-          path: '.',
+        child: SingleChildScrollView(
+          controller: _scrollbarController,
+          child: _Folder(
+            controller: _selectController,
+            path: '.',
+          ),
         ),
       ),
     );
   }
 
   Widget _uploadPanel() {
-    return PackFileSourceUpload(
-      packId: widget.packId,
-      rootPath: widget.rootPath,
-      selectController: _selectController,
-      onCheckFileExists: (filePath){
-        final result = widget.fileUrlMap[filePath] != null;
-        if (result) {
-          _selectController.multiSelPaths.add(filePath);
+    return Container(
+      color: Colors.white,
+      child: PackFileSourceUpload(
+        packId: widget.packId,
+        rootPath: widget.rootPath,
+        selectController: _selectController,
+        onCheckFileExists: (filePath){
+          final result = widget.fileUrlMap[filePath] != null;
+          if (result) {
+            _selectController.multiSelPaths.add(filePath);
+            _selectController.onChange.send();
+          }
+          return result;
+        },
+        onFileUpload: (filePath, url){
+          addNewFile(filePath, url);
+        },
+        onClearFileUploadList: (){
+          _selectController.multiSelPaths.clear();
           _selectController.onChange.send();
-        }
-        return result;
-      },
-      onFileUpload: (filePath, url){
-        addNewFile(filePath, url);
-      },
-      onClearFileUploadList: (){
-        _selectController.multiSelPaths.clear();
-        _selectController.onChange.send();
 
-        _mode = _PackFileSourceMode.none;
-        setState(() {});
-      },
+          _mode = _PackFileSourceMode.none;
+          setState(() {});
+        },
+      ),
     );
   }
 
@@ -372,23 +420,24 @@ class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveC
   }
 
   Widget _previewPanel() {
-    return event.EventReceiverWidget(
-      builder: (context){
-        if (!_selectController.isFile) return Container();
-        final url = widget.fileUrlMap[_selectController.selectedPath]!;
+    return Container(
+      color: Colors.white,
 
-        return Container(
-          decoration: BoxDecoration(border: Border.all(color: Colors.black)),
-          child: PackFileSourcePreview(
+      child: event.EventReceiverWidget(
+        builder: (context){
+          if (!_selectController.isFile) return Container();
+          final url = widget.fileUrlMap[_selectController.selectedPath]!;
+
+          return PackFileSourcePreview(
             fileName : _selectController.selectedPath,
             url      : url,
             onPrepareFileUrl: (fileName) {
               return widget.fileUrlMap[fileName];
             },
-          ),
-        );
-      },
-      events: [_selectController.onChange],
+          );
+        },
+        events: [_selectController.onChange],
+      ),
     );
   }
 

@@ -37,6 +37,7 @@ dependencies:
   file_picker: ^5.2.5
   flutter_slidable: ^2.0.0
   fl_chart: ^0.62.0
+  multi_split_view: ^2.4.0
   simple_events:
     path: ../simple_events
   

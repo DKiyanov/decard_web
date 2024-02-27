@@ -39,6 +39,7 @@ class _HomePageState extends State<HomePage> {
 
     return TabBarView(
       controller: tabState.controller,
+      physics: const NeverScrollableScrollPhysics(),
       children: <Widget>[
         PageStackNavigator(stack: tabState.stacks[0]),
         PageStackNavigator(stack: tabState.stacks[1]),

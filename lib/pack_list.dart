@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:multi_split_view/multi_split_view.dart';
 import 'package:decard_web/parse_pack_info.dart';
-import 'package:routemaster/routemaster.dart';
 
 import 'common.dart';
 import 'dk_expansion_tile.dart';
@@ -185,186 +185,199 @@ class _WebPackListState extends State<WebPackList> {
       return _getPackList();
     }
 
-    return Row(children: [
-      _getFilterPanel(width),
-      Expanded(child: _getPackList())
-    ]);
+    return Container(
+      color: Colors.grey,
+      child: MultiSplitView(
+        initialAreas: [Area(weight: 0.25)],
+        children: [
+          _getFilterPanel(width),
+          _getPackList(),
+        ],
+      ),
+    );
   }
 
   Widget _getPackList() {
-    return ListView(
-        children: _packGuidList.map((guidPack) {
-          final packInfo = guidPack.value.first;
+    return Padding(
+      padding: const EdgeInsets.only(top: 2, right: 4, bottom: 2),
+      child: Container(
+        decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(
+              color: Colors.white,
+            ),
+            borderRadius: const BorderRadius.all(Radius.circular(5))
+        ),
+        child: ListView(
+            children: _packGuidList.map((guidPack) {
+              final packInfo = guidPack.value.first;
 
-          if (guidPack.value.length == 1) {
-            return packInfo.getListTile(context);
-          }
+              if (guidPack.value.length == 1) {
+                return packInfo.getListTile(context);
+              }
 
-          final children = <Widget>[];
-          for (var i = 1; i < guidPack.value.length; i++) {
-            final packInfo = guidPack.value[i];
-            children.add(packInfo.getListTile(context));
-          }
+              final children = <Widget>[];
+              for (var i = 1; i < guidPack.value.length; i++) {
+                final packInfo = guidPack.value[i];
+                children.add(packInfo.getListTile(context));
+              }
 
-          return DkExpansionTile(
-            title    : packInfo.getTitle(context),
-            subtitle : packInfo.getSubtitle(context),
-            onTap    : ()=> packInfo.onTap(context),
-            children : children,
-          );
-        }).toList()
+              return DkExpansionTile(
+                title    : packInfo.getTitle(context),
+                subtitle : packInfo.getSubtitle(context),
+                onTap    : ()=> packInfo.onTap(context),
+                children : children,
+              );
+            }).toList()
+        ),
+      ),
     );
   }
 
 
   Widget _getFilterPanel([double? width]) {
-    return Container(
-      width: width,
-      color: _filterPanelColor,
-
-      child: Scrollbar(
-        controller: _scrollController,
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: ListView(
-            controller: _scrollController,
-            children: [
-              filterWrapperContainer(
-                DkExpansionTile(
-                  title: const Text('Сортировка'),
-                  borderColor: Colors.transparent,
-                  initiallyExpanded: true,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: DropdownButton<_SortMode>(
-                          value: _sortMode,
-                          isExpanded: true,
-                          items: _SortMode.values.map((sortMode) => DropdownMenuItem<_SortMode>(
-                            value: sortMode,
-                            child: Text(sortMode.name)
-                          )).toList(),
-                          onChanged: (_SortMode? value){
-                            if (value == null) return;
-                            _sortMode = value;
-                            _sortPackList();
-                            setState(() {});
-                          }
-                      ),
-                    )
-                  ],
-                ),
-              ),
-
-              Container(height: 8),
-
-              filterWrapperContainer(
-                DkExpansionTile(
-                  title: const Text('Название'),
-                  borderColor: Colors.transparent,
-                  initiallyExpanded: true,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  trailing: InkWell(
-                      child: const Icon(Icons.clear),
-                      onTap: () {
-                        _selTitleController.clear();
-                        _refresh();
-                      }
-                  ),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8, bottom: 8),
-                      child: TextField(
-                        controller: _selTitleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Фильтр по наименованию',
-                        ),
-                        onSubmitted: (value) {
-                          if (value != _selTitle) {
-                            _selTitle = value;
-                            _refresh();
-                          }
-                        },
-                      ),
-                    )
-                  ],
-                ),
-              ),
-
-              Container(height: 8),
-
-              filterWrapperContainer(
-                DkExpansionTile(
-                  title: const Text('Возраст'),
-                  borderColor: Colors.transparent,
-                  initiallyExpanded: true,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  trailing: InkWell(
-                      child: const Icon(Icons.clear),
-                      onTap: () {
-                        _selTargetValueController.clear();
-                        _selTargetAge = null;
-                        _refresh();
-                      }
-                  ),
-                  children: [
-                    SizedBox( width: 60,
-                      child: TextField(
-                        textAlign: TextAlign.center,
-                        onSubmitted: (value) {
-                          final newValue = int.tryParse(value);
-                          if (newValue != _selTargetAge) {
-                            _selTargetAge = newValue;
-                            _refresh();
-                          }
-                        },
-                        keyboardType: TextInputType.number,
-                        controller: _selTargetValueController,
-
-                      ),
+    return Scrollbar(
+      controller: _scrollController,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 4, top: 2),
+        child: ListView(
+          controller: _scrollController,
+          children: [
+            filterWrapperContainer(
+              DkExpansionTile(
+                title: const Text('Сортировка'),
+                borderColor: Colors.transparent,
+                initiallyExpanded: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: DropdownButton<_SortMode>(
+                        value: _sortMode,
+                        isExpanded: true,
+                        items: _SortMode.values.map((sortMode) => DropdownMenuItem<_SortMode>(
+                          value: sortMode,
+                          child: Text(sortMode.name)
+                        )).toList(),
+                        onChanged: (_SortMode? value){
+                          if (value == null) return;
+                          _sortMode = value;
+                          _sortPackList();
+                          setState(() {});
+                        }
                     ),
+                  )
+                ],
+              ),
+            ),
 
-                    Row(
-                      children: [
-                        Container(width: 16),
+            Container(height: 8),
 
-                        Text(_packListResult!.targetAgeLow.toString()),
-
-                        Expanded(
-                          child: Slider(
-                            value: _selTargetAge?.toDouble()??0,
-                            min: _packListResult!.targetAgeLow.toDouble(),
-                            max: _packListResult!.targetAgeHigh.toDouble(),
-                            onChanged: (value) {
-                              _selTargetAge = value.round();
-                              _selTargetValueController.text = _selTargetAge.toString();
-                              _refresh();
-                            },
-                          ),
-                        ),
-
-                        Text(_packListResult!.targetAgeHigh.toString()),
-                      ],
-                    )
-                  ],
+            filterWrapperContainer(
+              DkExpansionTile(
+                title: const Text('Название'),
+                borderColor: Colors.transparent,
+                initiallyExpanded: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                trailing: InkWell(
+                    child: const Icon(Icons.clear),
+                    onTap: () {
+                      _selTitleController.clear();
+                      _refresh();
+                    }
                 ),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, bottom: 8),
+                    child: TextField(
+                      controller: _selTitleController,
+                      decoration: const InputDecoration(
+                        labelText: 'Фильтр по наименованию',
+                      ),
+                      onSubmitted: (value) {
+                        if (value != _selTitle) {
+                          _selTitle = value;
+                          _refresh();
+                        }
+                      },
+                    ),
+                  )
+                ],
               ),
+            ),
 
-              Container(height: 8),
+            Container(height: 8),
 
-              filterWrapperContainer(
-                _getCheckBoxListFilter(title: 'Автор', valueList: _packListResult!.authorList, selValueList: _selAuthorList)
+            filterWrapperContainer(
+              DkExpansionTile(
+                title: const Text('Возраст'),
+                borderColor: Colors.transparent,
+                initiallyExpanded: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                trailing: InkWell(
+                    child: const Icon(Icons.clear),
+                    onTap: () {
+                      _selTargetValueController.clear();
+                      _selTargetAge = null;
+                      _refresh();
+                    }
+                ),
+                children: [
+                  SizedBox( width: 60,
+                    child: TextField(
+                      textAlign: TextAlign.center,
+                      onSubmitted: (value) {
+                        final newValue = int.tryParse(value);
+                        if (newValue != _selTargetAge) {
+                          _selTargetAge = newValue;
+                          _refresh();
+                        }
+                      },
+                      keyboardType: TextInputType.number,
+                      controller: _selTargetValueController,
+
+                    ),
+                  ),
+
+                  Row(
+                    children: [
+                      Container(width: 16),
+
+                      Text(_packListResult!.targetAgeLow.toString()),
+
+                      Expanded(
+                        child: Slider(
+                          value: _selTargetAge?.toDouble()??0,
+                          min: _packListResult!.targetAgeLow.toDouble(),
+                          max: _packListResult!.targetAgeHigh.toDouble(),
+                          onChanged: (value) {
+                            _selTargetAge = value.round();
+                            _selTargetValueController.text = _selTargetAge.toString();
+                            _refresh();
+                          },
+                        ),
+                      ),
+
+                      Text(_packListResult!.targetAgeHigh.toString()),
+                    ],
+                  )
+                ],
               ),
+            ),
 
-              Container(height: 8),
+            Container(height: 8),
 
-              filterWrapperContainer(
-                _getCheckBoxListFilter(title: 'Теги', valueList: _packListResult!.tagList, selValueList: _selTagList)
-              ),
+            filterWrapperContainer(
+              _getCheckBoxListFilter(title: 'Автор', valueList: _packListResult!.authorList, selValueList: _selAuthorList)
+            ),
 
-            ],
-          ),
+            Container(height: 8),
+
+            filterWrapperContainer(
+              _getCheckBoxListFilter(title: 'Теги', valueList: _packListResult!.tagList, selValueList: _selTagList)
+            ),
+
+          ],
         ),
       ),
     );

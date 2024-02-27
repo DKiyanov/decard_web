@@ -5,6 +5,7 @@ import 'dart:convert';
 
 import 'package:collection/collection.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
+import 'package:multi_split_view/multi_split_view.dart';
 
 import '../card_controller.dart';
 import '../card_navigator.dart';
@@ -278,15 +279,18 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
               });
             },
 
-            child: Row(children: [
-              if (_editableSourceFile.isEmpty) ...[
-                Expanded(child: _editor()),
-              ],
-              if (_editableSourceFile.isNotEmpty) ...[
-                Expanded(child: _sourceFileEditorPanel()),
-              ],
-              Expanded(child: _rightPanel()),
-            ]),
+            child: Container(
+              color: Colors.grey,
+              child: MultiSplitView(children: [
+                if (_editableSourceFile.isEmpty) ...[
+                  _editor(),
+                ],
+                if (_editableSourceFile.isNotEmpty) ...[
+                  _sourceFileEditorPanel(),
+                ],
+                _rightPanel(),
+              ]),
+            ),
           ),
         ),
 
@@ -306,83 +310,134 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Widget _sourceFileEditorPanel() {
-    return Column(children: [
-      Expanded(
-        child: SourceFileEditor(
-          packId: widget.packId,
-          rootPath: packRootPath,
-          filename: _editableSourceFile,
-          url: _editableSourceUrl,
-          onAddNewFile: (filePath, url) {
-            _fileSourceKey.currentState?.addNewFile(filePath, url);
-          },
-          tryExitCallback: (){
-            setState((){
-              _editableSourceFile = '';
-            });
-          },
-          onPrepareFileUrl: (String fileName) {
-            return _fileUrlMap[fileName];
-          },
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, top: 2, bottom: 2),
+      child: Container(
+        decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(
+              color: Colors.white,
+            ),
+            borderRadius: const BorderRadius.all(Radius.circular(5))
         ),
-      )
-    ]);
+
+        child: Column(children: [
+          Expanded(
+            child: SourceFileEditor(
+              packId: widget.packId,
+              rootPath: packRootPath,
+              filename: _editableSourceFile,
+              url: _editableSourceUrl,
+              onAddNewFile: (filePath, url) {
+                _fileSourceKey.currentState?.addNewFile(filePath, url);
+              },
+              tryExitCallback: (){
+                setState((){
+                  _editableSourceFile = '';
+                });
+              },
+              onPrepareFileUrl: (String fileName) {
+                return _fileUrlMap[fileName];
+              },
+            ),
+          )
+        ]),
+      ),
+    );
   }
 
   Widget _editor() {
-    return Column(children: [
-      TabBar(
-        controller: _editorTabController,
-        isScrollable: false,
-        labelColor: Colors.black,
-        tabs: const [
-          Tab(icon: Icon(Icons.child_care ), text: 'Заголовок'),
-          Tab(icon: Icon(Icons.style      ), text: 'Стили'),
-          Tab(icon: Icon(Icons.credit_card), text: 'Карточки'),
-        ],
-      ),
-
-      Expanded(
-        child: TabBarView(
-          physics: const NeverScrollableScrollPhysics(),
-          controller: _editorTabController,
-          children: [
-            _head(),
-            _styles(),
-            _cards()
-          ],
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, top: 2, bottom: 2),
+      child: Container(
+        decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(
+              color: Colors.white,
+            ),
+            borderRadius: const BorderRadius.all(Radius.circular(5))
         ),
-      )
 
-    ]);
+        child: Column(children: [
+          Container(
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide( color: Colors.grey.shade300))
+            ),
+
+            child: TabBar(
+              controller: _editorTabController,
+              isScrollable: false,
+              labelColor: Colors.black,
+              tabs: const [
+                Tab(icon: Icon(Icons.child_care ), text: 'Заголовок'),
+                Tab(icon: Icon(Icons.style      ), text: 'Стили'),
+                Tab(icon: Icon(Icons.credit_card), text: 'Карточки'),
+              ],
+            ),
+          ),
+
+          Expanded(
+            child: TabBarView(
+              physics: const NeverScrollableScrollPhysics(),
+              controller: _editorTabController,
+              children: [
+                _head(),
+                _styles(),
+                _cards()
+              ],
+            ),
+          )
+
+        ]),
+      ),
+    );
   }
 
   Widget _rightPanel() {
-    return Column(children: [
-      TabBar(
-        controller: _rightTabController,
-        isScrollable: false,
-        labelColor: Colors.black,
-        tabs: const [
-          Tab(icon: Icon(Icons.source ), text: 'Ресурсы'),
-          Tab(icon: Icon(Icons.table_chart_outlined      ), text: 'Значения параметров'),
-          Tab(icon: Icon(Icons.streetview_outlined), text: 'Пакет'),
-        ],
-      ),
-
-      Expanded(
-        child: TabBarView(
-          physics: const NeverScrollableScrollPhysics(),
-          controller: _rightTabController,
-          children: [
-            _fileSources(),
-            _templatesSources(),
-            _packView()
-          ],
+    return Padding(
+      padding: const EdgeInsets.only(right: 4, top: 2, bottom: 2),
+      child: Container(
+        decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(
+              color: Colors.white,
+            ),
+            borderRadius: const BorderRadius.all(Radius.circular(5))
         ),
-      )
 
-    ]);
+        child: Column(children: [
+          Container(
+            decoration: BoxDecoration(
+                border: Border(bottom: BorderSide( color: Colors.grey.shade300))
+            ),
+
+            child: TabBar(
+              controller: _rightTabController,
+              isScrollable: false,
+              labelColor: Colors.black,
+              tabs: const [
+                Tab(icon: Icon(Icons.source ), text: 'Ресурсы'),
+                Tab(icon: Icon(Icons.table_chart_outlined      ), text: 'Значения параметров'),
+                Tab(icon: Icon(Icons.streetview_outlined), text: 'Пакет'),
+              ],
+            ),
+          ),
+
+          Expanded(
+            child: TabBarView(
+              physics: const NeverScrollableScrollPhysics(),
+              controller: _rightTabController,
+              children: [
+                _fileSources(),
+                _templatesSources(),
+                _packView()
+              ],
+            ),
+          )
+
+        ]),
+      ),
+    );
   }
 
   Widget _head() {
