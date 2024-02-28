@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
 
 import 'child_list.dart';
+import 'menu_page.dart';
 import 'own_pack_list.dart';
 import 'pack_list.dart';
 
@@ -10,6 +11,7 @@ class HomePage extends StatefulWidget {
   static const String tabShowcase    = 'showcase';
   static const String tabChildren    = 'children';
   static const String tabPossessions = 'possessions';
+  static const String tabMenu        = 'menu';
 
   const HomePage({Key? key}) : super(key: key);
 
@@ -33,6 +35,7 @@ class _HomePageState extends State<HomePage> {
           Tab(icon: Icon(Icons.shower)),
           Tab(icon: Icon(Icons.child_care)),
           Tab(icon: Icon(Icons.folder_special_outlined)),
+          Tab(icon: Icon(Icons.menu)),
         ],
       ),
     );
@@ -44,6 +47,7 @@ class _HomePageState extends State<HomePage> {
         PageStackNavigator(stack: tabState.stacks[0]),
         PageStackNavigator(stack: tabState.stacks[1]),
         PageStackNavigator(stack: tabState.stacks[2]),
+        PageStackNavigator(stack: tabState.stacks[3]),
       ],
     );
   }
@@ -70,6 +74,9 @@ class HomePageTabView extends StatelessWidget {
     }
     if (tabKey == HomePage.tabPossessions) {
       return OwnPackList(packInfoManager: appState.packInfoManager, childManager: appState.childManager!, user: appState.serverConnect.user!, actions: [homePageState!.tabBar!]);
+    }
+    if (tabKey == HomePage.tabMenu) {
+      return MenuPage(actions: [homePageState!.tabBar!]);
     }
 
     return Container();

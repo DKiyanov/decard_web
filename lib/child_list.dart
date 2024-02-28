@@ -1,4 +1,5 @@
 import 'package:decard_web/dk_expansion_tile.dart';
+import 'package:decard_web/simple_menu.dart';
 import 'package:decard_web/web_child.dart';
 import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
@@ -64,6 +65,14 @@ class _ChildListState extends State<ChildList> {
       appBar: AppBar(
         centerTitle: true,
         title: Text(TextConst.txtChildList ),
+        leading: popupMenu(icon: const Icon(Icons.menu), menuItemList: [
+          SimpleMenuItem(
+            child: const Text('Пригласить ребёнка'),
+            onPress: () {
+
+            },
+          ),
+        ]),
         actions: widget.actions,
       ),
       body: _body(),

@@ -16,7 +16,7 @@ import '../decardj.dart';
 import '../loader.dart';
 import '../parse_class_info.dart';
 import '../parse_pack_info.dart';
-import 'pack_file_source.dart';
+import 'pack_file_source_list.dart';
 import 'pack_file_source_editor.dart';
 import 'pack_head_widget.dart';
 import 'pack_quality_level_widget.dart';
@@ -67,12 +67,14 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   final _pagePadding = const EdgeInsets.only(left: 10, right: 20);
 
   bool _dataChanged = false;
+  bool _dataChangeSaveInProcess = false;
+  bool _dataChangeSaved = true;
   final _dataChangedButtonKey = GlobalKey();
 
   final _packTitleKey = GlobalKey();
   String _packTitle = '';
 
-  final _fileSourceKey = GlobalKey<PackFileSourceState>();
+  final _fileSourceKey = GlobalKey<PackFileSourceListState>();
 
   final String _rootPath = '';
 
@@ -154,6 +156,8 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
     if (card != null) {
       _cardController.setCard(_jsonFileID!, card.cardID, bodyNum: 0);
     }
+
+    _validatePack(refreshView: false);
 
     setState(() {
       _isStarting = false;
@@ -237,15 +241,6 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
           ),
 
           actions: [
-            IconButton(
-                onPressed: (){
-                  // final path = '${DjfFile.qualityLevelList}[2]/${DjfQualityLevel.qualityName}';
-                  const path = '${DjfFile.templateList}[0]/${DjfCardTemplate.cardTemplateList}[0]/${DjfCard.bodyList}[0]/${DjfCardBody.clue}';
-                  _selectPath(path);
-                },
-                icon: const Icon(Icons.ac_unit)
-            ),
-
             StatefulBuilder(
               key: _dataChangedButtonKey,
               builder: (context, setState) {
@@ -259,46 +254,68 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
             ),
           ],
         ),
-        body:  _body(),
+        body:  Container(
+          color: Colors.grey,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 2, left: 4, right: 4),
+            child: _body(),
+          ),
+        ),
       ),
     );
   }
 
   Widget _body() {
-    return Column(
-      children: [
-        Expanded(
-          child: JsonOwner(
-            key: _jsonOwnerKey,
-            json: _packJson,
-            onDataChanged: () {
-              _setDataChanged(true);
-              _setEditorTitle();
-              Future.delayed(const Duration(seconds: 20), (){
-                _saveJson();
-              });
-            },
+    if (_packErrorList.isEmpty) return _bodyMain();
 
-            child: Container(
-              color: Colors.grey,
-              child: MultiSplitView(children: [
-                if (_editableSourceFile.isEmpty) ...[
-                  _editor(),
-                ],
-                if (_editableSourceFile.isNotEmpty) ...[
-                  _sourceFileEditorPanel(),
-                ],
-                _rightPanel(),
-              ]),
-            ),
-          ),
-        ),
-
-        LimitedBox(
-          maxHeight: 200,
-          child: _validatePackResultPanel()
-        ),
+    return MultiSplitView(
+      axis: Axis.vertical,
+      initialAreas: [
+        Area(),
+        Area(weight: 0.2),
       ],
+      children: [
+        Container(child: _bodyMain()), // Container needed for hide key _jsonOwnerKey from MultiSplitView - it`s crash him
+        _validatePackResultPanel(),
+      ],
+    );
+  }
+
+  Widget _bodyMain() {
+    return JsonOwner(
+      key: _jsonOwnerKey,
+      json: _packJson,
+      onDataChanged: () {
+        _setDataChanged(true);
+        _setEditorTitle();
+        _dataChangeSaved = false;
+        Future.delayed(const Duration(seconds: 20), (){
+          _saveJson();
+        });
+      },
+
+      child: Container(
+        color: Colors.grey,
+        child: MultiSplitView(children: [
+          if (_editableSourceFile.isEmpty) ...[
+            _editor(),
+          ],
+          if (_editableSourceFile.isNotEmpty) ...[
+            _sourceFileEditorPanel(),
+          ],
+          _rightPanel(),
+        ]),
+      ),
+    );
+  }
+
+  Decoration _panelDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      border: Border.all(
+        color: Colors.white,
+      ),
+      borderRadius: const BorderRadius.all(Radius.circular(5))
     );
   }
 
@@ -310,133 +327,106 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Widget _sourceFileEditorPanel() {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, top: 2, bottom: 2),
-      child: Container(
-        decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(
-              color: Colors.white,
-            ),
-            borderRadius: const BorderRadius.all(Radius.circular(5))
-        ),
+    return Container(
+      decoration: _panelDecoration(),
 
-        child: Column(children: [
-          Expanded(
-            child: SourceFileEditor(
-              packId: widget.packId,
-              rootPath: packRootPath,
-              filename: _editableSourceFile,
-              url: _editableSourceUrl,
-              onAddNewFile: (filePath, url) {
-                _fileSourceKey.currentState?.addNewFile(filePath, url);
-              },
-              tryExitCallback: (){
-                setState((){
-                  _editableSourceFile = '';
-                });
-              },
-              onPrepareFileUrl: (String fileName) {
-                return _fileUrlMap[fileName];
-              },
-            ),
-          )
-        ]),
-      ),
+      child: Column(children: [
+        Expanded(
+          child: SourceFileEditor(
+            packId: widget.packId,
+            rootPath: packRootPath,
+            filename: _editableSourceFile,
+            url: _editableSourceUrl,
+            onAddNewFile: (filePath, url) {
+              _fileSourceKey.currentState?.addNewFile(filePath, url);
+            },
+            tryExitCallback: (){
+              setState((){
+                _editableSourceFile = '';
+              });
+            },
+            onPrepareFileUrl: (String fileName) {
+              return _fileUrlMap[fileName];
+            },
+          ),
+        )
+      ]),
     );
   }
 
   Widget _editor() {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, top: 2, bottom: 2),
-      child: Container(
-        decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(
-              color: Colors.white,
-            ),
-            borderRadius: const BorderRadius.all(Radius.circular(5))
-        ),
+    return Container(
+      decoration: _panelDecoration(),
 
-        child: Column(children: [
-          Container(
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide( color: Colors.grey.shade300))
-            ),
-
-            child: TabBar(
-              controller: _editorTabController,
-              isScrollable: false,
-              labelColor: Colors.black,
-              tabs: const [
-                Tab(icon: Icon(Icons.child_care ), text: 'Заголовок'),
-                Tab(icon: Icon(Icons.style      ), text: 'Стили'),
-                Tab(icon: Icon(Icons.credit_card), text: 'Карточки'),
-              ],
-            ),
+      child: Column(children: [
+        Container(
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide( color: Colors.grey.shade300))
           ),
 
-          Expanded(
-            child: TabBarView(
-              physics: const NeverScrollableScrollPhysics(),
-              controller: _editorTabController,
-              children: [
-                _head(),
-                _styles(),
-                _cards()
-              ],
-            ),
-          )
+          child: TabBar(
+            controller: _editorTabController,
+            isScrollable: false,
+            labelColor: Colors.black,
+            tabs: const [
+              Tab(icon: Icon(Icons.child_care ), text: 'Заголовок'),
+              Tab(icon: Icon(Icons.style      ), text: 'Стили'),
+              Tab(icon: Icon(Icons.credit_card), text: 'Карточки'),
+            ],
+          ),
+        ),
 
-        ]),
-      ),
+        Expanded(
+          child: TabBarView(
+            physics: const NeverScrollableScrollPhysics(),
+            controller: _editorTabController,
+            children: [
+              _head(),
+              _styles(),
+              _cards()
+            ],
+          ),
+        )
+
+      ]),
     );
   }
 
   Widget _rightPanel() {
-    return Padding(
-      padding: const EdgeInsets.only(right: 4, top: 2, bottom: 2),
-      child: Container(
-        decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(
-              color: Colors.white,
-            ),
-            borderRadius: const BorderRadius.all(Radius.circular(5))
-        ),
+    return Container(
+      decoration: _panelDecoration(),
 
-        child: Column(children: [
-          Container(
-            decoration: BoxDecoration(
-                border: Border(bottom: BorderSide( color: Colors.grey.shade300))
-            ),
-
-            child: TabBar(
-              controller: _rightTabController,
-              isScrollable: false,
-              labelColor: Colors.black,
-              tabs: const [
-                Tab(icon: Icon(Icons.source ), text: 'Ресурсы'),
-                Tab(icon: Icon(Icons.table_chart_outlined      ), text: 'Значения параметров'),
-                Tab(icon: Icon(Icons.streetview_outlined), text: 'Пакет'),
-              ],
-            ),
+      child: Column(children: [
+        Container(
+          decoration: BoxDecoration(
+              border: Border(bottom: BorderSide( color: Colors.grey.shade300))
           ),
 
-          Expanded(
-            child: TabBarView(
-              physics: const NeverScrollableScrollPhysics(),
-              controller: _rightTabController,
-              children: [
-                _fileSources(),
-                _templatesSources(),
-                _packView()
-              ],
-            ),
-          )
+          child: TabBar(
+            controller: _rightTabController,
+            isScrollable: false,
+            labelColor: Colors.black,
+            tabs: const [
+              Tab(icon: Icon(Icons.source ), text: 'Ресурсы'),
+              Tab(icon: Icon(Icons.table_chart_outlined      ), text: 'Значения параметров'),
+              Tab(icon: Icon(Icons.streetview_outlined), text: 'Пакет'),
+            ],
+          ),
+        ),
 
-        ]),
-      ),
+        Expanded(
+          child: TabBarView(
+            physics: const NeverScrollableScrollPhysics(),
+            controller: _rightTabController,
+            children: [
+              _fileSources(),
+              _templatesSources(),
+              _packView()
+            ],
+          ),
+        )
+
+      ]),
     );
   }
 
@@ -517,28 +507,49 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Widget _packView() {
-    return Row(children: [
-      Expanded(child: _tree()),
-      Expanded(child: _card()),
-    ]);
+    if (_cardNavigatorData.cardList.isEmpty) {
+      return Center(
+        child: Text('Пакет на данный момент не содержит карточек${ _packErrorList.isNotEmpty ? '\nв пакете присутствуют ошибки': ''}',
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    return Container(
+      color: Colors.grey,
+      child: MultiSplitView(
+        children: [
+          _tree(),
+          _card(),
+        ]
+      ),
+    );
   }
 
   Widget _tree() {
-    return CardNavigatorTree(
-      cardController: _cardController,
-      cardNavigatorData: _cardNavigatorData,
-      itemTextColor: Colors.black,
-      selItemTextColor: Colors.blue,
-      bodyButtonColor: Colors.orangeAccent,
-      mode: NavigatorMode.noPackHead,
+    return Container(
+      color: Colors.white,
+
+      child: CardNavigatorTree(
+        cardController: _cardController,
+        cardNavigatorData: _cardNavigatorData,
+        itemTextColor: Colors.black,
+        selItemTextColor: Colors.blue,
+        bodyButtonColor: Colors.orangeAccent,
+        mode: NavigatorMode.noPackHead,
+      ),
     );
   }
 
   Widget _card () {
-    return Column(children: [
-      _cardNavigator(),
-      Expanded(child: _cardWidget()),
-    ]);
+    return Container(
+      color: Colors.white,
+
+      child: Column(children: [
+        _cardNavigator(),
+        Expanded(child: _cardWidget()),
+      ]),
+    );
   }
 
   Widget _cardNavigator() {
@@ -562,7 +573,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Widget _fileSources(){
-    return PackFileSource(
+    return PackFileSourceList(
       key        : _fileSourceKey,
       editor     : this,
       packId     : widget.packId,
@@ -676,18 +687,30 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Future<void> _saveJson() async {
-    if (!_dataChanged) return;
-    final jsonStr = jsonEncode(_packJson);
-    await _jsonFile.setText(jsonStr);
+    if (_dataChangeSaveInProcess) return;
+    if (_dataChangeSaved) return;
+    _dataChangeSaved = true;
+    _dataChangeSaveInProcess = true;
 
-    _packHead.set<String?>(DjfFile.title      , _packJson[DjfFile.title]);
-    _packHead.set<String?>(DjfFile.site       , _packJson[DjfFile.site   ]);
-    _packHead.set<String?>(DjfFile.email      , _packJson[DjfFile.email  ]);
-    _packHead.set<String?>(DjfFile.tags       , _packJson[DjfFile.tags   ]);
-    _packHead.set<String?>(DjfFile.license    , _packJson[DjfFile.license]);
-    _packHead.set<int?>(DjfFile.targetAgeLow  , _packJson[DjfFile.targetAgeLow ]);
-    _packHead.set<int?>(DjfFile.targetAgeHigh , _packJson[DjfFile.targetAgeHigh]);
-    await _packHead.save();
+    try {
+      final jsonStr = jsonEncode(_packJson);
+      await _jsonFile.setText(jsonStr);
+
+      _packHead.set<String?>(DjfFile.title, _packJson[DjfFile.title]);
+      _packHead.set<String?>(DjfFile.site, _packJson[DjfFile.site ]);
+      _packHead.set<String?>(DjfFile.email, _packJson[DjfFile.email ]);
+      _packHead.set<String?>(DjfFile.tags, _packJson[DjfFile.tags ]);
+      _packHead.set<String?>(DjfFile.license, _packJson[DjfFile.license]);
+      _packHead.set<int?>(
+          DjfFile.targetAgeLow, _packJson[DjfFile.targetAgeLow ]);
+      _packHead.set<int?>(
+          DjfFile.targetAgeHigh, _packJson[DjfFile.targetAgeHigh]);
+      await _packHead.save();
+    } catch (e) {
+      _dataChangeSaved = false;
+    } finally {
+      _dataChangeSaveInProcess = false;
+    }
   }
 
   void _selectPath(String path) {
@@ -709,42 +732,53 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
     _editorTabController.index = _headTabIndex;
   }
 
-  Future<void> _validatePack() async {
+  Future<void> _validatePack({bool refreshView = true}) async {
+    final panelWasVisible = _packErrorList.isNotEmpty;
+
     _packErrorList.clear();
     final checkResultList = await _dbValidator.checkJsonFile(_jsonFileID!);
     _packErrorList.addAll(checkResultList);
-    _validatePackResultPanelKey.currentState?.setState(() {});
+
+    if (!refreshView) return;
+
+    if (panelWasVisible != _packErrorList.isNotEmpty) {
+      setState(() {});
+    } else if (_packErrorList.isNotEmpty) {
+      _validatePackResultPanelKey.currentState?.setState(() {});
+    }
   }
 
   final onSelectSourceIndex = event.SimpleEvent<int>();
 
   Widget _validatePackResultPanel() {
-    return StatefulBuilder(
-      key: _validatePackResultPanelKey,
-      builder: (context, setState) {
-        if (_packErrorList.isEmpty) return Container(height: 0);
+    return Container(
+      decoration: _panelDecoration(),
 
-        return ListView(
-          shrinkWrap: true,
-          children: _packErrorList.map((errData) => ListTile(
-            title: Text(errData.message),
-            subtitle: Text(errData.path),
-            selected: errData == _selectedPackError,
-            selectedTileColor: Colors.yellow,
-            onTap: (){
-              _selectedPackError = errData;
-              _selectPath(errData.path);
+      child: StatefulBuilder(
+        key: _validatePackResultPanelKey,
+        builder: (context, setState) {
+          return ListView(
+            shrinkWrap: true,
+            children: _packErrorList.map((errData) => ListTile(
+              title: Text(errData.message),
+              subtitle: Text(errData.path),
+              selected: errData == _selectedPackError,
+              selectedTileColor: Colors.yellow,
+              onTap: (){
+                _selectedPackError = errData;
+                _selectPath(errData.path);
 
-              if (errData.sourceIndex != null) {
-                _rightTabController.index = _paramsTabIndex;
-                onSelectSourceIndex.send(errData.sourceIndex);
-              }
+                if (errData.sourceIndex != null) {
+                  _rightTabController.index = _paramsTabIndex;
+                  onSelectSourceIndex.send(errData.sourceIndex);
+                }
 
-              setState((){});
-            },
-          )).toList(),
-        );
-      }
+                setState((){});
+              },
+            )).toList(),
+          );
+        }
+      ),
     );
   }
 }

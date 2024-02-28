@@ -307,6 +307,9 @@ class CardData {
     this.regSet,
   });
 
+  static int? _createSelectedBodyNum;
+  static int? get createSelectedBodyNum => _createSelectedBodyNum;
+
   static Future<CardData> create(
     DbSource dbSource,
     Regulator regulator,
@@ -317,7 +320,7 @@ class CardData {
       CardSetBody setBody = CardSetBody.random,
     }
   ) async {
-
+    _createSelectedBodyNum = null;
     final card = await _CardGenerator.createCard(dbSource, regulator, jsonFileID, cardID, bodyNum: bodyNum, setBody: setBody);
     return card;
   }
@@ -433,6 +436,8 @@ class _CardGenerator {
   }
 
   static Future<void> _setBodyNum(int bodyNum) async {
+    CardData._createSelectedBodyNum = bodyNum;
+
     final bodyData = (await _dbSource!.tabCardBody.getRow(jsonFileID: _cardHead!.jsonFileID, cardID: _cardHead!.cardID, bodyNum: bodyNum))!;
     await CardBody.prepareMap(_dbSource!, _pacInfo!.jsonFileID, bodyData, _convertMap);
     _cardBody = CardBody.fromMap(bodyData);

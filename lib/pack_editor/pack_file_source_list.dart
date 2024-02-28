@@ -17,7 +17,7 @@ import 'package:path/path.dart' as path_util;
 
 import 'pack_widgets.dart';
 
-class PackFileSource extends StatefulWidget {
+class PackFileSourceList extends StatefulWidget {
   final PackEditorState editor;
   final int packId;
   final int jsonFileID;
@@ -25,7 +25,7 @@ class PackFileSource extends StatefulWidget {
   final DbSource dbSource;
   final Map<String, String> fileUrlMap;
 
-  const PackFileSource({
+  const PackFileSourceList({
     required this.editor,
     required this.packId,
     required this.jsonFileID,
@@ -37,7 +37,7 @@ class PackFileSource extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<PackFileSource> createState() => PackFileSourceState();
+  State<PackFileSourceList> createState() => PackFileSourceListState();
 }
 
 enum _PackFileSourceMode{
@@ -46,7 +46,7 @@ enum _PackFileSourceMode{
   preview
 }
 
-class PackFileSourceState extends State<PackFileSource> with AutomaticKeepAliveClientMixin<PackFileSource> {
+class PackFileSourceListState extends State<PackFileSourceList> with AutomaticKeepAliveClientMixin<PackFileSourceList> {
   static const Map<String, String> _createFileMap = {
     FileExt.contentTextConstructor : 'Создать файл конструктор текстов',
     FileExt.contentTxt             : 'Создать простой текстовый файл',

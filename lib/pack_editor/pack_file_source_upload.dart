@@ -8,7 +8,7 @@ import 'package:path/path.dart' as path_util;
 
 import '../card_model.dart';
 import '../parse_pack_info.dart';
-import 'pack_file_source.dart';
+import 'pack_file_source_list.dart';
 import 'package:simple_events/simple_events.dart' as event;
 
 class _FileInfo {

@@ -83,7 +83,7 @@ RouteMap _buildRouteMapIn(BuildContext context) {
         if (appState.serverConnect.isLoggedIn) {
           return TabPage(
             child: const HomePage(),
-            paths: const [HomePage.tabShowcase, HomePage.tabChildren, HomePage.tabPossessions],
+            paths: const [HomePage.tabShowcase, HomePage.tabChildren, HomePage.tabPossessions, HomePage.tabMenu],
             pageBuilder: (child) => NoAnimationPage(child: child),
           );
         }
@@ -106,6 +106,12 @@ RouteMap _buildRouteMapIn(BuildContext context) {
       '/${HomePage.tabPossessions}': (route) {
         return const NoAnimationPage(
           child: HomePageTabView(tabKey : HomePage.tabPossessions),
+        );
+      },
+
+      '/${HomePage.tabMenu}': (route) {
+        return const NoAnimationPage(
+          child: HomePageTabView(tabKey : HomePage.tabMenu),
         );
       },
 

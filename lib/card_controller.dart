@@ -11,6 +11,13 @@ import 'package:flutter/material.dart';
 typedef CardWidgetBuilder = Widget Function(CardData card, CardParam cardParam, CardViewController cardViewController);
 typedef OnCardResult = Function(CardData card, CardParam cardParam, bool result, int tryCount, int solveTime, double earned);
 
+class CardKeyInfo {
+  final int jsonFileID;
+  final int cardID;
+  final int bodyNum;
+  CardKeyInfo({required this.jsonFileID, required this.cardID, required this.bodyNum});
+}
+
 class CardController {
   final DbSource dbSource;
   late Regulator regulator;
@@ -30,8 +37,13 @@ class CardController {
   CardData? _card;
   CardData? get card => _card;
 
+  CardKeyInfo? _cardKeyInfo;
+  CardKeyInfo? get cardKeyInfo => _cardKeyInfo;
+
   CardViewController? _cardViewController;
   CardViewController? get cardViewController => _cardViewController;
+
+  String? _cardSetError;
 
   CardParam? _cardParam;
   CardParam? get carCost => _cardParam;
@@ -40,6 +52,7 @@ class CardController {
   final onAddEarn = event.SimpleEvent<double>();
 
   void setNoCard() {
+    _cardKeyInfo = null;
     _card = null;
     _cardParam = null;
     _cardViewController = null;
@@ -49,7 +62,11 @@ class CardController {
   /// Sets the current card data
   Future<void> setCard(int jsonFileID, int cardID, {int? bodyNum, CardSetBody setBody = CardSetBody.random, int? startTime}) async {
     try {
+      _cardSetError = null;
+      _cardKeyInfo  = null;
+
       _card = await CardData.create(dbSource, regulator, jsonFileID, cardID, bodyNum: bodyNum, setBody: setBody);
+      _cardKeyInfo = CardKeyInfo(jsonFileID: jsonFileID, cardID: cardID, bodyNum: _card!.body.bodyNum);
 
       _cardParam   = CardParam(_card!.difficulty, _card!.stat.quality);
 
@@ -57,8 +74,12 @@ class CardController {
 
       onSetCard?.call(_card!.head.cardID);
     } catch (e) {
+      _cardKeyInfo = CardKeyInfo(jsonFileID: jsonFileID, cardID: cardID, bodyNum: bodyNum??CardData.createSelectedBodyNum??0);
       _card = null;
-      Fluttertoast.showToast(msg: 'Карточка содержит ошибку, просмотр не возможен');
+      _cardParam = null;
+      _cardViewController = null;
+      _cardSetError = 'Карточка содержит ошибку, просмотр не возможен';
+      Fluttertoast.showToast(msg: _cardSetError!);
     }
     
     onChange.send();
@@ -130,6 +151,9 @@ class CardController {
   Widget cardListenWidgetBuilder(CardWidgetBuilder builder) {
     return event.EventReceiverWidget(
       builder: (_) {
+        if (_cardSetError != null) {
+          return Center(child: Text(_cardSetError!, textAlign: TextAlign.center,));
+        }
         if (_card == null) return Container();
         return builder.call(_card!, _cardParam!, _cardViewController!);
       },
