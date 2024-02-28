@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:decard_web/common.dart';
 import 'package:flutter/material.dart';
 
 import 'package:collection/collection.dart';
@@ -9,8 +8,8 @@ import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path_util;
 import 'package:flutter_archive/flutter_archive.dart';
-import 'package:routemaster/routemaster.dart';
 
+import 'common_func.dart';
 import 'db.dart';
 import 'decardj.dart';
 import 'parse_class_info.dart';
@@ -86,11 +85,11 @@ class WebPackInfo {
     );
   }
 
-  Widget getListTile(BuildContext context, {Widget? leading, Widget? trailing}) {
+  Widget getListTile(BuildContext context, {Widget? leading, Widget? trailing, void Function(BuildContext context)? onTap}) {
     return ListTile(
       title    : getTitle(context),
       subtitle : getSubtitle(context),
-      onTap    : ()=> onTap(context),
+      onTap    : ()=> onTap?.call(context),
       trailing : trailing,
       leading  : leading,
     );
@@ -103,10 +102,6 @@ class WebPackInfo {
   Widget getSubtitle(BuildContext context) {
     final subtitle = 'возраст: $targetAgeLow-$targetAgeHigh; ${tags.isEmpty ? 'теги отсутствуют' : 'теги: $tags'}; ${publicationMoment == null? 'не опубликовано' : 'опубликовано: ${dateToStr(publicationMoment!)}' }';
     return Text(subtitle);
-  }
-
-  void onTap(BuildContext context) {
-    Routemaster.of(context).push('/pack/$packId');
   }
 }
 

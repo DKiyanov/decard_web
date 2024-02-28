@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'dart:ui';
-import 'regulator/regulator.dart';
+import 'regulator.dart';
 import 'package:path/path.dart' as path_util;
 
 import 'db.dart';

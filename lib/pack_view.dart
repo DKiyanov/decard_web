@@ -9,6 +9,7 @@ import 'card_controller.dart';
 import 'card_navigator.dart';
 import 'card_widget.dart';
 import 'common.dart';
+import 'common_func.dart';
 import 'pack_info_widget.dart';
 import 'package:simple_events/simple_events.dart' as event;
 

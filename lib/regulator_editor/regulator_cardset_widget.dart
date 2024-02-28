@@ -6,7 +6,7 @@ import '../pack_editor/desc_json.dart';
 import '../pack_editor/pack_style_widget.dart';
 import '../pack_editor/pack_widgets.dart';
 import '../pack_editor/values_json.dart';
-import 'regulator.dart';
+import '../regulator.dart';
 
 class RegulatorCardSetWidget extends StatefulWidget {
   final Map<String, dynamic> json;

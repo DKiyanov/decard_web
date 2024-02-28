@@ -1,9 +1,10 @@
 import 'package:collection/collection.dart';
-import 'package:decard_web/text_constructor/editor/text_constructor_desc_json.dart';
+import 'package:decard_web/text_constructor_editor/text_constructor_desc_json.dart';
 import 'package:flutter/material.dart';
 
 import '../../pack_editor/pack_widgets.dart';
-import '../word_panel_model.dart';
+import '../text_constructor/word_panel_model.dart';
+
 
 class TextConstructorWordStyleWidget extends StatefulWidget {
   final String styleStr;

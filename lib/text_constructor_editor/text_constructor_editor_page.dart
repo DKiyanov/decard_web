@@ -3,20 +3,20 @@ import 'dart:math' as math;
 
 import 'package:decard_web/dk_expansion_tile.dart';
 import 'package:decard_web/text_constructor/drag_box_widget.dart';
-import 'package:decard_web/text_constructor/editor/text_constructor_options_widget.dart';
+import 'package:decard_web/text_constructor_editor/text_constructor_options_widget.dart';
 import 'package:flutter/material.dart';
 
 import '../../card_model.dart';
 import '../../pack_editor/pack_editor.dart';
 import '../../pack_editor/pack_file_source_editor.dart';
 import '../../simple_dialog.dart';
-import '../text_constructor.dart';
-import '../word_grid.dart';
+import '../text_constructor/text_constructor.dart';
+import '../text_constructor/word_grid.dart';
+import '../text_constructor/word_panel_model.dart';
 import 'text_constructor_desc_json.dart';
 import 'text_constructor_word_style_widget.dart';
 
 import '../../pack_editor/pack_widgets.dart';
-import '../word_panel_model.dart';
 
 class AnswerTextConstructor {
   GlobalKey<TextConstructorWidgetState> key;

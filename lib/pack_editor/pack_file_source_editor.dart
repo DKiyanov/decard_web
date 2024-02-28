@@ -5,8 +5,9 @@ import '../media_widgets.dart';
 import '../parse_pack_info.dart';
 import '../simple_dialog.dart';
 import '../simple_text_editor_page.dart';
-import '../text_constructor/editor/text_constructor_editor_page.dart';
 import 'package:path/path.dart' as path_util;
+
+import '../text_constructor_editor/text_constructor_editor_page.dart';
 
 class SourceFileEditor extends StatefulWidget {
   final int packId;

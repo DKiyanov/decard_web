@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../pack_editor/pack_widgets.dart';
-import 'regulator.dart';
+import '../regulator.dart';
 
 
 class RegulatorOptionsWidget extends StatelessWidget {

@@ -1,12 +1,12 @@
 import 'package:decard_web/app_state.dart';
-import 'package:decard_web/regulator/regulator_desc_json.dart';
+import 'package:decard_web/regulator_editor/regulator_desc_json.dart';
 import 'package:decard_web/web_child.dart';
 import 'package:flutter/material.dart';
 
 import '../common.dart';
 import '../decardj.dart';
 import '../pack_editor/pack_widgets.dart';
-import 'regulator.dart';
+import '../regulator.dart';
 import 'regulator_cardset_widget.dart';
 
 class RegulatorCardSetPage extends StatefulWidget {

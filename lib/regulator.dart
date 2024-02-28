@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 
-import '../db.dart';
+import 'db.dart';
 
 /// Manage the selection and execution of cards on the child's device
 class DrfRegulator {

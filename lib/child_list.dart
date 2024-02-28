@@ -6,6 +6,10 @@ import 'package:routemaster/routemaster.dart';
 import 'common.dart';
 import 'package:simple_events/simple_events.dart' as event;
 
+import 'invite_key_present.dart';
+import 'login_invite.dart';
+
+
 class ChildList extends StatefulWidget {
   final WebChildListManager childManager;
   final List<Widget>? actions;
@@ -69,7 +73,7 @@ class _ChildListState extends State<ChildList> {
           SimpleMenuItem(
             child: const Text('Пригласить ребёнка'),
             onPress: () {
-
+              Invite.navigatorPush(context, widget.childManager.userID, LoginMode.child, const Duration(minutes: 30));
             },
           ),
         ]),

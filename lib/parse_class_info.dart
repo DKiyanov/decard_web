@@ -1,3 +1,7 @@
+class ParseObjectField {
+  static const String objectID   = 'objectId';
+}
+
 class ParseWebPackUpload {
   static const String className = 'UploadWebFile';
 
@@ -67,4 +71,30 @@ class ParseWebChildSource {
 
   static const String sourceTypePack      = 'pack';
   static const String sourceTypeRegulator = 'regulator';
+}
+
+class ParseTestResult {
+  static const String className = 'DecardTestResult';
+
+  static const String userID    = 'UserID';
+  static const String childID   = 'ChildID';
+  static const String dateTime  = 'dateTime';
+}
+
+class ParseDecardStat {
+  static const String className = 'DecardStat';
+
+  static const String userID    = 'UserID';
+  static const String childID   = 'ChildID';
+  static const String fileGuid  = 'FileGuid';
+  static const String cardID    = 'cardID';
+}
+
+class ParseInvite {
+  static const String className = 'Invite';
+
+  static const String forWhom        = 'for';
+  static const String expirationTime = 'expirationTime';
+  static const String userID         = 'userID';
+  static const String inviteKey      = 'inviteKey';
 }

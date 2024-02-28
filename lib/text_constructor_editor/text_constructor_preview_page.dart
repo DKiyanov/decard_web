@@ -1,9 +1,8 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 
-import '../text_constructor.dart';
-import '../word_panel_model.dart';
+import '../text_constructor/text_constructor.dart';
+import '../text_constructor/word_panel_model.dart';
 
 class TextConstructorPreview extends StatefulWidget {
   final String jsonStr;

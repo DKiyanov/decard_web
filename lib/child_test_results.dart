@@ -1,17 +1,10 @@
+import 'package:decard_web/parse_class_info.dart';
 import 'package:flutter/material.dart';
 import 'package:decard_web/web_child.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 
-import 'common.dart';
+import 'common_func.dart';
 import 'db.dart';
-
-class ParseTestResult {
-  static const String className = 'DecardTestResult';
-
-  static const String userID    = 'UserID';
-  static const String childID   = 'ChildID';
-  static const String dateTime  = 'dateTime';
-}
 
 class ChildTestResults {
   Future<void> updateBdFromServer() async {

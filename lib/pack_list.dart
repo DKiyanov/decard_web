@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:multi_split_view/multi_split_view.dart';
 import 'package:decard_web/parse_pack_info.dart';
+import 'package:routemaster/routemaster.dart';
 
 import 'common.dart';
 import 'dk_expansion_tile.dart';
@@ -33,8 +34,6 @@ class _WebPackListState extends State<WebPackList> {
   final _selTitleController = TextEditingController() ;
 
   String _selTitle = '';
-
-  static const Color _filterPanelColor = Colors.grey;
 
   final _scrollController = ScrollController();
 
@@ -225,7 +224,9 @@ class _WebPackListState extends State<WebPackList> {
               return DkExpansionTile(
                 title    : packInfo.getTitle(context),
                 subtitle : packInfo.getSubtitle(context),
-                onTap    : ()=> packInfo.onTap(context),
+                onTap    : (){
+                  Routemaster.of(context).push('/pack/${packInfo.packId}');
+                },
                 children : children,
               );
             }).toList()

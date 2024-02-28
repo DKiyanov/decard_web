@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../card_model.dart';
-import '../text_constructor/editor/text_constructor_preview_page.dart';
+import '../text_constructor_editor/text_constructor_preview_page.dart';
 
 class PackFileSourcePreview extends StatefulWidget {
   final String fileName;

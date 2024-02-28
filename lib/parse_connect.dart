@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:simple_events/simple_events.dart' as event;
 import 'common.dart';
+import 'login_invite.dart';
 
 class ParseConnect {
   static const String _applicationId   = 'dk_parental_control';

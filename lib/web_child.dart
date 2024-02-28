@@ -6,7 +6,7 @@ import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 
 import 'child_test_results.dart';
 import 'db_mem.dart';
-import 'regulator/regulator.dart';
+import 'regulator.dart';
 import 'card_controller.dart';
 import 'db.dart';
 import 'parse_class_info.dart';

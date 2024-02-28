@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../pack_editor/pack_widgets.dart';
-import '../word_panel_model.dart';
+import '../text_constructor/word_panel_model.dart';
 
 class TextConstructorOptionsWidget extends StatelessWidget {
   static const Map<String, IconData> _fieldIconMap = {
