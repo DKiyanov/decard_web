@@ -4,9 +4,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dropzone/flutter_dropzone.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:path/path.dart' as path_util;
 
 import '../card_model.dart';
+import '../decardj.dart';
 import '../parse_pack_info.dart';
 import 'pack_file_source_list.dart';
 import 'package:simple_events/simple_events.dart' as event;
@@ -59,6 +61,7 @@ class _PackFileSourceUploadState extends State<PackFileSourceUpload> {
   late DropzoneViewController _dzController;
 
   bool _dzHover = false;
+  final _dropzoneBackgroundKey = GlobalKey();
 
   final _fileList = <_FileInfo>[];
 
@@ -134,11 +137,16 @@ class _PackFileSourceUploadState extends State<PackFileSourceUpload> {
       ],
 
       if (kIsWeb) ...[
-        LimitedBox(
-          maxHeight: 150,
-          child: ListView(
-            shrinkWrap: true,
-            children: children,
+        Container(
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide( color: Colors.grey.shade300))
+          ),
+          child: LimitedBox(
+            maxHeight: 150,
+            child: ListView(
+              shrinkWrap: true,
+              children: children,
+            ),
           ),
         ),
 
@@ -146,9 +154,14 @@ class _PackFileSourceUploadState extends State<PackFileSourceUpload> {
       ],
 
       if (!kIsWeb) ...[
-        Expanded(
-          child: ListView(
-            children: children,
+        Container(
+          decoration: BoxDecoration(
+              border: Border(bottom: BorderSide( color: Colors.grey.shade300))
+          ),
+          child: Expanded(
+            child: ListView(
+              children: children,
+            ),
           ),
         ),
       ],
@@ -157,76 +170,97 @@ class _PackFileSourceUploadState extends State<PackFileSourceUpload> {
   }
 
   Widget _dropZoneWidget() {
-    return Container(
-      color: _dzHover ? Colors.red : Colors.green,
+    return Stack(
+      children: [
 
-      child: Stack(
-        children: [
-          DropzoneView(
-            operation: DragOperation.copy,
-            cursor: CursorType.grab,
+        DropzoneView(
+          operation: DragOperation.copy,
+          cursor: CursorType.grab,
 
-            onCreated: (ctrl) {
-              _dzController = ctrl;
-            },
+          onCreated: (ctrl) {
+            _dzController = ctrl;
+          },
 
-            onHover: () {
-              _dzHover = true;
-              setState((){});
-            },
-            onLeave: () {
-              _dzHover = false;
-              setState((){});
-            },
+          onHover: () {
+            if (_dzHover) return;
+            _dzHover = true;
+            _dropzoneBackgroundKey.currentState?.setState((){});
+          },
 
-            onDropMultiple: (fileList) async {
-              if (fileList == null) return;
+          onLeave: () {
+            if (!_dzHover) return;
+            _dzHover = false;
+            _dropzoneBackgroundKey.currentState?.setState((){});
+          },
+
+          onDropMultiple: (fileList) async {
+            if (fileList == null) return;
+            await _dropZoneAddFiles(fileList);
+            _dzHover = false;
+            _dropzoneBackgroundKey.currentState?.setState((){});
+          },
+        ),
+
+        StatefulBuilder(
+            key: _dropzoneBackgroundKey,
+            builder: (context, setState) {
+              return Container(
+                color: _dzHover ? Colors.grey.shade300 : null,
+              );
+            }
+        ),
+
+        Center(
+          child: ElevatedButton(
+            onPressed: () async {
+              final fileList = await _dzController.pickFiles();
               await _dropZoneAddFiles(fileList);
-              _dzHover = false;
               setState(() {});
             },
+            child: const Text('Выбирите файлы'),
           ),
+        )
 
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ElevatedButton(
-                  onPressed: () async {
-                    final fileList = await _dzController.pickFiles();
-                    await _dropZoneAddFiles(fileList);
-                    setState(() {});
-                  },
-                  child: const Text('Выбирать файлы'),
-                ),
-              ],
-            ),
-          )
-
-        ],
-      ),
+      ],
     );
   }
 
   Future<void> _dropZoneAddFiles(List<dynamic> fileList) async {
+    int skipCount = 0;
+    int addCount = 0;
+
     for (var file in fileList) {
       final fileName = await _dzController.getFilename(file);
-      final fileExt = path_util.extension(fileName).toLowerCase().substring(1);
+      final fileExt = FileExt.getFileExt(fileName);
 
-      if (!FileExt.sourceExtList.contains(fileExt)) continue;
-
-      final path = path_util.join(widget.selectController.selectedDir, fileName);
-
-      _fileList.add(
-        _FileInfo(
-          file     : file,
-          filename : fileName,
-          fileSize : await _dzController.getFileSize(file),
-          path     : path,
-          isNew    : _checkIsNew(path),
-        )
-      );
+      if (FileExt.sourceExtList.contains(fileExt)) {
+        final path = path_util.join(widget.selectController.selectedDir, fileName);
+        _fileList.add(
+            _FileInfo(
+              file     : file,
+              filename : fileName,
+              fileSize : await _dzController.getFileSize(file),
+              path     : path,
+              isNew    : _checkIsNew(path),
+            )
+        );
+        addCount ++;
+      } else {
+        skipCount ++;
+      }
     }
+
+    String msg = '';
+    if (addCount == 0 && skipCount > 0) {
+      msg = 'Для загрузки возможны файлы с расширениями: ${DjfFileExtension.values.join(', ')}';
+    } else if (addCount > 0 && skipCount > 0) {
+      msg = 'Файлы с не подходящим расширением были пропущены';
+    }
+    if (msg.isNotEmpty) {
+      Fluttertoast.showToast(msg: msg);
+    }
+
+    setState(() {});
   }
 
   Future<void> _pickFiles() async {

@@ -1,8 +1,9 @@
 import 'package:decard_web/app_state.dart';
+import 'package:decard_web/card_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dropzone/flutter_dropzone.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
-import 'package:path/path.dart' as path_util;
 import 'parse_class_info.dart';
 
 import 'decardj.dart';
@@ -32,6 +33,7 @@ class _PackUploadFileState extends State<PackUploadFile> {
   late DropzoneViewController _dzController;
 
   bool _dzHover = false;
+  final _dropzoneBackgroundKey = GlobalKey();
 
   final _fileList = <_FileInfo>[];
 
@@ -79,56 +81,68 @@ class _PackUploadFileState extends State<PackUploadFile> {
   }
 
   Widget _dropZoneWidget() {
-    return Container(
-      color: _dzHover ? Colors.red : Colors.green,
+    return Stack(
+      children: [
 
-      child: Stack(
-        children: [
-          DropzoneView(
-            operation: DragOperation.copy,
-            cursor: CursorType.grab,
+        DropzoneView(
+          operation: DragOperation.copy,
+          cursor: CursorType.grab,
 
-            onCreated: (ctrl) {
-              _dzController = ctrl;
-            },
+          onCreated: (ctrl) {
+            _dzController = ctrl;
+          },
 
-            onHover: () {
-              _dzHover = true;
-              setState((){});
-            },
-            onLeave: () {
-              _dzHover = false;
-              setState((){});
-            },
+          onHover: () {
+            if (_dzHover) return;
+            _dzHover = true;
+            _dropzoneBackgroundKey.currentState?.setState((){});
+          },
 
-            onDropMultiple: (fileList) async {
-              if (fileList == null) return;
+          onLeave: () {
+            if (!_dzHover) return;
+            _dzHover = false;
+            _dropzoneBackgroundKey.currentState?.setState((){});
+          },
+
+          onDropMultiple: (fileList) async {
+            if (fileList == null) return;
+            await _dropZoneAddFiles(fileList);
+            _dzHover = false;
+            _dropzoneBackgroundKey.currentState?.setState((){});
+          },
+        ),
+
+        StatefulBuilder(
+          key: _dropzoneBackgroundKey,
+          builder: (context, setState) {
+            return Container(
+              color: _dzHover ? Colors.grey.shade300 : null,
+            );
+          }
+        ),
+
+        Center(
+          child: ElevatedButton(
+            onPressed: () async {
+              final fileList = await _dzController.pickFiles();
               await _dropZoneAddFiles(fileList);
-              _dzHover = false;
               setState(() {});
             },
+            child: const Text('Выбирите файлы'),
           ),
+        )
 
-          Center(
-            child: ElevatedButton(
-              onPressed: () async {
-                final fileList = await _dzController.pickFiles();
-                await _dropZoneAddFiles(fileList);
-                setState(() {});
-              },
-              child: const Text('Выбирите файлы'),
-            ),
-          )
-
-        ],
-      ),
+      ],
     );
   }
 
   Future<void> _dropZoneAddFiles(List<dynamic> fileList) async {
+    int skipCount = 0;
+    int addCount = 0;
+
     for (var file in fileList) {
       final filename = await _dzController.getFilename(file);
-      final fileExt = path_util.extension(filename).toLowerCase();
+      final fileExt = FileExt.getFileExt(filename);
 
       if (DjfFileExtension.values.contains(fileExt)) {
         _fileList.add(
@@ -138,8 +152,23 @@ class _PackUploadFileState extends State<PackUploadFile> {
                 await _dzController.getFileSize(file)
             )
         );
+        addCount ++;
+      } else {
+        skipCount ++;
       }
     }
+
+    String msg = '';
+    if (addCount == 0 && skipCount > 0) {
+      msg = 'Для загрузки возможны файлы с расширениями: ${DjfFileExtension.values.join(', ')}';
+    } else if (addCount > 0 && skipCount > 0) {
+      msg = 'Файлы с не подходящим расширением были пропущены';
+    }
+    if (msg.isNotEmpty) {
+      Fluttertoast.showToast(msg: msg);
+    }
+
+    setState(() {});
   }
 
   Future<void> _sendAllFiles() async {

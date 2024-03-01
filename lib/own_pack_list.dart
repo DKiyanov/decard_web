@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:multi_split_view/multi_split_view.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'package:routemaster/routemaster.dart';
 import 'common.dart';
@@ -41,6 +42,10 @@ class _OwnPackListState extends State<OwnPackList> {
   }
 
   void _starting() async {
+    if (widget.childManager.childList.isEmpty) {
+      await widget.childManager.refreshChildList();
+    }
+
     await widget.packInfoManager.init();
     await _refresh();
 
@@ -94,24 +99,37 @@ class _OwnPackListState extends State<OwnPackList> {
   }
 
   Widget _body() {
-    return Column(children: [
-      Expanded(child: _mainPanel()),
+    if (!_uploadPanelVisible) {
+      _mainPanel();
+    }
 
-      if (_uploadPanelVisible) ...[
-        Expanded(child: _uploadPanel()),
-      ],
-    ]);
+    return Container(
+      color: Colors.grey,
+      child: MultiSplitView(
+        axis: Axis.vertical,
+        initialAreas: [
+          Area(weight: 0.8),
+        ],
+        children: [
+          _mainPanel(),
+          _uploadPanel(),
+        ]
+      ),
+    );
   }
 
   Widget _mainPanel() {
-    return ListView(
-      children: _webPackList.map((packInfo) {
-        final childrenStr = getPackChildList(packInfo).join(', ');
-        return packInfo.getListTile(context,
-          trailing: _packActionMenu(packInfo),
-          addSubTitle: childrenStr.isEmpty ? null : 'назначено: $childrenStr',
-        );
-      }).toList(),
+    return Container(
+      color: Colors.white,
+      child: ListView(
+        children: _webPackList.map((packInfo) {
+          final childrenStr = getPackChildList(packInfo).join(', ');
+          return packInfo.getListTile(context,
+            trailing: _packActionMenu(packInfo),
+            addSubTitle: childrenStr.isEmpty ? null : 'назначено: $childrenStr',
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -200,16 +218,19 @@ class _OwnPackListState extends State<OwnPackList> {
   }
 
   Widget _uploadPanel() {
-    return PackUploadFile(
-      onFileUpload: (filePath, url) {
-        // TODO add uploaded files to own file list above
-      },
+    return Container(
+      color: Colors.white,
+      child: PackUploadFile(
+        onFileUpload: (filePath, url) {
+          // TODO add uploaded files to own file list above
+        },
 
-      onClearFileUploadList: () {
-        _uploadPanelVisible = false;
-        setState(() {});
-      },
+        onClearFileUploadList: () {
+          _uploadPanelVisible = false;
+          setState(() {});
+        },
 
+      ),
     );
   }
 
