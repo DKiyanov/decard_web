@@ -29,7 +29,9 @@ class WebChild{
     if (packId == null) {
       assert(fileGuid != null);
       final fileList = await dbSource.tabJsonFile.getRowByGuid(fileGuid!, version: fileVersion);
-      row = fileList[0];
+      if (fileList.isNotEmpty) {
+        row = fileList[0];
+      }
     }
 
     if (packId != null) {

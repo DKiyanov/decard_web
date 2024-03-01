@@ -1,5 +1,6 @@
 import 'package:decard_web/app_state.dart';
 import 'package:flutter/material.dart';
+import 'package:routemaster/routemaster.dart';
 
 import 'invite_key_present.dart';
 import 'login_invite.dart';
@@ -27,18 +28,52 @@ class _MenuPageState extends State<MenuPage> {
 
   Widget _body() {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          ElevatedButton(
-            onPressed: () {
-              Invite.navigatorPush(context, appState.serverConnect.user!.objectId!, LoginMode.slaveParent, const Duration(minutes: 30));
-            },
-            child: const Text('Пригласить другого родителя')
-          )
-        ]
+      child: Padding(
+        padding: const EdgeInsets.only(left: 50, right: 50),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+
+            button(
+              title: 'Пригласить другого родителя',
+              onPressed: () {
+                Invite.navigatorPush(context, appState.serverConnect.user!.objectId!, LoginMode.slaveParent, const Duration(minutes: 30));
+              }
+            ),
+
+            button(
+              title: 'Пригласить ребёнка',
+              onPressed: () {
+                Invite.navigatorPush(context, appState.serverConnect.user!.objectId!, LoginMode.child, const Duration(minutes: 30));
+              }
+            ),
+
+            button(
+              title: 'Выйти',
+              onPressed: () async {
+                await appState.serverConnect.logout();
+                if (!mounted) return;
+                Routemaster.of(context).push('/');
+              }
+            ),
+
+          ]
+        ),
       ),
+    );
+  }
+
+  Widget button({required String title, required VoidCallback onPressed}) {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton(
+              onPressed: onPressed,
+              child: Text(title)
+          ),
+        ),
+      ],
     );
   }
 }

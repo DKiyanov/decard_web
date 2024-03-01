@@ -13,9 +13,7 @@ import 'package:routemaster/routemaster.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'child_statistics.dart';
 import 'pack_editor/pack_editor.dart';
-import 'login_email.dart';
 import 'login_page.dart';
-import 'pack_list.dart';
 import 'package:simple_events/simple_events.dart' as event;
 
 // for access to http sources was configured:
@@ -43,22 +41,13 @@ RouteMap _buildRouteMapOut(BuildContext context) {
       },
 
       '/pack/:id': (route) => NoAnimationPage(child: PackView(
-          cardController: appState.cardController,
-          packId: int.parse(route.pathParameters['id']!)
+        cardController: appState.cardController,
+        packId: int.parse(route.pathParameters['id']!)
       )),
 
       '/login': (route) => NoAnimationPage(
-            child: LoginPage(
-              redirectTo: route.queryParameters['redirectTo'],
-            ),
-          ),
-
-      '/login/login_email': (route) => NoAnimationPage(
-        child: LoginEmail(
-          connect: appState.serverConnect,
-          onLoginOk: (context){
-            Routemaster.of(context).push(route.queryParameters['redirectTo']??'/');
-          },
+        child: LoginPage(
+          redirectTo: route.queryParameters['redirectTo'],
         ),
       ),
 
@@ -86,7 +75,7 @@ RouteMap _buildRouteMapIn(BuildContext context) {
           );
         }
 
-        return NoAnimationPage(child: WebPackList(packInfoManager: appState.packInfoManager));
+        return const NoAnimationPage(child: ShowcaseOut() );
       },
 
       '/${HomePage.tabShowcase}': (route) {

@@ -106,17 +106,40 @@ class _OwnPackListState extends State<OwnPackList> {
   Widget _mainPanel() {
     return ListView(
       children: _webPackList.map((packInfo) {
+        final childrenStr = getPackChildList(packInfo).join(', ');
         return packInfo.getListTile(context,
           trailing: _packActionMenu(packInfo),
+          addSubTitle: childrenStr.isEmpty ? null : 'назначено: $childrenStr',
         );
       }).toList(),
     );
+  }
+
+  List<String> getPackChildList(WebPackInfo packInfo) {
+    final result = <String>[];
+
+    for (var device in widget.childManager.deviceList) {
+      final added = device.packInfoList.any((testPackInfo) => testPackInfo.packId == packInfo.packId);
+      if (!added) continue;
+      result.add(device.name);
+    }
+
+    return result;
   }
 
   Widget _packActionMenu(WebPackInfo packInfo) {
     return popupMenu(
         icon: const Icon(Icons.menu),
         menuItemList: [
+          if (packInfo.published) ...[
+            SimpleMenuItem(
+                child: const Text('Просмотреть'),
+                onPress: () {
+                  Routemaster.of(context).push('/pack_editor/${packInfo.packId}');
+                }
+            )
+          ],
+
           if (!packInfo.published) ...[
             SimpleMenuItem(
                 child: const Text('Изменить'),
@@ -147,12 +170,14 @@ class _OwnPackListState extends State<OwnPackList> {
               }
           ),
 
-          SimpleMenuItem(
-              child: const Text('Назначит пакет детям'),
-              onPress: () {
-                _addPackForChildDialog(packInfo);
-              }
-          ),
+          if (packInfo.published) ...[
+            SimpleMenuItem(
+                child: const Text('Назначит пакет детям'),
+                onPress: () {
+                  _addPackForChildDialog(packInfo);
+                }
+            ),
+          ],
 
           SimpleMenuItem(
               child: const Text('Удалить пакет'),
@@ -161,12 +186,14 @@ class _OwnPackListState extends State<OwnPackList> {
               }
           ),
 
-          SimpleMenuItem(
-              child: const Text('Опубликовать пакет'),
-              onPress: () {
-                _publishPackage(packInfo.packId);
-              }
-          ),
+          if (!packInfo.published) ...[
+            SimpleMenuItem(
+                child: const Text('Опубликовать пакет'),
+                onPress: () {
+                  _publishPackage(packInfo.packId);
+                }
+            ),
+          ],
 
         ]
     );

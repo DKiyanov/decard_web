@@ -38,12 +38,12 @@ class AppState {
       childManager = null;
     });
     await serverConnect.init();
+    if (!serverConnect.isLoggedIn) {
+      await serverConnect.loginAnonymous();
+    }
 
     packInfoManager = WebPackListManager();
     dbSource        = DbSourceMem.create();
     cardController  = CardController(dbSource: dbSource);
-
-
-
   }
 }

@@ -3,7 +3,9 @@ import 'common.dart';
 import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
 
+import 'login_email.dart';
 import 'login_google.dart';
+import 'login_invite.dart';
 
 class LoginPage extends StatefulWidget {
   final String? redirectTo;
@@ -33,26 +35,46 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               ElevatedButton(
                   onPressed: (){
-                    Routemaster.of(context).push('login_email');
+                    LoginEmail.navigate(
+                      context: context,
+                      connect: appState.serverConnect,
+                      onLoginOk: (context) {
+                        _loginOkRedirect();
+                      }
+                    );
+                    //Routemaster.of(context).push('login_email');
                   },
-                  child: Text('Email + пароль')
+                  child: const Text('Email + пароль')
               ),
               ElevatedButton(
                   onPressed: (){
                     loginWithGoogle(appState.serverConnect);
                   },
-                  child: Text('Google')
+                  child: const Text('Google')
               ),
               ElevatedButton(
-                  onPressed: (){
-                    Routemaster.of(context).push('login_invite');
+                  onPressed: () {
+                    // LoginInvite.navigate(
+                    //   context: context,
+                    //   connect: appState.serverConnect,
+                    //   loginMode: LoginMode.slaveParent,
+                    //   getDeviceID: getDeviceID,
+                    //   title: 'Другой родитель по приглашению',
+                    //   onLoginOk: () {
+                    //     _loginOkRedirect();
+                    //   }
+                    // );
                   },
-                  child: Text('По приглашению')
+                  child: const Text('По приглашению')
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  void _loginOkRedirect() {
+    Routemaster.of(context).push(widget.redirectTo!);
   }
 }

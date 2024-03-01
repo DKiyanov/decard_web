@@ -85,10 +85,10 @@ class WebPackInfo {
     );
   }
 
-  Widget getListTile(BuildContext context, {Widget? leading, Widget? trailing, void Function(BuildContext context)? onTap}) {
+  Widget getListTile(BuildContext context, {Widget? leading, Widget? trailing, String? addSubTitle, void Function(BuildContext context)? onTap}) {
     return ListTile(
       title    : getTitle(context),
-      subtitle : getSubtitle(context),
+      subtitle : getSubtitle(context, addSubTitle),
       onTap    : ()=> onTap?.call(context),
       trailing : trailing,
       leading  : leading,
@@ -99,8 +99,10 @@ class WebPackInfo {
     return Text(title);
   }
 
-  Widget getSubtitle(BuildContext context) {
-    final subtitle = 'возраст: $targetAgeLow-$targetAgeHigh; ${tags.isEmpty ? 'теги отсутствуют' : 'теги: $tags'}; ${publicationMoment == null? 'не опубликовано' : 'опубликовано: ${dateToStr(publicationMoment!)}' }';
+  Widget getSubtitle(BuildContext context, [String? addSubTitle]) {
+    final subtitle = 'возраст: $targetAgeLow-$targetAgeHigh; ${tags.isEmpty ? 'теги отсутствуют' : 'теги: $tags'}; '
+        '${publicationMoment == null? 'не опубликовано' : 'опубликовано: ${dateToStr(publicationMoment!)}'} '
+        '${addSubTitle != null ? '\n$addSubTitle' : ''}';
     return Text(subtitle);
   }
 }

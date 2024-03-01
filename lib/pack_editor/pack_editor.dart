@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'package:multi_split_view/multi_split_view.dart';
 
@@ -85,9 +86,9 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   final _styleTabIndex = 1;
   final _cardsTabIndex = 2;
 
-  final _fileSourceTabIndex = 0;
+  //final _fileSourceTabIndex = 0;
   final _paramsTabIndex     = 1;
-  final _packPreview        = 3;
+  //final _packPreview        = 3;
 
   final _packErrorList = <DbValidatorResult>[];
   final _validatePackResultPanelKey = GlobalKey();
@@ -95,6 +96,8 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
   String _editableSourceFile = '';
   String _editableSourceUrl  = '';
+
+  bool _viewOnly = false;
 
   @override
   void initState() {
@@ -145,6 +148,8 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
     final packHeadQuery = QueryBuilder<ParseObject>(ParseObject(ParseWebPackHead.className));
     packHeadQuery.whereEqualTo(ParseWebPackHead.packId, widget.packId);
     _packHead = (await packHeadQuery.first())!;
+
+    _viewOnly = _packHead.get(ParseWebPackHead.publicationMoment) != null;
 
     _setEditorTitle();
 
@@ -226,6 +231,10 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
 
     return WillPopScope(
       onWillPop: () async {
+        if (!_dataChangeSaved && _viewOnly) {
+          Fluttertoast.showToast(msg: 'Изменения НЕ сохранены');
+        }
+
         await _saveJson();
         return true;
       },
@@ -236,7 +245,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
           title: StatefulBuilder(
             key: _packTitleKey,
             builder: (context, setState) {
-              return Text('Редактирование пакета: $_packTitle');
+              return Text('Редактирование пакета: $_packTitle ${_viewOnly ? '(просмотр)' : ''}');
             }
           ),
 
@@ -687,6 +696,7 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
   }
 
   Future<void> _saveJson() async {
+    if (_viewOnly) return;
     if (_dataChangeSaveInProcess) return;
     if (_dataChangeSaved) return;
     _dataChangeSaved = true;
