@@ -1,4 +1,5 @@
 import 'package:decard_web/app_state.dart';
+import 'package:decard_web/parse_pack_info.dart';
 import 'package:decard_web/regulator_editor/regulator_desc_json.dart';
 import 'package:decard_web/web_child.dart';
 import 'package:flutter/material.dart';
@@ -52,9 +53,9 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
 
     final packId = int.parse(widget.packId);
 
-    _jsonFileID = (await _child.loadPack(packId : packId))!;
+    _jsonFileID = (await loadWebPackEx(dbSource: appState.dbSource, packId: packId))!;
 
-    final packInfoData = (await _child.dbSource.tabJsonFile.getRow(jsonFileID: _jsonFileID))!;
+    final packInfoData = (await appState.dbSource.tabJsonFile.getRow(jsonFileID: _jsonFileID))!;
     _packTitle = packInfoData[DjfFile.title]!;
 
     setState(() {
@@ -131,7 +132,7 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
       FieldDesc fieldDesc,
       OwnerDelegate? ownerDelegate,
       ){
-    return RegulatorCardSetWidget(json: json, path: path, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate, dbSource: _child.dbSource, jsonFileID: _jsonFileID);
+    return RegulatorCardSetWidget(json: json, path: path, fieldDesc: fieldDesc, ownerDelegate: ownerDelegate, dbSource: appState.dbSource, jsonFileID: _jsonFileID);
   }
 
   Future<void> _save() async {

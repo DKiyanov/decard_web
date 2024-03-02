@@ -7,6 +7,7 @@ import 'package:collection/collection.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'package:multi_split_view/multi_split_view.dart';
+import 'package:routemaster/routemaster.dart';
 
 import '../card_controller.dart';
 import '../card_navigator.dart';
@@ -139,7 +140,9 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
     });
 
     if (_jsonFileID == null) {
-      // TODO нужно вывести соощение что пакет не удалось загрузить
+      Fluttertoast.showToast(msg: 'Не удалось загрузить пакет');
+      if (!mounted) return;
+      Routemaster.of(context).pop();
       return;
     }
 

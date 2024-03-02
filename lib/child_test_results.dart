@@ -7,37 +7,6 @@ import 'common_func.dart';
 import 'db.dart';
 
 class ChildTestResults {
-  Future<void> updateBdFromServer() async {
-    final from = await child.dbSource.tabTestResult.getLastTime();
-    final to   = dateTimeToInt(DateTime.now());
-
-    final testResultList = await _getTestsResultsFromServer(from, to);
-
-    for (var testResult in testResultList) {
-      child.dbSource.tabTestResult.insertRow(testResult);
-    }
-  }
-
-  Future<List<TestResult>> _getTestsResultsFromServer(int from, int to) async {
-    final result = <TestResult>[];
-
-    final query =  QueryBuilder<ParseObject>(ParseObject(ParseTestResult.className));
-    query.whereEqualTo(ParseTestResult.userID                 , child.userID);
-    query.whereEqualTo(ParseTestResult.childID                , child.childID);
-    query.whereGreaterThanOrEqualsTo(ParseTestResult.dateTime , from);
-    query.whereLessThanOrEqualTo(ParseTestResult.dateTime     , to);
-
-    final resultList = await query.find();
-
-    for (var row in resultList) {
-      final json = row.toJson();
-      final testResult = TestResult.fromMap(json);
-      result.add(testResult);
-    }
-
-    return result;
-  }
-
   static const int _statDayCount = 10;
 
   final WebChild child;
@@ -63,14 +32,14 @@ class ChildTestResults {
 
     final now = DateTime.now();
 
-    _firstTime = await child.dbSource.tabTestResult.getFirstTime();
+    _firstTime = await child.statDB.tabTestResult.getFirstTime();
     if (_firstTime > 0) {
       firstDate = intDateTimeToDateTime(_firstTime);
     } else {
       firstDate = now;
     }
 
-    _lastTime = await child.dbSource.tabTestResult.getLastTime();
+    _lastTime = await child.statDB.tabTestResult.getLastTime();
     if (_lastTime > 0) {
       lastDate = intDateTimeToDateTime(_lastTime);
     } else {
@@ -88,6 +57,37 @@ class ChildTestResults {
     await getData(fromDate, toDate);
   }
 
+  Future<void> updateBdFromServer() async {
+    final from = await child.statDB.tabTestResult.getLastTime();
+    final to   = dateTimeToInt(DateTime.now());
+
+    final testResultList = await _getTestsResultsFromServer(from, to);
+
+    for (var testResult in testResultList) {
+      child.statDB.tabTestResult.insertRow(testResult);
+    }
+  }
+
+  Future<List<TestResult>> _getTestsResultsFromServer(int from, int to) async {
+    final result = <TestResult>[];
+
+    final query =  QueryBuilder<ParseObject>(ParseObject(ParseTestResult.className));
+    query.whereEqualTo(ParseTestResult.userID                 , child.userID);
+    query.whereEqualTo(ParseTestResult.childID                , child.childID);
+    query.whereGreaterThanOrEqualsTo(ParseTestResult.dateTime , from);
+    query.whereLessThanOrEqualTo(ParseTestResult.dateTime     , to);
+
+    final resultList = await query.find();
+
+    for (var row in resultList) {
+      final json = row.toJson();
+      final testResult = TestResult.fromMap(json);
+      result.add(testResult);
+    }
+
+    return result;
+  }
+
   Future<void> getData(int fromDate, int toDate) async {
     final time = toDate % 1000000;
     toDate = toDate - time;
@@ -102,7 +102,7 @@ class ChildTestResults {
     _toDate = toDate;
 
     resultList.clear();
-    resultList.addAll( await child.dbSource.tabTestResult.getForPeriod(_fromDate, _toDate) );
+    resultList.addAll( await child.statDB.tabTestResult.getForPeriod(_fromDate, _toDate) );
   }
 
   Future<bool> pickedFromDate (BuildContext context) async {

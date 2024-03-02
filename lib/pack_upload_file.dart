@@ -61,6 +61,7 @@ class _PackUploadFileState extends State<PackUploadFile> {
           ElevatedButton(
             onPressed: (){
               _fileList.clear();
+              widget.onClearFileUploadList?.call();
               setState(() {});
             },
             child: const Icon(Icons.clear, color: Colors.red,),
@@ -130,7 +131,22 @@ class _PackUploadFileState extends State<PackUploadFile> {
             },
             child: const Text('Выбирите файлы'),
           ),
-        )
+        ),
+
+        if (_fileList.isEmpty && widget.onClearFileUploadList != null) ...[
+          Align(
+            alignment: Alignment.topRight,
+            child: InkWell(
+                child: const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Icon(Icons.clear),
+                ),
+                onTap: (){
+                  widget.onClearFileUploadList?.call();
+                }
+            ),
+          ),
+        ],
 
       ],
     );

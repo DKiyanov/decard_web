@@ -4,8 +4,10 @@ import 'package:decard_web/card_sub_widgets.dart';
 import 'package:decard_web/parse_pack_info.dart';
 import 'package:decard_web/view_source.dart';
 import 'package:flutter/material.dart';
+import 'package:multi_split_view/multi_split_view.dart';
+import 'package:routemaster/routemaster.dart';
 
-import 'card_controller.dart';
+import 'card_model.dart';
 import 'card_navigator.dart';
 import 'card_widget.dart';
 import 'common.dart';
@@ -14,10 +16,14 @@ import 'pack_info_widget.dart';
 import 'package:simple_events/simple_events.dart' as event;
 
 class PackView extends StatefulWidget {
-  final CardController cardController;
+  static Future<Object?> navigatorPush(BuildContext context, int packId, {bool onlyThatFile = true, String? cardKey} ) async {
+    return Navigator.push(context, MaterialPageRoute( builder: (_) => PackView(packId: packId, onlyThatFile: onlyThatFile, cardKey: cardKey)));
+  }
+
   final int packId;
   final bool onlyThatFile;
-  const PackView({required this.cardController, required this.packId, this.onlyThatFile = false, Key? key}) : super(key: key);
+  final String? cardKey;
+  const PackView({required this.packId, this.onlyThatFile = true, this.cardKey, Key? key}) : super(key: key);
 
   @override
   State<PackView> createState() => _PackViewState();
@@ -38,6 +44,8 @@ class _PackViewState extends State<PackView> {
 
   final GlobalKey<ScaffoldState> _keyScaffoldState = GlobalKey();
 
+  late NavigatorMode _navigatorMode;
+
   @override
   void initState() {
     super.initState();
@@ -48,15 +56,23 @@ class _PackViewState extends State<PackView> {
   }
 
   void _starting() async {
-    _jsonFileID = await loadWebPack(appState.dbSource, widget.packId);
+    _navigatorMode = widget.onlyThatFile? NavigatorMode.singlePack : NavigatorMode.multiPack;
+
+    _jsonFileID = await loadWebPackEx(dbSource: appState.dbSource, packId: widget.packId);
 
     _cardNavigatorData = CardNavigatorData(appState.dbSource);
     await _cardNavigatorData.setData();
 
-    final card = _cardNavigatorData.cardList.firstWhereOrNull((card) => card.jsonFileID == _jsonFileID);
+    CardHead? card;
+
+    if (widget.cardKey != null) {
+      card = _cardNavigatorData.cardList.firstWhereOrNull((card) => card.jsonFileID == _jsonFileID && card.cardKey == widget.cardKey);
+    } else {
+      card = _cardNavigatorData.cardList.firstWhereOrNull((card) => card.jsonFileID == _jsonFileID);
+    }
 
     if (card != null) {
-      widget.cardController.setCard(_jsonFileID!, card.cardID, bodyNum: 0);
+      appState.cardController.setCard(_jsonFileID!, card.cardID, bodyNum: 0);
     }
 
     setState(() {
@@ -107,7 +123,10 @@ class _PackViewState extends State<PackView> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      //Navigator.pop(context);
+                      Routemaster.of(context).pop();
+                    },
                   ),
 
                   IconButton(
@@ -119,7 +138,7 @@ class _PackViewState extends State<PackView> {
               leadingWidth: 96,
               title: title(),
               actions: [
-                widget.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
+                appState.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
                   if (card.body.clue == null) return Container();
 
                   return HelpButton(
@@ -135,7 +154,7 @@ class _PackViewState extends State<PackView> {
                   );
                 }),
 
-                widget.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
+                appState.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
                   if (card.head.help == null) return Container();
 
                   return HelpButton(
@@ -155,7 +174,7 @@ class _PackViewState extends State<PackView> {
                   padding: const EdgeInsets.only(right: 16),
                   child: InkWell(
                       onTap: (){
-                        final card = widget.cardController.card;
+                        final card = appState.cardController.card;
                         if (card == null) return;
                         packInfoDisplay(context, card.pacInfo);
                       },
@@ -175,11 +194,19 @@ class _PackViewState extends State<PackView> {
       return _main();
     }
 
-    return Row(
-      children: [
-        _tree(treeWidth),
-        Expanded(child: _main())
-      ]
+    return Container(
+      color: Colors.grey,
+
+      child: MultiSplitView(
+        axis: Axis.horizontal,
+        initialAreas: [
+          Area(weight: 0.25)
+        ],
+        children: [
+          _tree(treeWidth),
+          _main()
+        ]
+      ),
     );
   }
 
@@ -188,31 +215,37 @@ class _PackViewState extends State<PackView> {
       width: width,
       color: _drawerPanelColor,
       child: CardNavigatorTree(
-        cardController: widget.cardController,
+        cardController: appState.cardController,
         cardNavigatorData: _cardNavigatorData,
         itemTextColor: Colors.black,
         selItemTextColor: Colors.yellowAccent,
         bodyButtonColor: Colors.orangeAccent,
+        mode: _navigatorMode,
       ),
     );
   }
 
   Widget _main() {
-    return Column(children: [
-      CardNavigator(
-        key: ValueKey(widget.packId),
-        cardController: widget.cardController,
-        cardNavigatorData: _cardNavigatorData,
-      ),
+    return Container(
+      color: Colors.white,
 
-      Expanded(
-        child: _cardWidget()
-      ),
-    ]);
+      child: Column(children: [
+        CardNavigator(
+          key: ValueKey(widget.packId),
+          cardController: appState.cardController,
+          cardNavigatorData: _cardNavigatorData,
+          mode: _navigatorMode,
+        ),
+
+        Expanded(
+          child: _cardWidget()
+        ),
+      ]),
+    );
   }
 
   Widget _cardWidget() {
-    return widget.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
+    return appState.cardController.cardListenWidgetBuilder((card, cardParam, cardViewController) {
       return CardWidget(
         key        : ValueKey(card),
         card       : card,
@@ -223,7 +256,7 @@ class _PackViewState extends State<PackView> {
             Expanded(child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: ElevatedButton(
-                  onPressed: ()=> widget.cardController.setNextCard(),
+                  onPressed: ()=> appState.cardController.setNextCard(),
                   child: Text(TextConst.txtSetNextCard)
               ),
             )),
@@ -243,7 +276,7 @@ class _PackViewState extends State<PackView> {
         return Text('${TextConst.txtAppTitle} $earnedStr');
       },
 
-      events: [widget.cardController.onAddEarn],
+      events: [appState.cardController.onAddEarn],
 
       onEventCallback: (listener, value) {
         final addEarned = value as double;

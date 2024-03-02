@@ -38,6 +38,8 @@ class WebPackInfo {
   final DateTime? publicationMoment;
   final int    starsCount    ;
   final String userID        ;
+  final String filename      ;
+  final String url           ;
 
   final tagList = <String>[];
 
@@ -58,6 +60,8 @@ class WebPackInfo {
     required this.publicationMoment ,
     required this.starsCount   ,
     required this.userID,
+    required this.filename,
+    required this.url,
   }) {
     final prevTagList = tags.split(',');
 
@@ -67,6 +71,16 @@ class WebPackInfo {
   }
 
   factory WebPackInfo.fromParse(ParseObject parseObject) {
+    String? url;
+
+    if (kIsWeb) {
+      final content = parseObject.get<ParseWebFile>(ParseWebPackHead.content);
+      url = content!.url;
+    } else {
+      final content = parseObject.get<ParseFile>(ParseWebPackHead.content);
+      url = content!.url;
+    }
+
     return WebPackInfo(
       packId        : parseObject.get<int>(ParseWebPackHead.packId  )!,
       title         : parseObject.get<String>(DjfFile.title      )!,
@@ -82,6 +96,8 @@ class WebPackInfo {
       publicationMoment: parseObject.get<DateTime>(ParseWebPackHead.publicationMoment),
       starsCount    : parseObject.get<int>(ParseWebPackHead.starsCount)??0,
       userID        : parseObject.get<String>(ParseWebPackHead.userID)!,
+      filename      : parseObject.get<String>(ParseWebPackHead.fileName)??'',
+      url           : url??'',
     );
   }
 
@@ -256,6 +272,45 @@ String getWebPackFileSourceID(int packId) {
   return 'WebPack:$packId';
 }
 
+Future<int?> loadWebPackEx({
+  required DbSource dbSource,
+  int? packId,
+  String? fileGuid,
+  int? fileVersion,
+  LoadPackAddInfoCallback? addInfoCallback,
+  bool putFilesIntoLocalStore = false,
+  bool reload = false,
+}) async {
+  Map<String, dynamic>? row;
+
+  if (packId == null) {
+    assert(fileGuid != null && fileVersion != null);
+    final fileList = await dbSource.tabJsonFile.getRowByGuid(fileGuid!, version: fileVersion);
+    if (fileList.isNotEmpty) {
+      row = fileList[0];
+    }
+  }
+
+  if (packId != null) {
+    row = await dbSource.tabJsonFile.getRowBySourceID(sourceFileID: getWebPackFileSourceID(packId));
+  }
+
+  if (row != null) {
+    final jsonFileID = row[TabJsonFile.kJsonFileID] as int;
+    if (!reload) {
+      return jsonFileID;
+    } else {
+      await dbSource.deleteJsonFile(jsonFileID);
+    }
+  }
+
+  packId ??= await getPackIdByGuid(fileGuid: fileGuid!, fileVersion: fileVersion!);
+  if (packId == null) return null;
+
+  final jsonFileID = await loadWebPack(dbSource,  packId, addInfoCallback: addInfoCallback, putFilesIntoLocalStore: putFilesIntoLocalStore);
+  return jsonFileID!;
+}
+
 Future<int?> loadWebPack(DbSource dbSource, int packId, {LoadPackAddInfoCallback? addInfoCallback, bool putFilesIntoLocalStore = false}) async {
   Map<String, String>? fileUrlMap;
 
@@ -268,14 +323,6 @@ Future<int?> loadWebPack(DbSource dbSource, int packId, {LoadPackAddInfoCallback
   if (fileUrlMap == null) return null;
 
   return await loadPack(dbSource, getWebPackFileSourceID(packId), fileUrlMap, addInfoCallback : addInfoCallback);
-}
-
-Future<Map<String, String>?> getPackSource(int packId, {bool putFilesIntoLocalStore = false}) async {
-  if (putFilesIntoLocalStore) {
-    return await _getPackSourceApp(packId);
-  } else {
-    return await _getPackSourceWeb(packId);
-  }
 }
 
 Future<Map<String, String>?> _getPackSourceWeb(int packId) async {

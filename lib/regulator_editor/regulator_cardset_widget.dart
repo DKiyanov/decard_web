@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../db_mem.dart';
+import '../db.dart';
 import '../decardj.dart';
 import '../pack_editor/desc_json.dart';
 import '../pack_editor/pack_style_widget.dart';
@@ -13,7 +13,7 @@ class RegulatorCardSetWidget extends StatefulWidget {
   final String path;
   final FieldDesc fieldDesc;
   final OwnerDelegate? ownerDelegate;
-  final DbSourceMem  dbSource;
+  final DbSource  dbSource;
   final int jsonFileID;
 
   const RegulatorCardSetWidget({

@@ -98,7 +98,6 @@ class PackHeadWidget extends StatelessWidget {
       fieldDesc    : fieldDesc,
       labelExpand  : labelExpand,
       labelPadding : labelPadding,
-//      titleWidget  : Text('$path/$fieldName'), // TODO убрать
       child        : input,
     );
   }

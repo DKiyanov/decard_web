@@ -1,5 +1,7 @@
 import 'package:decard_web/regulator.dart';
 import 'package:decard_web/web_child.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:routemaster/routemaster.dart';
 
 import 'app_state.dart';
 import 'child_test_results.dart';
@@ -56,7 +58,15 @@ class _ChildStatisticsState extends State<ChildStatistics> {
   void _starting() async {
     if (!_isStarting) return;
 
-    _child = appState.childManager!.childList.firstWhere((child) => child.childID == widget.childID);
+    final child = await appState.childManager!.getChild(widget.childID);
+    if (child == null) {
+      Fluttertoast.showToast(msg: 'Ребёнок с идентификатором ${widget.childID} не найден');
+      if (!mounted) return;
+      Routemaster.of(context).pop();
+      return;
+    }
+
+    _child = child;
 
     _childTestResults = await _child.testResults;
 
@@ -163,9 +173,10 @@ class _ChildStatisticsState extends State<ChildStatistics> {
           ),
 
           IconButton(icon: const Icon(Icons.nearby_error ), onPressed: () async {
-            await ChildResultsReport.navigatorPush(context, _child);
-            _refreshChartList();
-            setState(() {});
+            Routemaster.of(context).push('/child_results', queryParameters: {'id' : widget.childID, 'mode': ChildResultsReportMode.errors.name} ).result.then((value) {
+              _refreshChartList();
+              setState(() {});
+            });
           }),
         ],
       ),

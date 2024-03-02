@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
+import 'package:decard_web/app_state.dart';
 import 'package:decard_web/parse_pack_info.dart';
 import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 
@@ -21,40 +22,12 @@ class WebChild{
   Regulator get regulator => _regulator!;
   ParseObject? regulatorParseObject;
 
-  final dbSource = DbSourceMem.create();
+  final statDB = DbSourceMem.create();
 
-  Future<int?> loadPack({int? packId, String? fileGuid, int? fileVersion }) async {
-    Map<String, dynamic>? row;
-
-    if (packId == null) {
-      assert(fileGuid != null);
-      final fileList = await dbSource.tabJsonFile.getRowByGuid(fileGuid!, version: fileVersion);
-      if (fileList.isNotEmpty) {
-        row = fileList[0];
-      }
-    }
-
-    if (packId != null) {
-      row = await dbSource.tabJsonFile.getRowBySourceID(sourceFileID: getWebPackFileSourceID(packId));
-    }
-
-    if (row != null) {
-      final jsonFileID = row[TabJsonFile.kJsonFileID] as int;
-      final loadTime = row[TabJsonFile.kLoadTime] as int;
-      final timeDif = DateTime.now().millisecondsSinceEpoch - loadTime;
-      if (timeDif < (20 * 60 * 1000) ) {
-        return jsonFileID;
-      }
-
-      await dbSource.deleteJsonFile(jsonFileID);
-    }
-
-    packId ??= await getPackIdByGuid(fileGuid: fileGuid!, fileVersion: fileVersion!);
-    if (packId == null) return null;
-
-    final jsonFileID = await loadWebPack(dbSource, packId);
-    return jsonFileID!;
-  }
+  // Future<int?> loadPack({int? packId, String? fileGuid, int? fileVersion }) async {
+  //   final jsonFileID = await loadWebPackEx(dbSource: appState.dbSource,  packId: packId, fileGuid: fileGuid, fileVersion: fileVersion, expiredDuration: const Duration(minutes: 20));
+  //   return jsonFileID!;
+  // }
 
   ChildTestResults? _testResults;
   Future<ChildTestResults> get testResults async {
@@ -122,6 +95,15 @@ class WebChildListManager {
 
   final onChange = event.SimpleEvent();
   bool _changed = false;
+
+  Future<WebChild?> getChild(String childID) async {
+    final child = appState.childManager!.childList.firstWhereOrNull((child) => child.childID == childID);
+    if (child != null) return child;
+
+    await refreshChildList();
+    final child2 = appState.childManager!.childList.firstWhereOrNull((child) => child.childID == childID);
+    return child2;
+  }
 
   Future<void> refreshChildList() async {
     final queryChild =  QueryBuilder<ParseObject>(ParseObject(ParseChild.className));

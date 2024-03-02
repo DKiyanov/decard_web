@@ -1,3 +1,4 @@
+import 'package:decard_web/web_spec.dart';
 import 'package:flutter/material.dart';
 import 'package:multi_split_view/multi_split_view.dart';
 import 'package:decard_web/parse_pack_info.dart';
@@ -212,20 +213,28 @@ class _WebPackListState extends State<WebPackList> {
               final packInfo = guidPack.value.first;
 
               if (guidPack.value.length == 1) {
-                return packInfo.getListTile(context);
+                return packInfo.getListTile(context,
+                  onTap: (context) {
+                    _routePushPackId(context, packInfo.packId);
+                  }
+                );
               }
 
               final children = <Widget>[];
               for (var i = 1; i < guidPack.value.length; i++) {
                 final packInfo = guidPack.value[i];
-                children.add(packInfo.getListTile(context));
+                children.add(packInfo.getListTile(context,
+                  onTap: (context) {
+                    _routePushPackId(context, packInfo.packId);
+                  }
+                ));
               }
 
               return DkExpansionTile(
                 title    : packInfo.getTitle(context),
                 subtitle : packInfo.getSubtitle(context),
                 onTap    : (){
-                  Routemaster.of(context).push('/pack/${packInfo.packId}');
+                  _routePushPackId(context, packInfo.packId);
                 },
                 children : children,
               );
@@ -235,6 +244,11 @@ class _WebPackListState extends State<WebPackList> {
     );
   }
 
+  void _routePushPackId(BuildContext context, int packId) {
+    final path = '/pack/$packId';
+    webOpenNewTab(path);
+    //Routemaster.of(context).push(path);
+  }
 
   Widget _getFilterPanel([double? width]) {
     return Scrollbar(

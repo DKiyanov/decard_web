@@ -1,7 +1,9 @@
+import 'package:decard_web/app_state.dart';
 import 'package:decard_web/parse_pack_info.dart';
 import 'package:decard_web/simple_dialog.dart';
 import 'package:decard_web/simple_menu.dart';
 import 'package:decard_web/web_child.dart';
+import 'package:decard_web/web_spec.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -100,7 +102,7 @@ class _OwnPackListState extends State<OwnPackList> {
 
   Widget _body() {
     if (!_uploadPanelVisible) {
-      _mainPanel();
+      return _mainPanel();
     }
 
     return Container(
@@ -123,10 +125,23 @@ class _OwnPackListState extends State<OwnPackList> {
       color: Colors.white,
       child: ListView(
         children: _webPackList.map((packInfo) {
-          final childrenStr = getPackChildList(packInfo).join(', ');
+          String childrenStr = '';
+          if (packInfo.published) {
+            childrenStr = getPackChildList(packInfo).join(', ');
+          }
+
           return packInfo.getListTile(context,
-            trailing: _packActionMenu(packInfo),
+            trailing: _packActionMenu(packInfo, childrenStr.isNotEmpty),
             addSubTitle: childrenStr.isEmpty ? null : 'назначено: $childrenStr',
+            onTap: (context) async {
+              if (!packInfo.published) {
+                await loadWebPackEx(dbSource: appState.dbSource, packId: packInfo.packId, reload: true);
+              }
+              if (!mounted) return;
+              final path = '/pack/${packInfo.packId}';
+              webOpenNewTab(path);
+              //Routemaster.of(context).push(path);
+            }
           );
         }).toList(),
       ),
@@ -145,7 +160,7 @@ class _OwnPackListState extends State<OwnPackList> {
     return result;
   }
 
-  Widget _packActionMenu(WebPackInfo packInfo) {
+  Widget _packActionMenu(WebPackInfo packInfo, bool childAssigned) {
     return popupMenu(
         icon: const Icon(Icons.menu),
         menuItemList: [
@@ -197,18 +212,30 @@ class _OwnPackListState extends State<OwnPackList> {
             ),
           ],
 
-          SimpleMenuItem(
-              child: const Text('Удалить пакет'),
-              onPress: () {
-                _deletePackage(packInfo.packId);
-              }
-          ),
+          if (!childAssigned) ...[
+            SimpleMenuItem(
+                child: const Text('Удалить пакет'),
+                onPress: () {
+                  _deletePackage(packInfo.packId);
+                }
+            ),
+          ],
 
           if (!packInfo.published) ...[
             SimpleMenuItem(
                 child: const Text('Опубликовать пакет'),
                 onPress: () {
                   _publishPackage(packInfo.packId);
+                }
+            ),
+          ],
+
+          if (packInfo.published && kIsWeb) ...[
+            SimpleMenuItem(
+                child: const Text('Скачать пакет'),
+                onPress: () {
+                  if (packInfo.url.isEmpty) return;
+                  webDownloadFile(packInfo.url, packInfo.filename);
                 }
             ),
           ],

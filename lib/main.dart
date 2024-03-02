@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:collection/collection.dart';
 import 'package:decard_web/app_state.dart';
 import 'package:decard_web/home_page.dart';
 import 'package:decard_web/pack_view.dart';
@@ -11,6 +12,7 @@ import 'package:decard_web/showcase_out.dart';
 import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
 import 'package:url_strategy/url_strategy.dart';
+import 'child_results_report.dart';
 import 'child_statistics.dart';
 import 'pack_editor/pack_editor.dart';
 import 'login_page.dart';
@@ -41,7 +43,6 @@ RouteMap _buildRouteMapOut(BuildContext context) {
       },
 
       '/pack/:id': (route) => NoAnimationPage(child: PackView(
-        cardController: appState.cardController,
         packId: int.parse(route.pathParameters['id']!)
       )),
 
@@ -65,9 +66,7 @@ RouteMap _buildRouteMapIn(BuildContext context) {
 
     routes: {
       '/': (route) {
-        //return NoAnimationPage(child: TextConstructorEditorPage(jsonStr: jsonEncode(testTextConstructorJson), )); // TODO for debug
-
-        if (appState.serverConnect.isLoggedIn) {
+         if (appState.serverConnect.isLoggedIn) {
           return TabPage(
             child: const HomePage(),
             paths: const [HomePage.tabShowcase, HomePage.tabChildren, HomePage.tabPossessions, HomePage.tabMenu],
@@ -107,8 +106,8 @@ RouteMap _buildRouteMapIn(BuildContext context) {
       )),
 
       '/pack/:id': (route) => NoAnimationPage(child: PackView(
-          cardController: appState.cardController,
-          packId: int.parse(route.pathParameters['id']!)
+        packId: int.parse(route.pathParameters['id']!),
+        cardKey: route.queryParameters['cardKey'],
       )),
 
       '/child_tune': (route) => NoAnimationPage(child: RegulatorParamsPage(
@@ -122,6 +121,11 @@ RouteMap _buildRouteMapIn(BuildContext context) {
 
       '/child_stat': (route) => NoAnimationPage(child: ChildStatistics(
         childID : route.queryParameters['id']!,
+      )),
+
+      '/child_results': (route) => NoAnimationPage(child: ChildResultsReport(
+        childID    : route.queryParameters['id']!,
+        reportMode : ChildResultsReportMode.values.firstWhereOrNull((element) => element.name == route.queryParameters['mode'])??ChildResultsReportMode.allResults,
       )),
     },
   );

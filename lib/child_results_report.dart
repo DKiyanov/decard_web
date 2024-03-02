@@ -1,4 +1,8 @@
+import 'package:decard_web/app_state.dart';
+import 'package:decard_web/parse_pack_info.dart';
 import 'package:decard_web/web_child.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:routemaster/routemaster.dart';
 
 import 'child_test_results.dart';
 import 'common_func.dart';
@@ -8,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'card_model.dart';
 
 import 'common.dart';
+import 'pack_view.dart';
 
 enum ChildResultsReportMode {
   errors,
@@ -15,14 +20,10 @@ enum ChildResultsReportMode {
 }
 
 class ChildResultsReport extends StatefulWidget {
-  static Future<Object?> navigatorPush(BuildContext context, WebChild child, [ChildResultsReportMode reportMode = ChildResultsReportMode.errors] ) async {
-    return Navigator.push(context, MaterialPageRoute( builder: (_) => ChildResultsReport(child: child, reportMode: reportMode)));
-  }
-
-  final WebChild child;
+  final String childID;
   final ChildResultsReportMode reportMode;
 
-  const ChildResultsReport({required this.child, required this.reportMode, Key? key}) : super(key: key);
+  const ChildResultsReport({required this.childID, required this.reportMode, Key? key}) : super(key: key);
 
   @override
   State<ChildResultsReport> createState() => _ChildResultsReportState();
@@ -31,6 +32,7 @@ class ChildResultsReport extends StatefulWidget {
 class _ChildResultsReportState extends State<ChildResultsReport> {
   bool _isStarting = true;
 
+  late WebChild _child;
   late ChildTestResults _childTestResults;
 
   final _resultList = <TestResult>[];
@@ -54,9 +56,19 @@ class _ChildResultsReportState extends State<ChildResultsReport> {
   }
 
   void _starting() async {
+    final child = await appState.childManager!.getChild(widget.childID);
+    if (child == null) {
+      Fluttertoast.showToast(msg: 'Ребёнок с идентификатором ${widget.childID} не найден');
+      if (!mounted) return;
+      Routemaster.of(context).pop();
+      return;
+    }
+
+    _child = child;
+
     _reportMode = widget.reportMode;
 
-    _childTestResults = await widget.child.testResults;
+    _childTestResults = await _child.testResults;
 
     await _refreshData();
 
@@ -80,15 +92,15 @@ class _ChildResultsReportState extends State<ChildResultsReport> {
 
       _resultList.add(testResult);
 
-      final jsonFileID = (await widget.child.loadPack(fileGuid : testResult.fileGuid, fileVersion: testResult.fileVersion))!;
-      final cardID     = (await widget.child.dbSource.tabCardHead.getCardIdFromKey(jsonFileID: jsonFileID, cardKey: testResult.cardID))!;
+      final jsonFileID = (await loadWebPackEx(dbSource: appState.dbSource, fileGuid : testResult.fileGuid, fileVersion: testResult.fileVersion))!;
+      final cardID     = (await appState.dbSource.tabCardHead.getCardIdFromKey(jsonFileID: jsonFileID, cardKey: testResult.cardID))!;
       _resultCardIDMap[testResult] = cardID;
 
       CardData? card;
       card = _cardMap[cardID];
 
       if (card == null) {
-        card = await CardData.create(widget.child.dbSource, widget.child.regulator, jsonFileID, cardID, bodyNum: testResult.bodyNum);
+        card = await CardData.create(appState.dbSource, _child.regulator, jsonFileID, cardID, bodyNum: testResult.bodyNum);
         await card.fillTags();
         _cardMap[cardID] = card;
       }
@@ -266,9 +278,14 @@ class _ChildResultsReportState extends State<ChildResultsReport> {
             Text(card.head.title),
           ],
         ),
-        onTap: (){
-          // TODO correct it
-          //CardView.navigatorPush(context, card);
+        onTap: () async {
+          final packId = await getPackIdByGuid(fileGuid: card.pacInfo.guid, fileVersion: card.pacInfo.version);
+          if (packId == null) return;
+          if (!mounted) return;
+          Routemaster.of(context).push('/pack/$packId', queryParameters: {
+            'cardKey' : card.head.cardKey
+          });
+          //PackView.navigatorPush(context, packId, cardKey: card.head.cardKey);
         },
       ),
       children: [
@@ -281,6 +298,8 @@ class _ChildResultsReportState extends State<ChildResultsReport> {
       ],
     );
   }
+
+
 
   Widget paramRow(String title, String value) {
     return Padding(
