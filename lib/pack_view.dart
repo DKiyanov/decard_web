@@ -13,7 +13,7 @@ import 'card_widget.dart';
 import 'common.dart';
 import 'common_func.dart';
 import 'pack_info_widget.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import 'simple_events.dart' as event;
 
 class PackView extends StatefulWidget {
   static Future<Object?> navigatorPush(BuildContext context, int packId, {bool onlyThatFile = true, String? cardKey} ) async {

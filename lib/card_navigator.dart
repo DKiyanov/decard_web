@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'card_controller.dart';
 import 'card_model.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import 'simple_events.dart' as event;
 
 import 'dk_expansion_tile.dart';
 

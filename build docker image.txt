@@ -1,0 +1,4 @@
+docker build . -t dkiyanov/decard_web
+
+start container:
+docker run -d -e PARSE_URL='http://192.168.0.202:1337/parse' -p 80:80 --name decard_web dkiyanov/decard_web

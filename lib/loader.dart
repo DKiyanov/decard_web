@@ -236,7 +236,7 @@ class DataLoader {
       final linkID = await dbSource.tabCardLink.insertRow(
         jsonFileID  : jsonFileID,
         cardID      : cardID,
-        qualityName : link[DjfUpLink.qualityName],
+        qualityName : link[DjfUpLink.qualityName]??'',
         linkIndex   :  linkListIndex,
       );
 
@@ -414,20 +414,28 @@ class DbValidator {
       }
 
       // body questionData pack file source
-      final questionDataList = (bodyRow[DjfCardBody.questionData]??[]) as List;
-      for (var row in questionDataList) {
-        final source = CardSource(row as String);
-        if (!source.isPackFile) continue;
-        final fileUrl = dbSource.getFileUrl(jsonFileID, source.data);
-        if (fileUrl != null) continue;
+      try {
+        final questionDataList = (bodyRow[DjfCardBody.questionData]??[]) as List;
 
+        for (var row in questionDataList) {
+          final source = CardSource(row as String);
+          if (!source.isPackFile) continue;
+          final fileUrl = dbSource.getFileUrl(jsonFileID, source.data);
+          if (fileUrl != null) continue;
+
+          final subPath = '${DjfCard.bodyList}[${bodyKey.bodyNum}]/${DjfCardBody.questionData}';
+          final message = 'Файла "${source.data}" в пакете нет';
+
+          result.add(await getCardResult(bodyKey.cardID, subPath, message));
+        }
+
+      } catch (_) {
         final subPath = '${DjfCard.bodyList}[${bodyKey.bodyNum}]/${DjfCardBody.questionData}';
-        final message = 'Файла "${source.data}" в пакете нет';
-
+        const message = 'Ошибка в структуре данных вопроса';
         result.add(await getCardResult(bodyKey.cardID, subPath, message));
       }
 
-    }
+  }
 
     return result;
   }

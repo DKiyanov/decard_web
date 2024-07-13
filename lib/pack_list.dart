@@ -1,4 +1,5 @@
-import 'package:decard_web/web_spec.dart';
+import 'package:decard_web/web_spec/web_spec.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:multi_split_view/multi_split_view.dart';
 import 'package:decard_web/parse_pack_info.dart';
@@ -246,8 +247,11 @@ class _WebPackListState extends State<WebPackList> {
 
   void _routePushPackId(BuildContext context, int packId) {
     final path = '/pack/$packId';
-    webOpenNewTab(path);
-    //Routemaster.of(context).push(path);
+    if (kIsWeb) {
+      webOpenNewTab(path);
+    } else {
+      Routemaster.of(context).push(path);
+    }
   }
 
   Widget _getFilterPanel([double? width]) {

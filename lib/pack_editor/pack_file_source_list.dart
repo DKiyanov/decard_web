@@ -12,7 +12,7 @@ import 'pack_editor.dart';
 import 'pack_file_source_preview.dart';
 import 'pack_file_source_upload.dart';
 
-import 'package:simple_events/simple_events.dart' as event;
+import '../simple_events.dart' as event;
 import 'package:path/path.dart' as path_util;
 
 import 'pack_widgets.dart';

@@ -8,7 +8,7 @@ import 'word_panel.dart';
 import 'word_panel_model.dart';
 import 'package:flutter/material.dart';
 
-import 'package:simple_events/simple_events.dart';
+import '../simple_events.dart';
 
 import '../common.dart';
 import 'drag_box_widget.dart';

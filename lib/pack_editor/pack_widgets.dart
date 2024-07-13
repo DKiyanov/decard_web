@@ -1,11 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../dk_expansion_tile.dart';
 import '../simple_menu.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import '../simple_events.dart' as event;
 
 Map<String, FieldDesc> loadDescFromMap(Map<String, dynamic> json) {
   final result = <String, FieldDesc>{};
@@ -529,7 +530,7 @@ class _JsonTextFieldState extends State<JsonTextField> {
         helperText: widget.fieldDesc.helperText,
         errorText: _errorText.isEmpty ? null : _errorText,
       ),
-      onSubmitted: (value) {
+      onChanged: (value) {
         onChange(value);
       },
     );

@@ -16,7 +16,8 @@ import 'child_results_report.dart';
 import 'child_statistics.dart';
 import 'pack_editor/pack_editor.dart';
 import 'login_page.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import 'simple_events.dart' as event;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // for access to http sources was configured:
 // android\app\src\main\res\xml\network_security_config.xml
@@ -24,6 +25,8 @@ import 'package:simple_events/simple_events.dart' as event;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: 'stack.env');
+
   setPathUrlStrategy();
   await appState.initialization();
   runApp(const DecardWebApp());

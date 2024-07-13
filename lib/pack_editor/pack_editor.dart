@@ -5,8 +5,8 @@ import 'dart:convert';
 
 import 'package:collection/collection.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
 import 'package:multi_split_view/multi_split_view.dart';
+import 'package:parse_server_sdk_flutter/parse_server_sdk_flutter.dart';
 import 'package:routemaster/routemaster.dart';
 
 import '../card_controller.dart';
@@ -27,7 +27,7 @@ import 'pack_template_widget.dart';
 import 'desc_json.dart';
 import 'pack_templates_sources.dart';
 import 'pack_widgets.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import '../simple_events.dart' as event;
 
 class PackEditor extends StatefulWidget {
   final int packId;

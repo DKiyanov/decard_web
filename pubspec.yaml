@@ -16,31 +16,30 @@ dependencies:
   routemaster: ^1.0.1
 
   url_strategy: ^0.2.0
-  parse_server_sdk_flutter: ^3.1.2
-  google_sign_in: ^5.4.2
+  parse_server_sdk_flutter: ^8.0.0
+  google_sign_in: ^6.2.1
   shared_preferences: ^2.2.0
   uuid: ^3.0.7
   fluttertoast: ^8.1.2
   async: ^2.9.0
-  collection: ^1.16.0
-  flutter_dropzone: ^3.0.6
+  collection: ^1.18.0
+  flutter_dropzone: ^4.0.1
   path: ^1.8.2
-  audioplayers: ^2.0.0
+  audioplayers: ^6.0.0
   auto_size_text: ^3.0.0
-  flutter_markdown: ^0.6.11
-  flutter_inappwebview: ^5.7.1
+  flutter_markdown: ^0.7.3
+  flutter_inappwebview: ^5.8.0
   webviewx_plus: ^0.3.3
-  http: ^0.13.4
+  http: ^0.13.5
   path_provider: ^2.0.14
-  flutter_archive: ^5.0.0
-  pluto_grid: ^5.4.9
-  file_picker: ^5.2.5
-  flutter_slidable: ^2.0.0
-  fl_chart: ^0.62.0
+  flutter_archive: ^6.0.3
+  pluto_grid: ^8.0.0
+  file_picker: ^8.0.5
+  flutter_slidable: ^3.1.0
+  fl_chart: ^0.68.0
   multi_split_view: ^2.4.0
-  simple_events:
-    path: ../simple_events
-  
+  flutter_dotenv: ^5.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -52,3 +51,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/apk/
+    - stack.env

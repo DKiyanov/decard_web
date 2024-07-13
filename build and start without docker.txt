@@ -1,0 +1,4 @@
+flutter build web --dart-define PARSE_URL=$PARSE_URL --release --no-source-maps --pwa-strategy offline-first --web-renderer auto
+copy \build\web to \nginx\html
+write "PARSE_URL=http://192.168.0.142:1337/parse" to \nginx\html\assets\stack.env
+start nginx

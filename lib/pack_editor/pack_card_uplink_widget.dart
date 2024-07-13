@@ -48,12 +48,11 @@ class PackCardUpLinkWidget extends StatelessWidget {
     FixBuilder? suffix;
 
     if (fieldName == DjfUpLink.qualityName) {
-      input = JsonMultiValueField(
+      input = JsonDropdownAsync(
         json      : json,
         path      : path,
         fieldName : fieldName,
         fieldDesc : fieldDesc,
-        wrap      : false,
         valuesGetterAsync: (context)=> PackEditor.of(context)!.getQualityNameList(),
       );
     }
@@ -66,6 +65,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
         fieldDesc : fieldDesc,
         wrap      : false,
         valuesGetterAsync: (context)=> PackEditor.of(context)!.getTagList(),
+        manualInput : true,
       );
     }
 
@@ -77,6 +77,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
         fieldDesc : fieldDesc,
         wrap      : false,
         valuesGetterAsync: (context)=> PackEditor.of(context)!.getCardIdList(),
+        manualInput : true,
       );
     }
 
@@ -88,6 +89,7 @@ class PackCardUpLinkWidget extends StatelessWidget {
         fieldDesc : fieldDesc,
         wrap      : false,
         valuesGetterAsync: (context)=> PackEditor.of(context)!.getCardGroupList(),
+        manualInput : true,
       );
     }
 

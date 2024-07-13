@@ -10,7 +10,7 @@ import '../decardj.dart';
 import '../simple_dialog.dart';
 import 'pack_editor.dart';
 import 'pack_widgets.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import '../simple_events.dart' as event;
 
 class TemplatesSources extends StatefulWidget {
   final Map<String, dynamic> json;

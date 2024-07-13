@@ -7,7 +7,7 @@ import 'card_model.dart';
 import 'card_sub_widgets.dart';
 import 'common.dart';
 import 'context_extension.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import 'simple_events.dart' as event;
 
 String _costToStr(int cost){
   return '$cost';

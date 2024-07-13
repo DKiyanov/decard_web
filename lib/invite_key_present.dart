@@ -4,7 +4,7 @@ import 'package:decard_web/parse_class_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
+import 'package:parse_server_sdk_flutter/parse_server_sdk_flutter.dart';
 
 import 'common.dart';
 import 'common_func.dart';

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'card_model.dart';
 import 'common.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import 'simple_events.dart' as event;
 
 class CardWidget extends StatefulWidget {
   final CardData card;

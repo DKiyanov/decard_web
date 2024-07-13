@@ -879,7 +879,7 @@ class _TextConstructorEditorPageState extends State<TextConstructorEditorPage> {
           Padding(
             key: ValueKey(index),
             padding: const EdgeInsets.all(8.0),
-            child: Center(child: Text(wordInfo.label, style: Theme.of(context).textTheme.headline6)),
+            child: Center(child: Text(wordInfo.label, style: Theme.of(context).textTheme.headlineSmall)),
           )
         );
         continue;

@@ -42,13 +42,13 @@ class _LoginPageState extends State<LoginPage> {
                         _loginOkRedirect();
                       }
                     );
-                    //Routemaster.of(context).push('login_email');
                   },
                   child: const Text('Email + пароль')
               ),
               ElevatedButton(
-                  onPressed: (){
-                    loginWithGoogle(appState.serverConnect);
+                  onPressed: () async {
+                    final err = await loginWithGoogle(appState.serverConnect);
+                    if (err.isEmpty) _loginOkRedirect();
                   },
                   child: const Text('Google')
               ),

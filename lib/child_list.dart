@@ -4,7 +4,7 @@ import 'package:decard_web/web_child.dart';
 import 'package:flutter/material.dart';
 import 'package:routemaster/routemaster.dart';
 import 'common.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import 'simple_events.dart' as event;
 
 import 'invite_key_present.dart';
 import 'login_invite.dart';

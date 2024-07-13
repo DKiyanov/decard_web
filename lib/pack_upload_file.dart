@@ -1,10 +1,10 @@
 import 'package:decard_web/app_state.dart';
-import 'package:decard_web/card_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dropzone/flutter_dropzone.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
+import 'package:parse_server_sdk_flutter/parse_server_sdk_flutter.dart';
 import 'parse_class_info.dart';
+import 'package:path/path.dart' as path_util;
 
 import 'decardj.dart';
 
@@ -158,7 +158,7 @@ class _PackUploadFileState extends State<PackUploadFile> {
 
     for (var file in fileList) {
       final filename = await _dzController.getFilename(file);
-      final fileExt = FileExt.getFileExt(filename);
+      final fileExt = path_util.extension(filename).toLowerCase();
 
       if (DjfFileExtension.values.contains(fileExt)) {
         _fileList.add(

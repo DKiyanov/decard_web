@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
-import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
+import 'package:parse_server_sdk_flutter/parse_server_sdk_flutter.dart';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path_util;

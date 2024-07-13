@@ -1,6 +1,6 @@
 # decard_web
 
-Decard store on web
+Decard web
 
 ## Getting Started
 

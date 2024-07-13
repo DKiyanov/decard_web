@@ -1,7 +1,7 @@
-import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
+import 'package:parse_server_sdk_flutter/parse_server_sdk_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import 'simple_events.dart' as event;
 import 'common.dart';
 import 'login_invite.dart';
 
@@ -38,11 +38,18 @@ class ParseConnect {
   }
 
   Future<void> _init() async {
+    if (_serverURL.isEmpty) {
+      _serverURL = _prefs.getString(_keyServerURL)??'';
+      if (_serverURL.isEmpty) {
+        _serverURL = TextConst.defaultURL;
+      }
+    }
+
     await Parse().initialize(
         _applicationId,
-        TextConst.defaultURL, //_serverURL,
+        _serverURL,
         debug: true,
-        coreStore: await CoreStoreSharedPrefsImp.getInstance(),
+//        coreStore: await CoreStoreSharedPrefsImp.getInstance(),
     );
 
     _user = await ParseUser.currentUser();
@@ -135,10 +142,10 @@ class ParseConnect {
     }
   }
 
-  Future<String> loginWith(String provider, Object authData) async {
+  Future<String> loginWith(String provider, Object authData, String email) async {
     await logout();
 
-    final response = await ParseUser.loginWith(provider, authData);
+    final response = await ParseUser.loginWith(provider, authData, username: email, email: email);
 
     if (response.success) {
       _user = await ParseUser.currentUser();

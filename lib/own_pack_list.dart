@@ -3,13 +3,13 @@ import 'package:decard_web/parse_pack_info.dart';
 import 'package:decard_web/simple_dialog.dart';
 import 'package:decard_web/simple_menu.dart';
 import 'package:decard_web/web_child.dart';
-import 'package:decard_web/web_spec.dart';
+import 'package:decard_web/web_spec/web_spec.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:multi_split_view/multi_split_view.dart';
-import 'package:parse_server_sdk_flutter/parse_server_sdk.dart';
+import 'package:parse_server_sdk_flutter/parse_server_sdk_flutter.dart';
 import 'package:routemaster/routemaster.dart';
 import 'common.dart';
 import 'pack_upload_file.dart';
@@ -139,8 +139,11 @@ class _OwnPackListState extends State<OwnPackList> {
               }
               if (!mounted) return;
               final path = '/pack/${packInfo.packId}';
-              webOpenNewTab(path);
-              //Routemaster.of(context).push(path);
+              if (kIsWeb) {
+                webOpenNewTab(path);
+              } else {
+                Routemaster.of(context).push(path);
+              }
             }
           );
         }).toList(),

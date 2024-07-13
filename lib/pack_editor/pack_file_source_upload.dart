@@ -11,7 +11,7 @@ import '../card_model.dart';
 import '../decardj.dart';
 import '../parse_pack_info.dart';
 import 'pack_file_source_list.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import '../simple_events.dart' as event;
 
 class _FileInfo {
   final dynamic file;

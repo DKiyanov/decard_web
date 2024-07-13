@@ -15,7 +15,7 @@ import 'common.dart';
 import 'context_extension.dart';
 import 'decardj.dart';
 import 'media_widgets.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import 'simple_events.dart' as event;
 
 class CardViewController {
   final CardData card;

@@ -1,7 +1,12 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class TextConst{
   static String versionDateStr    = '19.09.2023';
   static String version           = 'Версия';
-  static String defaultURL        = 'http://192.168.0.202:1337/parse';
+  //static String get defaultURL => const String.fromEnvironment('PARSE_URL', defaultValue: 'testUrl');
+  static String get defaultURL => dotenv.get('PARSE_URL', fallback: 'https://decardsys.ru:1337/parse');
+  //static String defaultURL        = 'http://192.168.0.202:1337/parse';
+  //static String defaultURL        = 'http://192.168.0.142:1337/parse';
   static String defaultLogin      = 'decard_stat_writer';
   static String txtServerURL      = 'Адрес сервера';
   static String txtSignUp         = 'Зарегистрироваться';
@@ -213,4 +218,128 @@ class TextConst{
   static String txtShowcase    = 'Витрина';
   static String txtOwnPackList = 'Пожитки';
   static String txtUploadFile  = 'Загрузить файлы';
+
+  // Control
+  static String txtEstimateList     = 'Заработанные оценки';
+  static String txtSourceNameManual = 'Ручной ввод';
+  static String txtSourceCheckPoint = 'Результат выполнения задания';
+  static String txtCoinTypeSingle   = 'Одноразовое поощрение';
+  static String txtForWhat          = 'За что';
+  static String txtAddEstimate      = 'Добавление оценки';
+  static String txtCoinList         = 'Список видов оценки';
+  static String txtCoinTuning       = 'Настройка видов оценки';
+  static String txtCoinPrice        = 'Кол-во условных минут за балл';
+  static String txtCoinType         = 'Наименование';
+  static String txtExpenseList      = 'Потраченое время';
+  static String txtBalanceValue     = 'Баланс';
+
+  static String txtCheckPoint                        = 'Задание';
+  static String txtCheckPointTuning                  = 'Настройка задания';
+  static String txtCheckPointView                    = 'Просмотр задания';
+  static String txtCheckPointList                    = 'Список заданий';
+  static String txtCheckPointStatusNewTask           = 'Новое задание';
+  static String txtCheckPointStatusComplete          = 'Выполнено';
+  static String txtCheckPointStatusNotComplete       = 'Не выполнено';
+  static String txtCheckPointStatusPartiallyComplete = 'частично выполнено';
+  static String txtCheckPointStatusExpectation       = 'Ожидание выполнения';
+  static String txtCheckPointStatusCanceled          = 'Отменено';
+
+  static String txtCheckPointResultTypeText              = 'Описано в тексте';
+  static String txtCheckPointResultTypeAppGroupUsageTime = 'Доп. время к использованию группы';
+  static String txtCheckPointResultTypeBalance           = 'Минуты к балансу';
+
+  static String txtCheckPointTaskText                 = 'Текст задания';
+  static String txtCheckPointCompletionComment        = 'Комментарий к статусу';
+
+  static String txtDay                                = 'День';
+  static String txtCpOnce                             = 'Однократно';
+  static String txtCpEveryDay                         = 'Каждый день';
+  static String txtCpEveryOtherDay                    = 'Через день';
+  static String txtCpEveryTwoDays                     = 'Через каждые два дня';
+  static String txtCpEveryThreeDays                   = 'Через каждые три дня';
+
+  static String txtStatus                             = 'Статус';
+  static String txtPeriodicity                        = 'Переодичность';
+  static String txtPeriod                             = 'Период:';
+  static String txtDate                               = 'Дата';
+  static String txtTime                               = 'Время';
+  static String txtFrom                               = 'С';
+  static String txtTo                                 = 'По';
+  static String txtDuration                           = 'Длительность';
+  static String txtDurationShort                      = 'Длит.';
+  static String txtInMinutes                          = 'в минутах';
+  static String txtNoticeBeforeMinutes                = 'Предупредить за';
+  static String txtCountDaysToCancel                  = 'Контроль выполнения отменяется через';
+  static String txtBonus                              = 'Бонус';
+  static String txtBonusGroup                         = 'Получающая группа';
+  static String txtLockGroups                         = 'Блокировать группы';
+  static String txtNewStatus                          = 'Новый статус';
+  static String txtCompletionRate                     = 'Степень выполнения';
+  static String txtCheckPointWarning                  = 'Скоро наступит контроль выполнения заданий';
+  static String txtCheckPointLock                     = 'Есть задания с наступившим временем контроля';
+  static String txtTVServiceTitle                     = 'Учебный контроль включен';
+
+  static String txtApkFilenameDecardLearn             = 'decardLearn.apk';
+  static String txtApkFilenameDecardControl           = 'decardControl.apk';
+
+  static String txtMinutes            = 'Минуты';
+  static String txtDays               = 'Дней';
+
+  static String txtAppGroupTuning = 'Настройка группы';
+  static String txtAppGroupsTuning = 'Настройка групп приложений';
+  static String txtAppGroupName   = 'Наименование группы';
+  static String txtAppUsageCost   = 'Стоимость использования';
+  static String txtCoins          = 'Условные минуты';
+  static String txtPer            = 'За';
+  static String txtRealMinutes    = 'Реальные минуты';
+  static String txtWorkingDuration = 'Длительность использования';
+  static String txtHyphen          = '-';
+  static String txtRelaxDuration   = 'Длительность отдыха';
+  static String txtTimetable        = 'Расписание доступности';
+  static String txtNotUseWhileCharging = 'Нельзя использовать во время зарядки';
+  static String txtNotDelApp          = 'Нельзя удалять приложения';
+  static String msgAppGroup1  = 'Есть другая группа с именем';
+  static String txtCheckPointSensitive = 'Блокировать если есть не выполненые задания';
+  static String txtAppGroupList   = 'Список групп приложений';
+  static String txtDefaultGroup    = 'Группа используется по умолчанию';
+
+  static String txtTtAny       = 'Любой';
+  static String txtTtMonday    = 'Понедельник';
+  static String txtTtTuesday   = 'Вторник';
+  static String txtTtWednesday = 'Среда';
+  static String txtTtThursday  = 'Четверг';
+  static String txtTtFriday    = 'Пятница';
+  static String txtTtSaturday  = 'Суббота';
+  static String txtTtSunday    = 'Воскресенье';
+  static String txtTtMonth01   = 'День месяца 01';
+  static String txtTtMonth02   = 'День месяца 02';
+  static String txtTtMonth03   = 'День месяца 03';
+  static String txtTtMonth04   = 'День месяца 04';
+  static String txtTtMonth05   = 'День месяца 05';
+  static String txtTtMonth06   = 'День месяца 06';
+  static String txtTtMonth07   = 'День месяца 07';
+  static String txtTtMonth08   = 'День месяца 08';
+  static String txtTtMonth09   = 'День месяца 09';
+  static String txtTtMonth10   = 'День месяца 10';
+  static String txtTtMonth11   = 'День месяца 11';
+  static String txtTtMonth12   = 'День месяца 12';
+  static String txtTtMonth13   = 'День месяца 13';
+  static String txtTtMonth14   = 'День месяца 14';
+  static String txtTtMonth15   = 'День месяца 15';
+  static String txtTtMonth16   = 'День месяца 16';
+  static String txtTtMonth17   = 'День месяца 17';
+  static String txtTtMonth18   = 'День месяца 18';
+  static String txtTtMonth19   = 'День месяца 19';
+  static String txtTtMonth20   = 'День месяца 20';
+  static String txtTtMonth21   = 'День месяца 21';
+  static String txtTtMonth22   = 'День месяца 22';
+  static String txtTtMonth23   = 'День месяца 23';
+  static String txtTtMonth24   = 'День месяца 24';
+  static String txtTtMonth25   = 'День месяца 25';
+  static String txtTtMonth26   = 'День месяца 26';
+  static String txtTtMonth27   = 'День месяца 27';
+  static String txtTtMonth28   = 'День месяца 28';
+  static String txtTtMonth29   = 'День месяца 29';
+  static String txtTtMonth30   = 'День месяца 30';
+  static String txtTtMonth31   = 'День месяца 31';
 }

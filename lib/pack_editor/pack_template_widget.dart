@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../decardj.dart';
 import 'pack_card_widget.dart';
 import 'pack_widgets.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import '../simple_events.dart' as event;
 
 class PackTemplateWidget extends StatefulWidget {
   final Map<String, dynamic> json;

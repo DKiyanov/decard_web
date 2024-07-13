@@ -4,7 +4,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'db.dart';
 import 'card_model.dart';
 import 'regulator.dart';
-import 'package:simple_events/simple_events.dart' as event;
+import 'simple_events.dart' as event;
 import 'card_sub_widgets.dart';
 import 'package:flutter/material.dart';
 
