@@ -150,6 +150,7 @@ class WebPackListManager {
 
     final query = QueryBuilder<ParseObject>(ParseObject(ParseWebPackHead.className));
     query.whereGreaterThan(ParseWebPackHead.publicationMoment, DateTime(2000));
+    query.setLimit(10000);
     final parsePackList = await query.find();
 
     for (var parsePack in parsePackList) {
@@ -166,6 +167,7 @@ class WebPackListManager {
     {
       final query = QueryBuilder<ParseObject>(ParseObject(ParseWebPackUserFiles.className));
       query.whereEqualTo(ParseWebPackHead.userID, userID);
+      query.setLimit(10000);
       final userPackList = await query.find();
 
       for (var userPack in userPackList) {
@@ -180,6 +182,7 @@ class WebPackListManager {
     // own user packages
     final query = QueryBuilder<ParseObject>(ParseObject(ParseWebPackHead.className));
     query.whereEqualTo(ParseWebPackHead.userID, userID);
+    query.setLimit(10000);
     final parsePackList = await query.find();
 
     for (var parsePack in parsePackList) {
@@ -329,6 +332,7 @@ Future<Map<String, String>?> _getPackSourceWeb(int packId) async {
   final query = QueryBuilder<ParseObject>(ParseObject(ParseWebPackSubFile.className));
   query.whereEqualTo(ParseWebPackSubFile.packId, packId);
   query.keysToReturn([ParseWebPackSubFile.path, ParseWebPackSubFile.file, ParseWebPackSubFile.isText]);
+  query.setLimit(10000);
   final sourceList = await query.find();
 
   final Map<String, String> fileUrlMap = {};

@@ -56,7 +56,7 @@ class WebChild{
       regulatorParseObject!.set(ParseWebChildSource.userID     , userID);
       regulatorParseObject!.set(ParseWebChildSource.path       , childName);
       regulatorParseObject!.set(ParseWebChildSource.sourceType , ParseWebChildSource.sourceTypeRegulator);
-      regulatorParseObject!.set(ParseWebChildSource.fileName   , ParseWebChildSource.sourceTypeRegulator);
+      regulatorParseObject!.set(ParseWebChildSource.fileName   , '${ParseWebChildSource.sourceTypeRegulator}.json');
     }
 
     regulatorParseObject!.set(ParseWebChildSource.textContent, jsonStr);
@@ -118,6 +118,7 @@ class WebChildListManager {
     queryRegulator.whereEqualTo(ParseWebChildSource.userID, userID);
     queryRegulator.whereEqualTo(ParseWebChildSource.sourceType, ParseWebChildSource.sourceTypeRegulator);
     queryRegulator.keysToReturn([ParseWebChildSource.path, ParseWebChildSource.textContent]);
+    queryRegulator.setLimit(10000);
     final parseRegulatorList = await queryRegulator.find();
 
     final localChildList = <WebChild>[];
@@ -185,6 +186,7 @@ class WebChildListManager {
     querySource.whereEqualTo(ParseWebChildSource.userID, userID);
     querySource.whereEqualTo(ParseWebChildSource.sourceType, ParseWebChildSource.sourceTypePack);
     querySource.keysToReturn([ParseWebChildSource.path, ParseWebChildSource.addInfo]);
+    querySource.setLimit(10000);
     final sourceList = await querySource.find();
 
     final packList = <int>[];
@@ -198,6 +200,7 @@ class WebChildListManager {
     if (packList.isNotEmpty) {
       final queryPack = QueryBuilder<ParseObject>(ParseObject(ParseWebPackHead.className));
       queryPack.whereContainedIn(ParseWebPackHead.packId, packList);
+      queryPack.setLimit(10000);
       final packHeadList = await queryPack.find();
 
       for (var packHead in packHeadList) {

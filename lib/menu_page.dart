@@ -38,6 +38,10 @@ class _MenuPageState extends State<MenuPage> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
 
+            Text('${TextConst.version} ${TextConst.versionDateStr}'),
+
+            Container(height: 40),
+
             button(
               title: 'Пригласить другого родителя',
               onPressed: () {

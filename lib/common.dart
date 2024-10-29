@@ -1,7 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class TextConst{
-  static String versionDateStr    = '19.09.2023';
+  static String versionDateStr    = '27.10.2024-2';
   static String version           = 'Версия';
   //static String get defaultURL => const String.fromEnvironment('PARSE_URL', defaultValue: 'testUrl');
   static String get defaultURL => dotenv.get('PARSE_URL', fallback: 'https://decardsys.ru:1337/parse');

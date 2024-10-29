@@ -212,8 +212,8 @@ class TabJsonFileMem extends TabJsonFile {
   }
 
   @override
-  int? fileGuidToJsonFileId(String guid) {
-    final rows = db.getTabRows(TabJsonFile.tabName, filter: {TabJsonFile.kGuid : guid});
+  int? fileGuidToJsonFileId(String guid, int version) {
+    final rows = db.getTabRows(TabJsonFile.tabName, filter: {TabJsonFile.kGuid : guid, TabJsonFile.kVersion : version});
     if (rows.isEmpty) return null;
 
     final jsonFileID = rows.first[TabJsonFile.kJsonFileID];

@@ -45,10 +45,9 @@ class _RegulatorParamsPageState extends State<RegulatorParamsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      onPopInvoked: (didPop) async {
         if (_changed) _save();
-        return true;
       },
 
       child: Scaffold(

@@ -232,14 +232,13 @@ class PackEditorState extends State<PackEditor> with TickerProviderStateMixin {
       );
     }
 
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      onPopInvoked: (didPop) async {
         if (!_dataChangeSaved && _viewOnly) {
           Fluttertoast.showToast(msg: 'Изменения НЕ сохранены');
         }
 
         await _saveJson();
-        return true;
       },
 
       child: Scaffold(

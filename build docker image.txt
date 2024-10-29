@@ -1,3 +1,4 @@
+flutter build web --dart-define PARSE_URL=$PARSE_URL --release --no-source-maps --pwa-strategy offline-first --web-renderer auto
 docker build . -t dkiyanov/decard_web
 
 start container:

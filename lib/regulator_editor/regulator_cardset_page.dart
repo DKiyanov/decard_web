@@ -34,6 +34,8 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
 
   late int _jsonFileID;
   late String _packTitle;
+  late String _packFileGuid;
+  late int    _packFileVersion;
 
   @override
   void initState() {
@@ -56,7 +58,9 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
     _jsonFileID = (await loadWebPackEx(dbSource: appState.dbSource, packId: packId))!;
 
     final packInfoData = (await appState.dbSource.tabJsonFile.getRow(jsonFileID: _jsonFileID))!;
-    _packTitle = packInfoData[DjfFile.title]!;
+    _packTitle       = packInfoData[DjfFile.title]!;
+    _packFileGuid    = packInfoData[DjfFile.guid];
+    _packFileVersion = packInfoData[DjfFile.version];
 
     setState(() {
       _isStarting = false;
@@ -81,10 +85,9 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
       );
     }
 
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      onPopInvoked: (didPop) async {
         if (_changed) _save();
-        return true;
       },
 
       child: Scaffold(
@@ -114,12 +117,14 @@ class _RegulatorCardSetPageState extends State<RegulatorCardSetPage> {
           objectWidgetCreator: _getCardSetWidget,
           onFilter: (object) {
             final setMap = object as Map<String, dynamic>;
-            final fileGuid = setMap[DrfCardSet.fileGUID] as String;
-            return fileGuid == widget.packId;
+            final fileGuid    = setMap[DrfCardSet.fileGUID] as String;
+            final fileVersion = setMap[DrfCardSet.version]  as int;
+            return fileGuid == _packFileGuid && fileVersion == _packFileVersion;
           },
           onNewRowObjectInit: (object) {
             final setMap = object as Map<String, dynamic>;
-            setMap[DrfCardSet.fileGUID] = widget.packId;
+            setMap[DrfCardSet.fileGUID] = _packFileGuid;
+            setMap[DrfCardSet.version]  = _packFileVersion;
           },
         ),
       ),

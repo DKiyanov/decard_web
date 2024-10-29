@@ -76,6 +76,7 @@ class ChildTestResults {
     query.whereEqualTo(ParseTestResult.childID                , child.childID);
     query.whereGreaterThanOrEqualsTo(ParseTestResult.dateTime , from);
     query.whereLessThanOrEqualTo(ParseTestResult.dateTime     , to);
+    query.setLimit(100000);
 
     final resultList = await query.find();
 
